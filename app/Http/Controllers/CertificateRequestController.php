@@ -1,0 +1,381 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Helpers\ActivityLogger;
+use App\Models\CertificateRequest;
+use App\Models\Customer;
+use App\Models\DistributionCenter;
+use App\Models\Product;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+
+class CertificateRequestController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = CertificateRequest::with([
+            'distributionCenter',
+            'customer',
+            'creator',
+        ]);
+
+        if (Auth::user()->hasRole('TrungTam')) {
+            $query->where('distribution_center_id', Auth::user()->distribution_center_id);
+        }
+
+        if ($request->filled('keyword')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('request_no', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('invoice_no', 'like', '%' . $request->keyword . '%')
+                    ->orWhereHas('customer', function ($c) use ($request) {
+                        $c->where('customer_name', 'like', '%' . $request->keyword . '%')
+                            ->orWhere('project_name', 'like', '%' . $request->keyword . '%');
+                    });
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('distribution_center_id') && !Auth::user()->hasRole('TrungTam')) {
+            $query->where('distribution_center_id', $request->distribution_center_id);
+        }
+
+        $requests = $query->latest()->paginate(15)->withQueryString();
+
+        $centers = DistributionCenter::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('certificate_requests.index', compact('requests', 'centers'));
+    }
+
+    public function create()
+    {
+        $centers = DistributionCenter::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $customers = Customer::where('is_active', true)
+            ->orderBy('customer_name')
+            ->get();
+
+        $products = Product::with(['group', 'qualityStandard'])
+            ->where('is_active', true)
+            ->orderBy('product_name')
+            ->get();
+
+        return view('certificate_requests.create', compact('centers', 'customers', 'products'));
+    }
+
+    public function store(Request $request)
+    {
+        $rules = [
+            'customer_mode' => ['required', 'in:existing,new'],
+            'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
+            'new_customer_name' => ['required_if:customer_mode,new', 'nullable', 'string', 'max:500'],
+            'new_customer_address' => ['nullable', 'string'],
+            'new_tax_code' => ['nullable', 'string', 'max:100'],
+            'new_contact_person' => ['nullable', 'string', 'max:255'],
+            'new_phone' => ['nullable', 'string', 'max:100'],
+            'new_email' => ['nullable', 'email', 'max:255'],
+            'new_project_name' => ['nullable', 'string', 'max:500'],
+            'new_project_address' => ['nullable', 'string'],
+            'delivery_date' => ['nullable', 'date'],
+            'invoice_no' => ['nullable', 'string', 'max:255'],
+            'require_hard_copy' => ['nullable'],
+            'hard_copy_quantity' => ['nullable', 'integer', 'min:0'],
+            'note' => ['nullable', 'string'],
+            'product_id' => ['required', 'array', 'min:1'],
+            'product_id.*' => ['required', 'exists:products,id'],
+            'quantity' => ['required', 'array', 'min:1'],
+            'quantity.*' => ['required', 'numeric', 'min:0.01'],
+        ];
+
+        if (!Auth::user()->hasRole('TrungTam')) {
+            $rules['distribution_center_id'] = ['required', 'exists:distribution_centers,id'];
+        }
+
+        $data = $request->validate($rules);
+
+        $distributionCenterId = Auth::user()->hasRole('TrungTam')
+            ? Auth::user()->distribution_center_id
+            : $data['distribution_center_id'];
+
+        if (!$distributionCenterId) {
+            return back()
+                ->withInput()
+                ->with('error', 'Tài khoản Trung tâm chưa được gán Trung tâm phân phối.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $customerId = $this->resolveCustomerId($data);
+
+            $certificateRequest = CertificateRequest::create([
+                'request_no' => $this->generateRequestNo(),
+                'distribution_center_id' => $distributionCenterId,
+                'customer_id' => $customerId,
+                'delivery_date' => $data['delivery_date'] ?? null,
+                'invoice_no' => $data['invoice_no'] ?? null,
+                'require_hard_copy' => $request->boolean('require_hard_copy'),
+                'hard_copy_quantity' => $request->boolean('require_hard_copy')
+                    ? ($data['hard_copy_quantity'] ?? 0)
+                    : 0,
+                'note' => $data['note'] ?? null,
+                'status' => 'WAIT_DVKH',
+                'created_by' => Auth::id(),
+            ]);
+
+            foreach ($data['product_id'] as $index => $productId) {
+                $certificateRequest->details()->create([
+                    'product_id' => $productId,
+                    'quantity' => $data['quantity'][$index],
+                ]);
+            }
+
+            ActivityLogger::log(
+                'Yêu cầu cấp phiếu',
+                'create',
+                'Tạo yêu cầu cấp phiếu: ' . $certificateRequest->request_no,
+                null,
+                $certificateRequest->load('details')->toArray()
+            );
+
+            DB::commit();
+
+            return redirect()
+                ->route('certificate-requests.index')
+                ->with('success', 'Tạo yêu cầu cấp phiếu thành công.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return back()
+                ->withInput()
+                ->with('error', 'Có lỗi khi tạo yêu cầu: ' . $e->getMessage());
+        }
+    }
+
+    public function show(CertificateRequest $certificateRequest)
+    {
+        $this->authorizeCenter($certificateRequest);
+
+        $certificateRequest->load([
+            'distributionCenter',
+            'customer',
+            'details.product.group',
+            'details.product.qualityStandard',
+            'creator',
+        ]);
+
+        return view('certificate_requests.show', compact('certificateRequest'));
+    }
+
+    public function edit(CertificateRequest $certificateRequest)
+    {
+        $this->authorizeCenter($certificateRequest);
+
+        if (!in_array($certificateRequest->status, ['DRAFT', 'WAIT_DVKH'])) {
+            return redirect()
+                ->route('certificate-requests.index')
+                ->with('error', 'Chỉ được sửa yêu cầu ở trạng thái Nháp hoặc Chờ DVKH.');
+        }
+
+        $certificateRequest->load('details');
+
+        $centers = DistributionCenter::where('is_active', true)->orderBy('name')->get();
+        $customers = Customer::where('is_active', true)->orderBy('customer_name')->get();
+        $products = Product::with(['group', 'qualityStandard'])
+            ->where('is_active', true)
+            ->orderBy('product_name')
+            ->get();
+
+        return view('certificate_requests.edit', compact(
+            'certificateRequest',
+            'centers',
+            'customers',
+            'products'
+        ));
+    }
+
+    public function update(Request $request, CertificateRequest $certificateRequest)
+    {
+        $this->authorizeCenter($certificateRequest);
+
+        if (!in_array($certificateRequest->status, ['DRAFT', 'WAIT_DVKH'])) {
+            return redirect()
+                ->route('certificate-requests.index')
+                ->with('error', 'Chỉ được sửa yêu cầu ở trạng thái Nháp hoặc Chờ DVKH.');
+        }
+
+        $rules = [
+            'customer_mode' => ['required', 'in:existing,new'],
+            'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
+            'new_customer_name' => ['required_if:customer_mode,new', 'nullable', 'string', 'max:500'],
+            'new_customer_address' => ['nullable', 'string'],
+            'new_tax_code' => ['nullable', 'string', 'max:100'],
+            'new_contact_person' => ['nullable', 'string', 'max:255'],
+            'new_phone' => ['nullable', 'string', 'max:100'],
+            'new_email' => ['nullable', 'email', 'max:255'],
+            'new_project_name' => ['nullable', 'string', 'max:500'],
+            'new_project_address' => ['nullable', 'string'],
+            'delivery_date' => ['nullable', 'date'],
+            'invoice_no' => ['nullable', 'string', 'max:255'],
+            'require_hard_copy' => ['nullable'],
+            'hard_copy_quantity' => ['nullable', 'integer', 'min:0'],
+            'note' => ['nullable', 'string'],
+            'product_id' => ['required', 'array', 'min:1'],
+            'product_id.*' => ['required', 'exists:products,id'],
+            'quantity' => ['required', 'array', 'min:1'],
+            'quantity.*' => ['required', 'numeric', 'min:0.01'],
+        ];
+
+        if (!Auth::user()->hasRole('TrungTam')) {
+            $rules['distribution_center_id'] = ['required', 'exists:distribution_centers,id'];
+        }
+
+        $data = $request->validate($rules);
+
+        $distributionCenterId = Auth::user()->hasRole('TrungTam')
+            ? Auth::user()->distribution_center_id
+            : $data['distribution_center_id'];
+
+        DB::beginTransaction();
+
+        try {
+            $oldData = $certificateRequest->load('details')->toArray();
+            $customerId = $this->resolveCustomerId($data);
+
+            $certificateRequest->update([
+                'distribution_center_id' => $distributionCenterId,
+                'customer_id' => $customerId,
+                'delivery_date' => $data['delivery_date'] ?? null,
+                'invoice_no' => $data['invoice_no'] ?? null,
+                'require_hard_copy' => $request->boolean('require_hard_copy'),
+                'hard_copy_quantity' => $request->boolean('require_hard_copy')
+                    ? ($data['hard_copy_quantity'] ?? 0)
+                    : 0,
+                'note' => $data['note'] ?? null,
+            ]);
+
+            $certificateRequest->details()->delete();
+
+            foreach ($data['product_id'] as $index => $productId) {
+                $certificateRequest->details()->create([
+                    'product_id' => $productId,
+                    'quantity' => $data['quantity'][$index],
+                ]);
+            }
+
+            ActivityLogger::log(
+                'Yêu cầu cấp phiếu',
+                'update',
+                'Cập nhật yêu cầu cấp phiếu: ' . $certificateRequest->request_no,
+                $oldData,
+                $certificateRequest->fresh()->load('details')->toArray()
+            );
+
+            DB::commit();
+
+            return redirect()
+                ->route('certificate-requests.index')
+                ->with('success', 'Cập nhật yêu cầu cấp phiếu thành công.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return back()
+                ->withInput()
+                ->with('error', 'Có lỗi khi cập nhật yêu cầu: ' . $e->getMessage());
+        }
+    }
+
+    public function destroy(CertificateRequest $certificateRequest)
+    {
+        $this->authorizeCenter($certificateRequest);
+
+        if (!in_array($certificateRequest->status, ['DRAFT', 'WAIT_DVKH'])) {
+            return redirect()
+                ->route('certificate-requests.index')
+                ->with('error', 'Chỉ được xóa yêu cầu ở trạng thái Nháp hoặc Chờ DVKH.');
+        }
+
+        $oldData = $certificateRequest->load('details')->toArray();
+
+        $certificateRequest->delete();
+
+        ActivityLogger::log(
+            'Yêu cầu cấp phiếu',
+            'delete',
+            'Xóa yêu cầu cấp phiếu: ' . $certificateRequest->request_no,
+            $oldData,
+            null
+        );
+
+        return redirect()
+            ->route('certificate-requests.index')
+            ->with('success', 'Xóa yêu cầu cấp phiếu thành công.');
+    }
+
+    private function generateRequestNo(): string
+    {
+        $prefix = 'YC-' . date('Ymd') . '-';
+
+        $count = CertificateRequest::whereDate('created_at', now()->toDateString())->count() + 1;
+
+        return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function resolveCustomerId(array $data): int
+    {
+        if (($data['customer_mode'] ?? 'existing') === 'existing') {
+            return (int) $data['customer_id'];
+        }
+
+        $customer = Customer::create([
+            'customer_code' => $this->generateCustomerCode(),
+            'customer_name' => $data['new_customer_name'],
+            'customer_address' => $data['new_customer_address'] ?? null,
+            'tax_code' => $data['new_tax_code'] ?? null,
+            'contact_person' => $data['new_contact_person'] ?? null,
+            'phone' => $data['new_phone'] ?? null,
+            'email' => $data['new_email'] ?? null,
+            'project_name' => $data['new_project_name'] ?? null,
+            'project_address' => $data['new_project_address'] ?? null,
+            'is_active' => true,
+        ]);
+
+        ActivityLogger::log(
+            'Khách hàng - Công trình',
+            'create_from_request',
+            'Tạo khách hàng từ phiếu đề nghị: ' . $customer->customer_name,
+            null,
+            $customer->toArray()
+        );
+
+        return $customer->id;
+    }
+
+    private function generateCustomerCode(): string
+    {
+        $prefix = 'KH-' . date('Ymd') . '-';
+        $count = Customer::withTrashed()
+                ->where('customer_code', 'like', $prefix . '%')
+                ->count() + 1;
+
+        return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function authorizeCenter(CertificateRequest $certificateRequest): void
+    {
+        if (
+            Auth::user()->hasRole('TrungTam')
+            && $certificateRequest->distribution_center_id != Auth::user()->distribution_center_id
+        ) {
+            abort(403, 'Anh không có quyền xem dữ liệu của trung tâm khác.');
+        }
+    }
+}
