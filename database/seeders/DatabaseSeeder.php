@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             ProductGroupSeeder::class,
             ProductSeeder::class,
             CustomerSeeder::class,
+            UrgentReasonSeeder::class,
             SlaConfigSeeder::class,
             SystemSettingSeeder::class,
         ]);

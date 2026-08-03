@@ -112,6 +112,8 @@
                             <div class="text-muted small">
                                 {{ optional($item->created_at)->format('d/m/Y H:i') }}
                             </div>
+                            @include('certificate_requests.partials.request_type_badge', ['certificateRequest' => $item])
+                            @include('certificate_requests.partials.urgent_badge', ['urgentRequest' => $item])
                         </td>
 
                         <td>{{ $item->distributionCenter->name ?? '-' }}</td>

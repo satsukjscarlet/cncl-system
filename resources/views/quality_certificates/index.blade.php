@@ -57,6 +57,7 @@
                         <option value="">Tất cả</option>
                         <option value="UNSIGNED" {{ request('status') == 'UNSIGNED' ? 'selected' : '' }}>Chưa ký</option>
                         <option value="SIGNED" {{ request('status') == 'SIGNED' ? 'selected' : '' }}>Đã ký/phát hành</option>
+                        <option value="REVOKED" {{ request('status') == 'REVOKED' ? 'selected' : '' }}>Đã hủy/thu hồi</option>
                     </select>
                 </div>
             </div>
@@ -100,7 +101,7 @@
                     <th>Người lập</th>
                     <th>Ngày ký</th>
                     <th>Trạng thái</th>
-                    <th style="width:100px" class="text-center">Thao tác</th>
+                    <th style="width:170px" class="text-center">Thao tác</th>
                 </tr>
             </thead>
 
@@ -132,7 +133,11 @@
                         <td>{{ $certificate->signed_at ? $certificate->signed_at->format('d/m/Y H:i') : '-' }}</td>
 
                         <td>
-                            @if($certificate->signed_at)
+                            @if($certificate->status === 'REVOKED')
+                                <span class="badge badge-danger">
+                                    <i class="fas fa-ban"></i> Đã hủy/thu hồi
+                                </span>
+                            @elseif($certificate->signed_at)
                                 <span class="badge badge-success">
                                     <i class="fas fa-check"></i> Đã ký/phát hành
                                 </span>
@@ -149,6 +154,55 @@
                                title="Xem">
                                 <i class="fas fa-eye"></i>
                             </a>
+                            @can('request.create')
+                                @if($certificate->canRequestReissue())
+                                    <button type="button"
+                                            class="btn btn-sm btn-danger"
+                                            title="Yêu cầu cấp lại"
+                                            data-toggle="modal"
+                                            data-target="#reissueModal{{ $certificate->id }}">
+                                        <i class="fas fa-redo"></i>
+                                    </button>
+
+                                    <div class="modal fade" id="reissueModal{{ $certificate->id }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <form method="POST"
+                                                  action="{{ route('quality-certificates.request-reissue', $certificate) }}"
+                                                  class="modal-content">
+                                                @csrf
+
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">
+                                                        <i class="fas fa-redo"></i> Yêu cầu cấp lại phiếu
+                                                    </h5>
+                                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                                </div>
+
+                                                <div class="modal-body text-left">
+                                                    <p>Phiếu: <strong>{{ $certificate->certificate_no }}</strong></p>
+                                                    <div class="alert alert-warning">
+                                                        Yêu cầu này sẽ được gửi sang DVKH. Khi DVKH xác nhận, phiếu cũ sẽ bị hủy/thu hồi và quy trình cấp phiếu mới bắt đầu.
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Lý do cấp lại <span class="text-danger">*</span></label>
+                                                        <textarea name="reissue_reason"
+                                                                  class="form-control"
+                                                                  rows="4"
+                                                                  required></textarea>
+                                                    </div>
+                                                </div>
+
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-default" data-dismiss="modal">Đóng</button>
+                                                    <button class="btn btn-danger">
+                                                        <i class="fas fa-paper-plane"></i> Gửi yêu cầu
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endcan
                         </td>
                     </tr>
                 @empty

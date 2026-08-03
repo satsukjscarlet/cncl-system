@@ -6,6 +6,8 @@ use App\Helpers\ActivityLogger;
 use App\Models\CertificateRequest;
 use App\Models\DistributionCenter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DvkhRequestController extends Controller
 {
@@ -15,6 +17,8 @@ class DvkhRequestController extends Controller
             'distributionCenter',
             'customer',
             'creator',
+            'urgentReason',
+            'reissueOfCertificate',
         ])->whereIn('status', [
             'WAIT_DVKH',
             'CANCELLED',
@@ -60,6 +64,8 @@ class DvkhRequestController extends Controller
             'details.product.group',
             'details.product.qualityStandard',
             'creator',
+            'urgentReason',
+            'reissueOfCertificate',
         ]);
 
         return view('dvkh_requests.show', compact('certificateRequest'));
@@ -73,11 +79,43 @@ class DvkhRequestController extends Controller
                 ->with('error', 'Chỉ xác nhận được yêu cầu đang ở trạng thái Chờ DVKH.');
         }
 
-        $oldData = $certificateRequest->toArray();
+        DB::beginTransaction();
 
-        $certificateRequest->update([
-            'status' => 'WAIT_PTN',
-        ]);
+        try {
+            $certificateRequest->load('reissueOfCertificate');
+            $oldData = $certificateRequest->toArray();
+
+            if ($certificateRequest->request_type === 'REISSUE') {
+                $oldCertificate = $certificateRequest->reissueOfCertificate;
+
+                if (!$oldCertificate || !$oldCertificate->canRequestReissue()) {
+                    DB::rollBack();
+
+                    return redirect()
+                        ->route('dvkh.requests.index')
+                        ->with('error', 'Phiếu cũ của yêu cầu cấp lại không còn ở trạng thái có thể hủy/cấp lại.');
+                }
+
+                $oldCertificate->update([
+                    'status' => 'REVOKED',
+                    'revoked_at' => now(),
+                    'revoked_by' => Auth::id(),
+                    'revoked_reason' => $certificateRequest->reissue_reason,
+                ]);
+            }
+
+            $certificateRequest->update([
+                'status' => 'WAIT_PTN',
+            ]);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->route('dvkh.requests.index')
+                ->with('error', 'Không thể xác nhận yêu cầu: ' . $e->getMessage());
+        }
 
         ActivityLogger::log(
             'DVKH kiểm tra yêu cầu',

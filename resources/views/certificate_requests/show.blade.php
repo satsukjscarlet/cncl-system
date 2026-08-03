@@ -26,6 +26,18 @@
 
             <div class="card-body">
                 <p><strong>Số yêu cầu:</strong> {{ $certificateRequest->request_no }}</p>
+                <p>
+                    <strong>Loại yêu cầu:</strong>
+                    @if($certificateRequest->request_type === 'REISSUE')
+                        <span class="badge badge-danger"><i class="fas fa-redo"></i> Cấp lại</span>
+                    @else
+                        <span class="badge badge-light">Cấp mới</span>
+                    @endif
+                </p>
+                @if($certificateRequest->request_type === 'REISSUE')
+                    <p><strong>Phiếu cũ:</strong> {{ $certificateRequest->reissueOfCertificate->certificate_no ?? '—' }}</p>
+                    <p><strong>Lý do cấp lại:</strong> {{ $certificateRequest->reissue_reason ?: '—' }}</p>
+                @endif
                 <p><strong>Trạng thái:</strong> @include('certificate_requests.partials.status_badge', ['status' => $certificateRequest->status])</p>
                 <p><strong>Trung tâm:</strong> {{ $certificateRequest->distributionCenter->name ?? '—' }}</p>
                 <p><strong>Ngày xuất hàng:</strong> {{ $certificateRequest->delivery_date ? $certificateRequest->delivery_date->format('d/m/Y') : '—' }}</p>
@@ -37,6 +49,17 @@
                         Không
                     @endif
                 </p>
+                <p>
+                    <strong>Yêu cầu gấp:</strong>
+                    @if($certificateRequest->is_urgent)
+                        <span class="badge badge-danger"><i class="fas fa-bolt"></i> Có</span>
+                        <br>
+                        <span class="text-danger small">{{ $certificateRequest->urgentReason->name ?? 'Chưa chọn lý do' }}</span>
+                    @else
+                        Không
+                    @endif
+                </p>
+                <p><strong>Tên người tạo yêu cầu:</strong> {{ $certificateRequest->requester_name ?: '—' }}</p>
                 <p><strong>Người tạo:</strong> {{ $certificateRequest->creator->name ?? '—' }}</p>
                 <p><strong>Ngày tạo:</strong> {{ optional($certificateRequest->created_at)->format('d/m/Y H:i') }}</p>
             </div>

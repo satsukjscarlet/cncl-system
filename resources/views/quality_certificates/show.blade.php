@@ -42,12 +42,35 @@
                 <p><strong>Ngày lập:</strong> {{ optional($qualityCertificate->created_at)->format('d/m/Y H:i') }}</p>
                 <p>
                     <strong>Trạng thái:</strong>
-                    @if ($qualityCertificate->signed_at)
+                    @if ($qualityCertificate->status === 'REVOKED')
+                        <span class="badge badge-danger">Đã hủy/thu hồi</span>
+                    @elseif ($qualityCertificate->signed_at)
                         <span class="badge badge-success">Đã ký/phát hành</span>
                     @else
                         <span class="badge badge-warning">Chưa ký</span>
                     @endif
                 </p>
+                @if($qualityCertificate->replacesCertificate)
+                    <p>
+                        <strong>Cấp lại cho phiếu:</strong>
+                        <a href="{{ route('quality-certificates.show', $qualityCertificate->replacesCertificate) }}">
+                            {{ $qualityCertificate->replacesCertificate->certificate_no }}
+                        </a>
+                    </p>
+                @endif
+                @if($qualityCertificate->replacedByCertificate)
+                    <p>
+                        <strong>Được thay thế bởi:</strong>
+                        <a href="{{ route('quality-certificates.show', $qualityCertificate->replacedByCertificate) }}">
+                            {{ $qualityCertificate->replacedByCertificate->certificate_no }}
+                        </a>
+                    </p>
+                @endif
+                @if($qualityCertificate->status === 'REVOKED')
+                    <p><strong>Người hủy:</strong> {{ $qualityCertificate->revokedBy->name ?? '-' }}</p>
+                    <p><strong>Ngày hủy:</strong> {{ $qualityCertificate->revoked_at ? $qualityCertificate->revoked_at->format('d/m/Y H:i') : '-' }}</p>
+                    <p><strong>Lý do hủy:</strong> {{ $qualityCertificate->revoked_reason ?: '-' }}</p>
+                @endif
                 <p><strong>Người ký:</strong> {{ $qualityCertificate->signed_by ?: '-' }}</p>
                 <p><strong>Ngày ký:</strong> {{ $qualityCertificate->signed_at ? $qualityCertificate->signed_at->format('d/m/Y H:i') : '-' }}</p>
                 <p>
@@ -76,13 +99,15 @@
 
                     @if ($qualityCertificate->signed_at)
                         @can('certificate.email')
-                            <form action="{{ route('quality-certificates.resend-email', $qualityCertificate) }}" method="POST"
-                                  class="d-inline" onsubmit="return confirm('Gửi lại email phiếu CNCL cho khách hàng?')">
-                                @csrf
-                                <button class="btn btn-primary">
-                                    <i class="fas fa-envelope"></i> Gửi lại email
-                                </button>
-                            </form>
+                            @if($qualityCertificate->status !== 'REVOKED')
+                                <form action="{{ route('quality-certificates.resend-email', $qualityCertificate) }}" method="POST"
+                                      class="d-inline" onsubmit="return confirm('Gửi lại email phiếu CNCL cho khách hàng?')">
+                                    @csrf
+                                    <button class="btn btn-primary">
+                                        <i class="fas fa-envelope"></i> Gửi lại email
+                                    </button>
+                                </form>
+                            @endif
                         @endcan
 
                         <button class="btn btn-secondary" disabled>
@@ -90,9 +115,19 @@
                         </button>
 
                         @can('certificate.print')
-                            <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#printHardCopyModal">
-                                <i class="fas fa-print"></i> In ký tươi
-                            </button>
+                            @if($qualityCertificate->status !== 'REVOKED')
+                                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#printHardCopyModal">
+                                    <i class="fas fa-print"></i> In ký tươi
+                                </button>
+                            @endif
+                        @endcan
+
+                        @can('request.create')
+                            @if($qualityCertificate->canRequestReissue())
+                                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#reissueModal">
+                                    <i class="fas fa-redo"></i> Yêu cầu cấp lại
+                                </button>
+                            @endif
                         @endcan
                     @else
                         @can('certificate.sign')
@@ -288,5 +323,47 @@
         </form>
     </div>
 </div>
+@endcan
+
+@can('request.create')
+@if($qualityCertificate->canRequestReissue())
+<div class="modal fade" id="reissueModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST"
+              action="{{ route('quality-certificates.request-reissue', $qualityCertificate) }}"
+              class="modal-content">
+            @csrf
+
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-redo"></i> Yêu cầu cấp lại phiếu</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <p>Phiếu: <strong>{{ $qualityCertificate->certificate_no }}</strong></p>
+                <div class="alert alert-warning">
+                    Yêu cầu này sẽ được gửi sang DVKH. Khi DVKH xác nhận, phiếu cũ sẽ bị hủy/thu hồi và quy trình cấp phiếu mới bắt đầu.
+                </div>
+
+                <div class="form-group">
+                    <label>Lý do cấp lại <span class="text-danger">*</span></label>
+                    <textarea name="reissue_reason"
+                              class="form-control"
+                              rows="4"
+                              required
+                              placeholder="Nhập lý do cần cấp lại phiếu"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Đóng</button>
+                <button class="btn btn-danger">
+                    <i class="fas fa-paper-plane"></i> Gửi yêu cầu
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
 @endcan
 @stop

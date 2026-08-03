@@ -7,6 +7,7 @@ use App\Models\CertificateRequest;
 use App\Models\Customer;
 use App\Models\DistributionCenter;
 use App\Models\Product;
+use App\Models\UrgentReason;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,8 @@ class CertificateRequestController extends Controller
             'distributionCenter',
             'customer',
             'creator',
+            'urgentReason',
+            'reissueOfCertificate',
         ]);
 
         if (Auth::user()->hasRole('TrungTam')) {
@@ -68,7 +71,11 @@ class CertificateRequestController extends Controller
             ->orderBy('product_name')
             ->get();
 
-        return view('certificate_requests.create', compact('centers', 'customers', 'products'));
+        $urgentReasons = UrgentReason::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('certificate_requests.create', compact('centers', 'customers', 'products', 'urgentReasons'));
     }
 
     public function store(Request $request)
@@ -88,6 +95,9 @@ class CertificateRequestController extends Controller
             'invoice_no' => ['nullable', 'string', 'max:255'],
             'require_hard_copy' => ['nullable'],
             'hard_copy_quantity' => ['nullable', 'integer', 'min:0'],
+            'is_urgent' => ['nullable', 'boolean'],
+            'urgent_reason_id' => ['nullable', 'required_if:is_urgent,1', 'exists:urgent_reasons,id'],
+            'requester_name' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
             'product_id' => ['required', 'array', 'min:1'],
             'product_id.*' => ['required', 'exists:products,id'],
@@ -126,6 +136,11 @@ class CertificateRequestController extends Controller
                 'hard_copy_quantity' => $request->boolean('require_hard_copy')
                     ? ($data['hard_copy_quantity'] ?? 0)
                     : 0,
+                'is_urgent' => $request->boolean('is_urgent'),
+                'urgent_reason_id' => $request->boolean('is_urgent')
+                    ? ($data['urgent_reason_id'] ?? null)
+                    : null,
+                'requester_name' => $data['requester_name'] ?? null,
                 'note' => $data['note'] ?? null,
                 'status' => 'WAIT_DVKH',
                 'created_by' => Auth::id(),
@@ -170,6 +185,8 @@ class CertificateRequestController extends Controller
             'details.product.group',
             'details.product.qualityStandard',
             'creator',
+            'urgentReason',
+            'reissueOfCertificate',
         ]);
 
         return view('certificate_requests.show', compact('certificateRequest'));
@@ -193,12 +210,16 @@ class CertificateRequestController extends Controller
             ->where('is_active', true)
             ->orderBy('product_name')
             ->get();
+        $urgentReasons = UrgentReason::where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
         return view('certificate_requests.edit', compact(
             'certificateRequest',
             'centers',
             'customers',
-            'products'
+            'products',
+            'urgentReasons'
         ));
     }
 
@@ -227,6 +248,9 @@ class CertificateRequestController extends Controller
             'invoice_no' => ['nullable', 'string', 'max:255'],
             'require_hard_copy' => ['nullable'],
             'hard_copy_quantity' => ['nullable', 'integer', 'min:0'],
+            'is_urgent' => ['nullable', 'boolean'],
+            'urgent_reason_id' => ['nullable', 'required_if:is_urgent,1', 'exists:urgent_reasons,id'],
+            'requester_name' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
             'product_id' => ['required', 'array', 'min:1'],
             'product_id.*' => ['required', 'exists:products,id'],
@@ -259,6 +283,11 @@ class CertificateRequestController extends Controller
                 'hard_copy_quantity' => $request->boolean('require_hard_copy')
                     ? ($data['hard_copy_quantity'] ?? 0)
                     : 0,
+                'is_urgent' => $request->boolean('is_urgent'),
+                'urgent_reason_id' => $request->boolean('is_urgent')
+                    ? ($data['urgent_reason_id'] ?? null)
+                    : null,
+                'requester_name' => $data['requester_name'] ?? null,
                 'note' => $data['note'] ?? null,
             ]);
 

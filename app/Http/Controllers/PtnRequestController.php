@@ -17,6 +17,8 @@ class PtnRequestController extends Controller
             'distributionCenter',
             'customer',
             'creator',
+            'urgentReason',
+            'reissueOfCertificate',
         ])->whereIn('status', [
             'WAIT_PTN',
             'PTN_PROCESSING',
@@ -53,6 +55,8 @@ class PtnRequestController extends Controller
             'details.product.group',
             'details.product.qualityStandard',
             'creator',
+            'urgentReason',
+            'reissueOfCertificate',
         ]);
 
         return view('ptn_requests.show', compact('certificateRequest'));
@@ -101,6 +105,7 @@ class PtnRequestController extends Controller
 
         $certificateRequest->load([
             'details.product.qualityStandard',
+            'reissueOfCertificate',
         ]);
 
         DB::beginTransaction();
@@ -109,6 +114,10 @@ class PtnRequestController extends Controller
             $certificate = QualityCertificate::create([
                 'certificate_no' => $this->generateCertificateNo(),
                 'certificate_request_id' => $certificateRequest->id,
+                'status' => 'DRAFT',
+                'replaces_certificate_id' => $certificateRequest->request_type === 'REISSUE'
+                    ? $certificateRequest->reissue_of_certificate_id
+                    : null,
                 'created_by' => Auth::id(),
                 'signed_at' => null,
                 'signed_by' => null,
@@ -133,6 +142,12 @@ class PtnRequestController extends Controller
             $certificateRequest->update([
                 'status' => 'PTN_PROCESSING',
             ]);
+
+            if ($certificateRequest->request_type === 'REISSUE' && $certificateRequest->reissueOfCertificate) {
+                $certificateRequest->reissueOfCertificate->update([
+                    'replaced_by_certificate_id' => $certificate->id,
+                ]);
+            }
 
             ActivityLogger::log(
                 'PTN lập phiếu',

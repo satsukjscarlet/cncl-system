@@ -11,12 +11,18 @@ class QualityCertificate extends Model
 
     protected $fillable = [
         'certificate_no',
+        'status',
         'certificate_request_id',
+        'replaces_certificate_id',
+        'replaced_by_certificate_id',
         'created_by',
         'signed_at',
         'signed_by',
         'pdf_path',
         'print_count',
+        'revoked_at',
+        'revoked_by',
+        'revoked_reason',
         'smartca_status',
         'smartca_transaction_id',
         'smartca_tran_code',
@@ -38,6 +44,7 @@ class QualityCertificate extends Model
 
     protected $casts = [
         'signed_at' => 'datetime',
+        'revoked_at' => 'datetime',
         'smartca_chain_data' => 'array',
         'smartca_response' => 'array',
         'smartca_requested_at' => 'datetime',
@@ -57,6 +64,29 @@ class QualityCertificate extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function revokedBy()
+    {
+        return $this->belongsTo(User::class, 'revoked_by');
+    }
+
+    public function replacesCertificate()
+    {
+        return $this->belongsTo(self::class, 'replaces_certificate_id');
+    }
+
+    public function replacedByCertificate()
+    {
+        return $this->belongsTo(self::class, 'replaced_by_certificate_id');
+    }
+
+    public function canRequestReissue(): bool
+    {
+        return $this->signed_at !== null
+            && filled($this->pdf_path)
+            && $this->status === 'ISSUED'
+            && $this->replaced_by_certificate_id === null;
     }
 
     public function printLogs()

@@ -55,6 +55,11 @@ class PermissionSeeder extends Seeder
             'quality_standard.import',
             'quality_standard.export',
 
+            'urgent_reason.view',
+            'urgent_reason.create',
+            'urgent_reason.update',
+            'urgent_reason.delete',
+
             'customer.view',
             'customer.create',
             'customer.update',

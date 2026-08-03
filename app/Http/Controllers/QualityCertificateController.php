@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\ActivityLogger;
 use App\Mail\QualityCertificateIssuedMail;
+use App\Models\CertificateRequest;
 use App\Models\PrintLog;
 use App\Models\QualityCertificate;
 use App\Models\SystemSetting;
@@ -12,6 +13,7 @@ use App\Services\SmartCaService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -25,6 +27,8 @@ class QualityCertificateController extends Controller
             'request.distributionCenter',
             'request.customer',
             'creator',
+            'replacesCertificate',
+            'replacedByCertificate',
         ]);
 
         if ($user->hasRole('TrungTam')) {
@@ -49,11 +53,16 @@ class QualityCertificateController extends Controller
 
         if ($request->filled('status')) {
             if ($request->status === 'SIGNED') {
-                $query->whereNotNull('signed_at');
+                $query->whereNotNull('signed_at')
+                    ->where('status', 'ISSUED');
             }
 
             if ($request->status === 'UNSIGNED') {
                 $query->whereNull('signed_at');
+            }
+
+            if ($request->status === 'REVOKED') {
+                $query->where('status', 'REVOKED');
             }
         }
 
@@ -73,8 +82,12 @@ class QualityCertificateController extends Controller
             'request.distributionCenter',
             'request.customer',
             'request.creator',
+            'request.reissueOfCertificate',
             'details.product.group',
             'creator',
+            'revokedBy',
+            'replacesCertificate',
+            'replacedByCertificate',
             'printLogs.user',
         ]);
 
@@ -359,6 +372,7 @@ class QualityCertificateController extends Controller
 
             $qualityCertificate->update([
                 'signed_at' => now(),
+                'status' => 'ISSUED',
                 'signed_by' => Auth::user()->name,
                 'pdf_path' => $signedPdfPath,
                 'smartca_status' => 'SIGNED',
@@ -475,6 +489,92 @@ class QualityCertificateController extends Controller
         return $pdf->stream($qualityCertificate->certificate_no . '.pdf');
     }
 
+    public function requestReissue(Request $request, QualityCertificate $qualityCertificate)
+    {
+        $this->authorizeCenter($qualityCertificate);
+
+        if (!$qualityCertificate->canRequestReissue()) {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Chỉ phiếu đã ký số/phát hành thành công và chưa bị hủy mới được yêu cầu cấp lại.');
+        }
+
+        $data = $request->validate([
+            'reissue_reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $existingReissue = CertificateRequest::where('request_type', 'REISSUE')
+            ->where('reissue_of_certificate_id', $qualityCertificate->id)
+            ->whereNotIn('status', ['CANCELLED', 'COMPLETED'])
+            ->first();
+
+        if ($existingReissue) {
+            return redirect()
+                ->route('certificate-requests.show', $existingReissue)
+                ->with('error', 'Phiếu này đã có yêu cầu cấp lại đang xử lý.');
+        }
+
+        $qualityCertificate->load([
+            'request.customer',
+            'request.distributionCenter',
+            'request.details',
+            'details',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $oldData = $qualityCertificate->toArray();
+            $oldRequest = $qualityCertificate->request;
+
+            $newRequest = CertificateRequest::create([
+                'request_no' => $this->generateRequestNo(),
+                'request_type' => 'REISSUE',
+                'reissue_of_certificate_id' => $qualityCertificate->id,
+                'reissue_reason' => $data['reissue_reason'],
+                'distribution_center_id' => $oldRequest->distribution_center_id,
+                'customer_id' => $oldRequest->customer_id,
+                'delivery_date' => $oldRequest->delivery_date,
+                'invoice_no' => $oldRequest->invoice_no,
+                'require_hard_copy' => $oldRequest->require_hard_copy,
+                'hard_copy_quantity' => $oldRequest->hard_copy_quantity,
+                'is_urgent' => $oldRequest->is_urgent,
+                'urgent_reason_id' => $oldRequest->urgent_reason_id,
+                'requester_name' => $oldRequest->requester_name,
+                'note' => trim(($oldRequest->note ? $oldRequest->note . "\n" : '') . '[Yêu cầu cấp lại từ phiếu ' . $qualityCertificate->certificate_no . ']: ' . $data['reissue_reason']),
+                'status' => 'WAIT_DVKH',
+                'created_by' => Auth::id(),
+            ]);
+
+            foreach ($oldRequest->details as $detail) {
+                $newRequest->details()->create([
+                    'product_id' => $detail->product_id,
+                    'quantity' => $detail->quantity,
+                ]);
+            }
+
+            ActivityLogger::log(
+                'Phiếu CNCL',
+                'request_reissue',
+                'Tạo yêu cầu cấp lại cho phiếu CNCL: ' . $qualityCertificate->certificate_no . '. Yêu cầu mới: ' . $newRequest->request_no,
+                $oldData,
+                $newRequest->load('details')->toArray()
+            );
+
+            DB::commit();
+
+            return redirect()
+                ->route('certificate-requests.show', $newRequest)
+                ->with('success', 'Đã gửi yêu cầu cấp lại phiếu sang DVKH kiểm tra.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Không thể tạo yêu cầu cấp lại: ' . $e->getMessage());
+        }
+    }
+
     public function printHardCopy(Request $request, QualityCertificate $qualityCertificate)
     {
         $this->authorizeCenter($qualityCertificate);
@@ -483,6 +583,12 @@ class QualityCertificateController extends Controller
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
                 ->with('error', 'Chỉ được in ký tươi khi phiếu đã ký số/phát hành.');
+        }
+
+        if ($qualityCertificate->status === 'REVOKED') {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Không được in ký tươi phiếu đã hủy/thu hồi.');
         }
 
         $data = $request->validate([
@@ -542,6 +648,12 @@ class QualityCertificateController extends Controller
                 ->with('error', 'Chỉ gửi lại email khi phiếu đã được ký/phát hành.');
         }
 
+        if ($qualityCertificate->status === 'REVOKED') {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Không được gửi lại email phiếu đã hủy/thu hồi.');
+        }
+
         $qualityCertificate->load([
             'request.customer',
             'details.product',
@@ -588,6 +700,15 @@ class QualityCertificateController extends Controller
         }
 
         return $decoded;
+    }
+
+    private function generateRequestNo(): string
+    {
+        $prefix = 'YC-' . date('Ymd') . '-';
+
+        $count = CertificateRequest::whereDate('created_at', now()->toDateString())->count() + 1;
+
+        return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
     }
 
     private function authorizeCenter(QualityCertificate $qualityCertificate): void

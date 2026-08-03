@@ -8,6 +8,7 @@ use App\Http\Controllers\DistributionCenterController;
 use App\Http\Controllers\ProductGroupController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\QualityStandardController;
+use App\Http\Controllers\UrgentReasonController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CertificateRequestController;
 use App\Http\Controllers\DvkhRequestController;
@@ -140,6 +141,22 @@ Route::middleware(['auth'])->group(function () {
         ->only(['destroy'])
         ->middleware('permission:quality_standard.delete');
 
+    Route::resource('urgent-reasons', UrgentReasonController::class)
+        ->only(['index'])
+        ->middleware('permission:urgent_reason.view');
+
+    Route::resource('urgent-reasons', UrgentReasonController::class)
+        ->only(['create', 'store'])
+        ->middleware('permission:urgent_reason.create');
+
+    Route::resource('urgent-reasons', UrgentReasonController::class)
+        ->only(['edit', 'update'])
+        ->middleware('permission:urgent_reason.update');
+
+    Route::resource('urgent-reasons', UrgentReasonController::class)
+        ->only(['destroy'])
+        ->middleware('permission:urgent_reason.delete');
+
     Route::get('customers-export', [CustomerController::class, 'export'])
         ->middleware('permission:customer.export')
         ->name('customers.export');
@@ -249,6 +266,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('quality-certificates/{qualityCertificate}/resend-email', [QualityCertificateController::class, 'resendEmail'])
         ->middleware('permission:certificate.email')
         ->name('quality-certificates.resend-email');
+
+    Route::post('quality-certificates/{qualityCertificate}/request-reissue', [QualityCertificateController::class, 'requestReissue'])
+        ->middleware('permission:request.create')
+        ->name('quality-certificates.request-reissue');
 
     Route::get('print-logs', [PrintLogController::class, 'index'])
         ->middleware('permission:certificate.print')

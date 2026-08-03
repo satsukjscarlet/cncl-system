@@ -339,6 +339,12 @@ return [
             'icon' => 'fas fa-certificate',
             'can'  => 'quality_standard.view',
         ],
+        [
+            'text' => 'Lý do yêu cầu gấp',
+            'url'  => 'urgent-reasons',
+            'icon' => 'fas fa-bolt',
+            'can'  => 'urgent_reason.view',
+        ],
 
         ['header' => 'NGHIỆP VỤ'],
         [

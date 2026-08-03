@@ -3,6 +3,8 @@
 @php
     $customerMode = old('customer_mode', 'existing');
     $selectedCustomerId = old('customer_id', $certificateRequest->customer_id ?? '');
+    $isUrgent = old('is_urgent', $certificateRequest->is_urgent ?? false);
+    $selectedUrgentReasonId = old('urgent_reason_id', $certificateRequest->urgent_reason_id ?? '');
 @endphp
 
 <div class="row">
@@ -189,6 +191,55 @@
     </div>
 </div>
 
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Tên người tạo yêu cầu</label>
+            <input type="text"
+                   name="requester_name"
+                   class="form-control"
+                   value="{{ old('requester_name', $certificateRequest->requester_name ?? '') }}"
+                   placeholder="Nhập tên người tạo yêu cầu">
+            @error('requester_name')
+                <span class="text-danger small">{{ $message }}</span>
+            @enderror
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <label>Yêu cầu cung cấp gấp</label>
+        <div class="custom-control custom-switch mt-2">
+            <input type="checkbox"
+                   name="is_urgent"
+                   value="1"
+                   class="custom-control-input"
+                   id="is_urgent"
+                   {{ $isUrgent ? 'checked' : '' }}>
+            <label class="custom-control-label" for="is_urgent">Mở yêu cầu gấp</label>
+        </div>
+        @error('is_urgent')
+            <span class="text-danger small">{{ $message }}</span>
+        @enderror
+    </div>
+
+    <div class="col-md-4" id="urgent-reason-box">
+        <div class="form-group">
+            <label>Lý do yêu cầu gấp <span class="text-danger">*</span></label>
+            <select name="urgent_reason_id" id="urgent_reason_id" class="form-control select2">
+                <option value="">-- Chọn lý do yêu cầu gấp --</option>
+                @foreach ($urgentReasons as $urgentReason)
+                    <option value="{{ $urgentReason->id }}" {{ $selectedUrgentReasonId == $urgentReason->id ? 'selected' : '' }}>
+                        {{ $urgentReason->name }}
+                    </option>
+                @endforeach
+            </select>
+            @error('urgent_reason_id')
+                <span class="text-danger small">{{ $message }}</span>
+            @enderror
+        </div>
+    </div>
+</div>
+
 <div class="form-group">
     <label>Ghi chú</label>
     <textarea name="note" class="form-control" rows="2">{{ old('note', $certificateRequest->note ?? '') }}</textarea>
@@ -285,6 +336,9 @@
             const existingBox = document.getElementById('existing-customer-box');
             const newBox = document.getElementById('new-customer-box');
             const customerModeInputs = document.querySelectorAll('input[name="customer_mode"]');
+            const urgentSwitch = document.getElementById('is_urgent');
+            const urgentReasonBox = document.getElementById('urgent-reason-box');
+            const urgentReasonSelect = document.getElementById('urgent_reason_id');
 
             function syncCustomerMode() {
                 const mode = document.querySelector('input[name="customer_mode"]:checked').value;
@@ -296,6 +350,24 @@
                 input.addEventListener('change', syncCustomerMode);
             });
             syncCustomerMode();
+
+            function syncUrgentReason() {
+                const enabled = urgentSwitch && urgentSwitch.checked;
+                urgentReasonBox.style.display = enabled ? '' : 'none';
+                urgentReasonSelect.required = enabled;
+
+                if (!enabled) {
+                    urgentReasonSelect.value = '';
+                    if (window.jQuery && jQuery.fn.select2 && jQuery(urgentReasonSelect).hasClass('select2-hidden-accessible')) {
+                        jQuery(urgentReasonSelect).val('').trigger('change');
+                    }
+                }
+            }
+
+            if (urgentSwitch) {
+                urgentSwitch.addEventListener('change', syncUrgentReason);
+                syncUrgentReason();
+            }
 
             addRowBtn.addEventListener('click', function() {
                 const firstRow = tableBody.querySelector('tr');
