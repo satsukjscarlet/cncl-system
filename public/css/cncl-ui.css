@@ -487,3 +487,51 @@ select.form-control:not([size]):not([multiple]) {
         flex: 1 1 auto;
     }
 }
+
+.cncl-form .select2-container {
+    display: block !important;
+    min-height: 40px !important;
+    width: 100% !important;
+}
+
+.cncl-form .select2-container--default .select2-selection--single {
+    align-items: center !important;
+    background-color: #fff !important;
+    border: 1px solid #cfd8e3 !important;
+    border-radius: 5px !important;
+    display: flex !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 !important;
+}
+
+.cncl-form .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #495057 !important;
+    display: block !important;
+    font-size: 1rem !important;
+    line-height: 38px !important;
+    min-height: 38px !important;
+    overflow: hidden !important;
+    padding-left: 12px !important;
+    padding-right: 34px !important;
+    text-align: left !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    width: 100% !important;
+}
+
+.cncl-form .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 38px !important;
+    position: absolute !important;
+    right: 7px !important;
+    top: 0 !important;
+    width: 24px !important;
+}
+
+.cncl-form .table td .select2-container {
+    margin: 0 !important;
+}
+
+.cncl-form .table td {
+    vertical-align: middle;
+}

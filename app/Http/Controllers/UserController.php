@@ -62,6 +62,7 @@ class UserController extends Controller
             'name' => 'required|max:255',
             'username' => 'required|max:100|unique:users,username',
             'email' => 'nullable|email|unique:users,email',
+            'smartca_user_id' => 'nullable|string|max:100',
             'distribution_center_id' => 'nullable|exists:distribution_centers,id',
             'role' => 'required|exists:roles,name',
             'password' => 'required|min:6|confirmed',
@@ -71,6 +72,7 @@ class UserController extends Controller
             'name' => $data['name'],
             'username' => $data['username'],
             'email' => $data['email'] ?? null,
+            'smartca_user_id' => $data['smartca_user_id'] ?? null,
             'distribution_center_id' => $data['distribution_center_id'] ?? null,
             'password' => Hash::make($data['password']),
             'is_active' => $request->boolean('is_active'),
@@ -102,6 +104,7 @@ class UserController extends Controller
             'name' => 'required|max:255',
             'username' => 'required|max:100|unique:users,username,' . $user->id,
             'email' => 'nullable|email|unique:users,email,' . $user->id,
+            'smartca_user_id' => 'nullable|string|max:100',
             'distribution_center_id' => 'nullable|exists:distribution_centers,id',
             'role' => 'required|exists:roles,name',
         ]);
@@ -110,6 +113,7 @@ class UserController extends Controller
             'name' => $data['name'],
             'username' => $data['username'],
             'email' => $data['email'] ?? null,
+            'smartca_user_id' => $data['smartca_user_id'] ?? null,
             'distribution_center_id' => $data['distribution_center_id'] ?? null,
             'is_active' => $request->boolean('is_active'),
         ]);

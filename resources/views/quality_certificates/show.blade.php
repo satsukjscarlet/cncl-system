@@ -50,50 +50,72 @@
                 </p>
                 <p><strong>Người ký:</strong> {{ $qualityCertificate->signed_by ?: '-' }}</p>
                 <p><strong>Ngày ký:</strong> {{ $qualityCertificate->signed_at ? $qualityCertificate->signed_at->format('d/m/Y H:i') : '-' }}</p>
+                <p>
+                    <strong>SmartCA:</strong>
+                    @if ($qualityCertificate->smartca_status === 'PENDING')
+                        <span class="badge badge-primary">Đang chờ xác nhận</span>
+                    @elseif ($qualityCertificate->smartca_status === 'SIGNED')
+                        <span class="badge badge-success">Đã ký SmartCA</span>
+                    @else
+                        <span class="text-muted">-</span>
+                    @endif
+                </p>
+                @if ($qualityCertificate->smartca_transaction_id)
+                    <p><strong>Mã giao dịch:</strong> <code>{{ $qualityCertificate->smartca_transaction_id }}</code></p>
+                @endif
                 <p><strong>Số lần in ký tươi:</strong> {{ $qualityCertificate->print_count }}</p>
             </div>
 
             <div class="card-footer">
-                @can('certificate.view')
-                    <a href="{{ route('quality-certificates.pdf', $qualityCertificate) }}" target="_blank" class="btn btn-info">
-                        <i class="fas fa-file-pdf"></i> Xem PDF
-                    </a>
-                @endcan
-
-                @if ($qualityCertificate->signed_at)
-                    @can('certificate.email')
-                        <form action="{{ route('quality-certificates.resend-email', $qualityCertificate) }}" method="POST"
-                              class="d-inline" onsubmit="return confirm('Gửi lại email phiếu CNCL cho khách hàng?')">
-                            @csrf
-                            <button class="btn btn-primary">
-                                <i class="fas fa-envelope"></i> Gửi lại email
-                            </button>
-                        </form>
+                <div class="d-flex flex-wrap align-items-center" style="gap:8px">
+                    @can('certificate.view')
+                        <a href="{{ route('quality-certificates.pdf', $qualityCertificate) }}" target="_blank" class="btn btn-info">
+                            <i class="fas fa-file-pdf"></i> Xem PDF
+                        </a>
                     @endcan
-                @endif
 
-                @if (!$qualityCertificate->signed_at)
-                    @can('certificate.sign')
-                        <form action="{{ route('quality-certificates.sign', $qualityCertificate) }}" method="POST"
-                              class="d-inline"
-                              onsubmit="return confirm('Ký/phát hành phiếu này? Sau khi ký, phiếu sẽ bị khóa dữ liệu.')">
-                            @csrf
-                            <button class="btn btn-success">
-                                <i class="fas fa-file-signature"></i> Ký / Phát hành
-                            </button>
-                        </form>
-                    @endcan
-                @else
-                    <button class="btn btn-secondary" disabled>
-                        <i class="fas fa-lock"></i> Phiếu đã khóa
-                    </button>
+                    @if ($qualityCertificate->signed_at)
+                        @can('certificate.email')
+                            <form action="{{ route('quality-certificates.resend-email', $qualityCertificate) }}" method="POST"
+                                  class="d-inline" onsubmit="return confirm('Gửi lại email phiếu CNCL cho khách hàng?')">
+                                @csrf
+                                <button class="btn btn-primary">
+                                    <i class="fas fa-envelope"></i> Gửi lại email
+                                </button>
+                            </form>
+                        @endcan
 
-                    @can('certificate.print')
-                        <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#printHardCopyModal">
-                            <i class="fas fa-print"></i> In ký tươi
+                        <button class="btn btn-secondary" disabled>
+                            <i class="fas fa-lock"></i> Phiếu đã khóa
                         </button>
-                    @endcan
-                @endif
+
+                        @can('certificate.print')
+                            <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#printHardCopyModal">
+                                <i class="fas fa-print"></i> In ký tươi
+                            </button>
+                        @endcan
+                    @else
+                        @can('certificate.sign')
+                            @if ($qualityCertificate->smartca_status === 'PENDING')
+                                <form action="{{ route('quality-certificates.smartca-status', $qualityCertificate) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button class="btn btn-primary">
+                                        <i class="fas fa-sync"></i> Kiểm tra kết quả ký
+                                    </button>
+                                </form>
+                            @else
+                                <form action="{{ route('quality-certificates.sign', $qualityCertificate) }}" method="POST"
+                                      class="d-inline"
+                                      onsubmit="return confirm('Gửi yêu cầu ký phiếu này sang VNPT SmartCA?')">
+                                    @csrf
+                                    <button class="btn btn-success">
+                                        <i class="fas fa-file-signature"></i> Gửi yêu cầu ký SmartCA
+                                    </button>
+                                </form>
+                            @endif
+                        @endcan
+                    @endif
+                </div>
             </div>
         </div>
     </div>
@@ -117,6 +139,48 @@
         </div>
     </div>
 </div>
+
+
+@if (!empty($qualityCertificate->smartca_response))
+<div class="card">
+    <div class="card-header bg-white">
+        <h3 class="card-title"><i class="fas fa-code"></i> Du lieu API VNPT SmartCA</h3>
+    </div>
+
+    <div class="card-body">
+        @foreach ($qualityCertificate->smartca_response as $apiName => $apiData)
+            @php
+                $apiData = is_array($apiData) ? $apiData : ['response' => $apiData];
+                $hasStructuredApiLog = array_key_exists('request', $apiData) || array_key_exists('response', $apiData);
+                $requestPayload = $hasStructuredApiLog ? ($apiData['request'] ?? []) : [];
+                $responsePayload = $hasStructuredApiLog ? ($apiData['response'] ?? []) : $apiData;
+            @endphp
+            <div class="mb-4">
+                <h5 class="mb-2">
+                    <span class="badge badge-info">{{ strtoupper(str_replace('_', ' ', $apiName)) }}</span>
+                </h5>
+
+                <div class="mb-2">
+                    <strong>Endpoint:</strong>
+                    <code>{{ $apiData['endpoint'] ?? '-' }}</code>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Request gui di</label>
+                        <pre class="bg-light border rounded p-3 small" style="max-height:360px; overflow:auto; white-space:pre-wrap;">{{ json_encode($requestPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label>Response nhan ve</label>
+                        <pre class="bg-light border rounded p-3 small" style="max-height:360px; overflow:auto; white-space:pre-wrap;">{{ json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+</div>
+@endif
 
 <div class="card">
     <div class="card-header bg-white">

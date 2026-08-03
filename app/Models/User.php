@@ -18,6 +18,7 @@ class User extends Authenticatable
         'name',
         'username',
         'email',
+        'smartca_user_id',
         'password',
         'distribution_center_id',
         'is_active',

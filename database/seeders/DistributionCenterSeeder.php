@@ -2,36 +2,43 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\DistributionCenter;
+use Illuminate\Database\Seeder;
 
 class DistributionCenterSeeder extends Seeder
 {
     public function run(): void
     {
-        $data = [
+        $centers = [
+            [
+                'code' => 'NP',
+                'name' => 'Nam Phương',
+            ],
+            [
+                'code' => 'TP',
+                'name' => 'Tam Phước',
+            ],
             [
                 'code' => 'HP',
-                'name' => 'Trung tâm Hải Phòng',
+                'name' => 'Hồng Phước',
             ],
             [
-                'code' => 'HN',
-                'name' => 'Trung tâm Hà Nội',
+                'code' => 'HD',
+                'name' => 'Hà Dung',
             ],
             [
-                'code' => 'DN',
-                'name' => 'Trung tâm Đà Nẵng',
-            ],
-            [
-                'code' => 'HCM',
-                'name' => 'Trung tâm Hồ Chí Minh',
+                'code' => 'TH',
+                'name' => 'Thái Hoà',
             ],
         ];
 
-        foreach ($data as $item) {
+        foreach ($centers as $center) {
             DistributionCenter::updateOrCreate(
-                ['code' => $item['code']],
-                $item
+                ['code' => $center['code']],
+                [
+                    'name' => $center['name'],
+                    'is_active' => true,
+                ]
             );
         }
     }

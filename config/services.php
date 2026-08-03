@@ -35,4 +35,21 @@ return [
         ],
     ],
 
+    'smartca' => [
+        'base_url' => env('SMARTCA_BASE_URL', 'https://rmgateway.vnptit.vn/sca/sp769'),
+        'signature_base_url' => env('SMARTCA_SIGNATURE_BASE_URL'),
+        'sp_id' => env('SMARTCA_CLIENT_ID'),
+        'sp_password' => env('SMARTCA_CLIENT_SECRET'),
+        'serial_number' => env('SMARTCA_SERIAL_NUMBER'),
+        'user_id_field' => env('SMARTCA_USER_ID_FIELD', 'smartca_user_id'),
+        'default_user_id' => env('SMARTCA_DEFAULT_USER_ID'),
+        'sign_type' => env('SMARTCA_SIGN_TYPE', 'hash'),
+        'require_signed_pdf' => (bool) env('SMARTCA_REQUIRE_SIGNED_PDF', false),
+        'pades_enabled' => (bool) env('SMARTCA_PADES_ENABLED', false),
+        'pades_provider' => env('SMARTCA_PADES_PROVIDER', 'vnpt'),
+        'pades_hash_encoding' => env('SMARTCA_PADES_HASH_ENCODING', 'hex'),
+        'python_bin' => env('SMARTCA_PYTHON_BIN', 'python'),
+        'timeout' => (int) env('SMARTCA_TIMEOUT', 30),
+    ],
+
 ];

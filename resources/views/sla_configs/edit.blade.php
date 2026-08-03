@@ -2,6 +2,10 @@
 
 @section('title', 'Cập nhật SLA')
 
+@section('css')
+    <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260725-1') }}">
+@stop
+
 @section('content_header')
 <h1>Cập nhật cấu hình SLA</h1>
 @stop
@@ -11,6 +15,7 @@
 <div class="card card-primary card-outline">
 
     <form method="POST"
+          class="cncl-form"
           action="{{ route('sla-configs.update',$slaConfig) }}">
 
         @csrf

@@ -2,6 +2,10 @@
 
 @section('title', 'Cập nhật người dùng')
 
+@section('css')
+    <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260725-1') }}">
+@stop
+
 @section('content_header')
 <div>
     <h1 class="m-0">Cập nhật người dùng</h1>
@@ -33,7 +37,7 @@
                 </h3>
             </div>
 
-            <form method="POST" action="{{ route('users.update', $user) }}">
+            <form method="POST" action="{{ route('users.update', $user) }}" class="cncl-form">
                 @method('PUT')
                 <div class="card-body">
                     @include('users._form')

@@ -2,6 +2,10 @@
 
 @section('title', 'Thêm sản phẩm')
 
+@section('css')
+    <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260725-1') }}">
+@stop
+
 @section('content_header')
     <h1 class="m-0">Thêm sản phẩm</h1>
 @stop
@@ -12,7 +16,7 @@
         <h3 class="card-title"><i class="fas fa-plus-circle"></i> Thông tin sản phẩm</h3>
     </div>
 
-    <form method="POST" action="{{ route('products.store') }}">
+    <form method="POST" action="{{ route('products.store') }}" class="cncl-form">
         <div class="card-body">
             @include('products._form')
         </div>

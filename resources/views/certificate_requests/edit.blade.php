@@ -2,6 +2,10 @@
 
 @section('title', 'Cập nhật yêu cầu cấp phiếu')
 
+@section('css')
+    <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260725-1') }}">
+@stop
+
 @section('content_header')
     <div>
         <h1 class="m-0">Cập nhật yêu cầu cấp phiếu</h1>
@@ -23,7 +27,7 @@
         </h3>
     </div>
 
-    <form method="POST" action="{{ route('certificate-requests.update', $certificateRequest) }}">
+    <form method="POST" action="{{ route('certificate-requests.update', $certificateRequest) }}" class="cncl-form certificate-request-form">
         @method('PUT')
 
         <div class="card-body">

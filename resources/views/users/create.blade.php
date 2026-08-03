@@ -2,6 +2,10 @@
 
 @section('title', 'Thêm người dùng')
 
+@section('css')
+    <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260725-1') }}">
+@stop
+
 @section('content_header')
 <div>
     <h1 class="m-0">Thêm người dùng</h1>
@@ -23,7 +27,7 @@
         </h3>
     </div>
 
-    <form method="POST" action="{{ route('users.store') }}">
+    <form method="POST" action="{{ route('users.store') }}" class="cncl-form">
         <div class="card-body">
             @include('users._form')
         </div>

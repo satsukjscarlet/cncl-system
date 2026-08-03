@@ -2,6 +2,10 @@
 
 @section('title', 'Cập nhật sản phẩm')
 
+@section('css')
+    <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260725-1') }}">
+@stop
+
 @section('content_header')
     <h1 class="m-0">Cập nhật sản phẩm</h1>
     <small class="text-muted">{{ $product->product_code }} - {{ $product->product_name }}</small>
@@ -13,7 +17,7 @@
         <h3 class="card-title"><i class="fas fa-edit"></i> Thông tin sản phẩm</h3>
     </div>
 
-    <form method="POST" action="{{ route('products.update', $product) }}">
+    <form method="POST" action="{{ route('products.update', $product) }}" class="cncl-form">
         @method('PUT')
         <div class="card-body">
             @include('products._form')

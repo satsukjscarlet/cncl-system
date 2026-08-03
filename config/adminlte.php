@@ -285,7 +285,7 @@ return [
     'laravel_js_path' => 'js/app.js',
 
     'css' => [
-        'css/cncl-ui.css?v=20260611-3',
+        'css/cncl-ui.css?v=20260725-1',
     ],
 
     /*

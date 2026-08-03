@@ -238,6 +238,10 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:certificate.sign')
         ->name('quality-certificates.sign');
 
+    Route::post('quality-certificates/{qualityCertificate}/smartca-status', [QualityCertificateController::class, 'checkSmartCaStatus'])
+        ->middleware('permission:certificate.sign')
+        ->name('quality-certificates.smartca-status');
+
     Route::post('quality-certificates/{qualityCertificate}/print-hard-copy', [QualityCertificateController::class, 'printHardCopy'])
         ->middleware('permission:certificate.print')
         ->name('quality-certificates.print-hard-copy');

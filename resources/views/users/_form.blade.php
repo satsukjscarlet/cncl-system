@@ -58,6 +58,25 @@
     </div>
 </div>
 
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="form-group">
+            <label>SmartCA User ID</label>
+            <input type="text" name="smartca_user_id"
+                class="form-control @error('smartca_user_id') is-invalid @enderror"
+                value="{{ old('smartca_user_id', $user->smartca_user_id ?? '') }}"
+                placeholder="CCCD/MST/So dien thoai theo tai khoan VNPT SmartCA">
+            @error('smartca_user_id')
+                <span class="invalid-feedback">{{ $message }}</span>
+            @enderror
+            <small class="text-muted">
+                Dung khi ky so VNPT SmartCA. Khong nhap username noi bo nhu admin neu SmartCA khong cap dinh danh do.
+            </small>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-md-6">
         <div class="form-group">
