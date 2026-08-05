@@ -8,6 +8,7 @@ use App\Models\CertificateRequest;
 use App\Models\PrintLog;
 use App\Models\QualityCertificate;
 use App\Models\SystemSetting;
+use App\Models\User;
 use App\Services\SmartCaPadesService;
 use App\Services\SmartCaService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -418,28 +419,29 @@ class QualityCertificateController extends Controller
         }
 
         try {
-            $customerEmail = $qualityCertificate->request->customer->email ?? null;
+            $recipients = $this->qualityCertificateMailRecipients($qualityCertificate->fresh());
 
-            if (!$customerEmail) {
+            if (!$recipients['to']) {
                 return redirect()
                     ->route('quality-certificates.show', $qualityCertificate)
-                    ->with('error', 'Phiếu đã ký VNPT SmartCA nhưng khách hàng chưa có email nhận phiếu.');
+                    ->with('error', 'Phiếu đã ký VNPT SmartCA nhưng tài khoản Trung tâm phân phối tạo yêu cầu chưa có email nhận phiếu.');
             }
 
-            Mail::to($customerEmail)
+            Mail::to($recipients['to'])
+                ->cc($recipients['cc'])
                 ->send(new QualityCertificateIssuedMail($qualityCertificate->fresh()));
 
             ActivityLogger::log(
                 'Phiếu CNCL',
                 'smartca_signed_and_send_email',
-                'Hoàn tất ký VNPT SmartCA và gửi email phiếu CNCL: ' . $qualityCertificate->certificate_no . ' tới ' . $customerEmail,
+                'Hoàn tất ký VNPT SmartCA và gửi email phiếu CNCL: ' . $qualityCertificate->certificate_no . ' tới ' . $recipients['to'] . ($recipients['cc'] ? '. CC: ' . implode(', ', $recipients['cc']) : ''),
                 $oldData,
                 $qualityCertificate->fresh()->load('request')->toArray()
             );
 
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
-                ->with('success', 'Đã hoàn tất ký VNPT SmartCA và gửi email phiếu CNCL thành công.');
+                ->with('success', 'Đã hoàn tất ký VNPT SmartCA và gửi email phiếu CNCL cho Trung tâm phân phối thành công.');
         } catch (\Throwable $e) {
             ActivityLogger::log(
                 'Phiếu CNCL',
@@ -655,36 +657,106 @@ class QualityCertificateController extends Controller
         }
 
         $qualityCertificate->load([
+            'request.distributionCenter',
             'request.customer',
             'details.product',
         ]);
 
-        $customerEmail = $qualityCertificate->request->customer->email ?? null;
+        $recipients = $this->qualityCertificateMailRecipients($qualityCertificate);
 
-        if (!$customerEmail) {
+        if (!$recipients['to']) {
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
-                ->with('error', 'Khách hàng chưa có email nhận phiếu.');
+                ->with('error', 'Tài khoản Trung tâm phân phối tạo yêu cầu chưa có email nhận phiếu.');
         }
 
         try {
-            Mail::to($customerEmail)
+            Mail::to($recipients['to'])
+                ->cc($recipients['cc'])
                 ->send(new QualityCertificateIssuedMail($qualityCertificate));
 
             ActivityLogger::log(
                 'Phiếu CNCL',
                 'resend_email',
-                'Gửi lại email phiếu CNCL: ' . $qualityCertificate->certificate_no . ' tới ' . $customerEmail
+                'Gửi lại email phiếu CNCL: ' . $qualityCertificate->certificate_no . ' tới ' . $recipients['to'] . ($recipients['cc'] ? '. CC: ' . implode(', ', $recipients['cc']) : '')
             );
 
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
-                ->with('success', 'Đã gửi lại email phiếu CNCL thành công.');
+                ->with('success', 'Đã gửi lại email phiếu CNCL cho Trung tâm phân phối thành công.');
         } catch (\Throwable $e) {
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
                 ->with('error', 'Gửi lại email thất bại: ' . $e->getMessage());
         }
+    }
+
+    private function qualityCertificateMailRecipients(QualityCertificate $qualityCertificate): array
+    {
+        $qualityCertificate->loadMissing([
+            'request.distributionCenter',
+            'request.customer',
+            'request.creator.roles',
+        ]);
+
+        $to = $this->requestingDistributionCenterUserEmail($qualityCertificate);
+
+        $configuredCc = collect(config('certificate_mail.quality_certificate.cc', []))
+            ->flatten()
+            ->map(fn ($email) => $this->normalizeEmail($email))
+            ->filter();
+
+        $customerCc = [];
+
+        if (config('certificate_mail.quality_certificate.cc_customer_email', true)) {
+            $customerEmail = $this->normalizeEmail($qualityCertificate->request?->customer?->email);
+
+            if ($customerEmail) {
+                $customerCc[] = $customerEmail;
+            }
+        }
+
+        $cc = $configuredCc
+            ->merge($customerCc)
+            ->filter(fn ($email) => $email !== $to)
+            ->unique()
+            ->values()
+            ->all();
+
+        return [
+            'to' => $to,
+            'cc' => $cc,
+        ];
+    }
+
+    private function normalizeEmail(?string $email): ?string
+    {
+        $email = strtolower(trim((string) $email));
+
+        return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
+    }
+
+    private function requestingDistributionCenterUserEmail(QualityCertificate $qualityCertificate): ?string
+    {
+        $request = $qualityCertificate->request;
+        $creator = $request?->creator;
+
+        if ($creator && $creator->hasRole('TrungTam')) {
+            return $this->normalizeEmail($creator->email);
+        }
+
+        if (!$request?->distribution_center_id) {
+            return null;
+        }
+
+        $centerUser = User::role('TrungTam')
+            ->where('distribution_center_id', $request->distribution_center_id)
+            ->where('is_active', true)
+            ->whereNotNull('email')
+            ->orderBy('id')
+            ->first();
+
+        return $this->normalizeEmail($centerUser?->email);
     }
 
     private function extractSignedPdfContent(string $signatureValue): string
