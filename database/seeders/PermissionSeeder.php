@@ -129,6 +129,10 @@ class PermissionSeeder extends Seeder
 
         $center->syncPermissions([
             'dashboard.view',
+            'customer.view',
+            'customer.create',
+            'customer.update',
+            'customer.delete',
             'request.view',
             'request.create',
             'request.update',

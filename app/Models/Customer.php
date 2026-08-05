@@ -10,6 +10,7 @@ class Customer extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'distribution_center_id',
         'customer_code',
         'customer_name',
         'customer_address',
@@ -25,4 +26,9 @@ class Customer extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public function distributionCenter()
+    {
+        return $this->belongsTo(DistributionCenter::class);
+    }
 }

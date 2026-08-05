@@ -5,6 +5,9 @@
     $selectedCustomerId = old('customer_id', $certificateRequest->customer_id ?? '');
     $isUrgent = old('is_urgent', $certificateRequest->is_urgent ?? false);
     $selectedUrgentReasonId = old('urgent_reason_id', $certificateRequest->urgent_reason_id ?? '');
+    $formBackUrl = $formBackUrl ?? route('certificate-requests.index');
+    $formSubmitText = $formSubmitText ?? 'Lưu và gửi DVKH';
+    $formSubmitIcon = $formSubmitIcon ?? 'fas fa-save';
 @endphp
 
 <div class="row">
@@ -165,8 +168,21 @@
     <div class="col-md-4">
         <div class="form-group">
             <label>Số hóa đơn</label>
-            <input type="text" name="invoice_no" class="form-control"
+            <input type="text"
+                   name="invoice_no"
+                   id="invoice_no"
+                   class="form-control"
+                   data-check-url="{{ route('certificate-requests.check-invoice') }}"
+                   data-exclude-id="{{ $certificateRequest->id ?? '' }}"
                    value="{{ old('invoice_no', $certificateRequest->invoice_no ?? '') }}">
+            <div id="invoice-duplicate-warning" class="alert alert-warning mt-2 mb-0 d-none">
+                <div class="font-weight-bold">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Số hóa đơn này đã tồn tại trên hệ thống.
+                </div>
+                <div class="small mb-2">Vui lòng kiểm tra lại trước khi lưu yêu cầu.</div>
+                <div id="invoice-duplicate-list" class="small"></div>
+            </div>
         </div>
     </div>
 
@@ -319,12 +335,12 @@
 <hr>
 
 <div class="d-flex justify-content-end">
-    <a href="{{ route('certificate-requests.index') }}" class="btn btn-default mr-2">
+    <a href="{{ $formBackUrl }}" class="btn btn-default mr-2">
         <i class="fas fa-arrow-left"></i> Quay lại
     </a>
 
     <button class="btn btn-primary">
-        <i class="fas fa-save"></i> Lưu và gửi DVKH
+        <i class="{{ $formSubmitIcon }}"></i> {{ $formSubmitText }}
     </button>
 </div>
 
@@ -339,6 +355,10 @@
             const urgentSwitch = document.getElementById('is_urgent');
             const urgentReasonBox = document.getElementById('urgent-reason-box');
             const urgentReasonSelect = document.getElementById('urgent_reason_id');
+            const invoiceInput = document.getElementById('invoice_no');
+            const invoiceWarning = document.getElementById('invoice-duplicate-warning');
+            const invoiceDuplicateList = document.getElementById('invoice-duplicate-list');
+            let invoiceCheckTimer = null;
 
             function syncCustomerMode() {
                 const mode = document.querySelector('input[name="customer_mode"]:checked').value;
@@ -367,6 +387,87 @@
             if (urgentSwitch) {
                 urgentSwitch.addEventListener('change', syncUrgentReason);
                 syncUrgentReason();
+            }
+
+            function statusText(status) {
+                const statuses = {
+                    DRAFT: 'Nháp',
+                    WAIT_DVKH: 'Chờ DVKH',
+                    WAIT_PTN: 'Chờ PTN',
+                    PTN_PROCESSING: 'PTN xử lý',
+                    SIGNED: 'Đã ký số',
+                    COMPLETED: 'Hoàn tất',
+                    CANCELLED: 'Hủy/Trả lại'
+                };
+
+                return statuses[status] || status || '-';
+            }
+
+            function renderInvoiceDuplicates(items) {
+                if (!items.length) {
+                    invoiceWarning.classList.add('d-none');
+                    invoiceDuplicateList.innerHTML = '';
+                    return;
+                }
+
+                invoiceDuplicateList.innerHTML = items.map(function(item) {
+                    const certificate = item.certificate_no ? ' | Phiếu: ' + item.certificate_no : '';
+                    const project = item.project_name ? ' - ' + item.project_name : '';
+
+                    return '<div class="border-top pt-2 mt-2">' +
+                        '<a href="' + item.url + '" target="_blank"><strong>' + item.request_no + '</strong></a>' +
+                        ' | ' + statusText(item.status) + certificate +
+                        '<br>' +
+                        '<span>' + item.customer_name + project + '</span>' +
+                        '<br>' +
+                        '<span class="text-muted">' + item.distribution_center + ' | ' + item.created_at + '</span>' +
+                    '</div>';
+                }).join('');
+
+                invoiceWarning.classList.remove('d-none');
+            }
+
+            function checkInvoiceDuplicate() {
+                if (!invoiceInput || !invoiceInput.value.trim()) {
+                    renderInvoiceDuplicates([]);
+                    return;
+                }
+
+                const params = new URLSearchParams({
+                    invoice_no: invoiceInput.value.trim()
+                });
+
+                if (invoiceInput.dataset.excludeId) {
+                    params.append('exclude_id', invoiceInput.dataset.excludeId);
+                }
+
+                fetch(invoiceInput.dataset.checkUrl + '?' + params.toString(), {
+                    headers: {
+                        Accept: 'application/json'
+                    }
+                })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Không kiểm tra được số hóa đơn');
+                        }
+
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        renderInvoiceDuplicates(data.items || []);
+                    })
+                    .catch(function() {
+                        renderInvoiceDuplicates([]);
+                    });
+            }
+
+            if (invoiceInput) {
+                invoiceInput.addEventListener('input', function() {
+                    clearTimeout(invoiceCheckTimer);
+                    invoiceCheckTimer = setTimeout(checkInvoiceDuplicate, 450);
+                });
+                invoiceInput.addEventListener('blur', checkInvoiceDuplicate);
+                checkInvoiceDuplicate();
             }
 
             addRowBtn.addEventListener('click', function() {

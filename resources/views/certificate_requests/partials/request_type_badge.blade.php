@@ -1,4 +1,8 @@
-@if(($certificateRequest->request_type ?? 'NORMAL') === 'REISSUE')
+@if(($certificateRequest->request_type ?? 'NORMAL') === 'DIRECT_PTN')
+    <span class="badge badge-primary">
+        <i class="fas fa-vials"></i> PTN lập trực tiếp
+    </span>
+@elseif(($certificateRequest->request_type ?? 'NORMAL') === 'REISSUE')
     <span class="badge badge-danger">
         <i class="fas fa-redo"></i> Cấp lại
     </span>

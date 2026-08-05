@@ -17,6 +17,50 @@
 
 @section('content')
 
+@if(($invoiceDuplicates ?? collect())->isNotEmpty())
+    <div class="alert alert-warning">
+        <div class="font-weight-bold mb-2">
+            <i class="fas fa-exclamation-triangle"></i>
+            Cảnh báo: Số hóa đơn {{ $certificateRequest->invoice_no }} đã tồn tại trên hệ thống.
+        </div>
+        <div class="mb-2">
+            Vui lòng kiểm tra các yêu cầu bên dưới trước khi tiếp tục xử lý.
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered bg-white mb-0">
+                <thead>
+                    <tr>
+                        <th>Số yêu cầu</th>
+                        <th>Khách hàng / Công trình</th>
+                        <th>Trung tâm</th>
+                        <th>Trạng thái</th>
+                        <th>Phiếu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($invoiceDuplicates as $duplicate)
+                        <tr>
+                            <td>
+                                <a href="{{ route('certificate-requests.show', $duplicate) }}" target="_blank">
+                                    {{ $duplicate->request_no }}
+                                </a>
+                                <div class="text-muted small">{{ optional($duplicate->created_at)->format('d/m/Y H:i') }}</div>
+                            </td>
+                            <td>
+                                <strong>{{ $duplicate->customer->customer_name ?? '-' }}</strong>
+                                <div class="text-muted small">{{ $duplicate->customer->project_name ?? '' }}</div>
+                            </td>
+                            <td>{{ $duplicate->distributionCenter->name ?? '-' }}</td>
+                            <td>@include('certificate_requests.partials.status_badge', ['status' => $duplicate->status])</td>
+                            <td>{{ $duplicate->qualityCertificate->certificate_no ?? '-' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+@endif
+
 <div class="row">
     <div class="col-md-4">
         <div class="card card-primary card-outline">

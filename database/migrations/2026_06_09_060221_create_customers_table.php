@@ -11,6 +11,12 @@ return new class extends Migration
         Schema::create('customers', function (Blueprint $table) {
             $table->id();
 
+            $table->foreignId('distribution_center_id')
+                ->nullable()
+                ->after('id')
+                ->constrained()
+                ->nullOnDelete();
+
             $table->string('customer_code', 100)->nullable()->unique();
             $table->string('customer_name', 500);
 
@@ -30,6 +36,7 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->index('customer_code');
+            $table->index('distribution_center_id');
             $table->index('customer_name');
             $table->index('project_name');
             $table->index('is_active');

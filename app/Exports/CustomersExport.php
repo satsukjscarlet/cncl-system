@@ -8,12 +8,23 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 
 class CustomersExport implements FromCollection, WithHeadings
 {
+    public function __construct(private ?int $distributionCenterId = null)
+    {
+    }
+
     public function collection()
     {
-        return Customer::orderBy('customer_name')
+        return Customer::with('distributionCenter')
+            ->when($this->distributionCenterId, function ($query) {
+                $query->where('distribution_center_id', $this->distributionCenterId);
+            })
+            ->orderBy('customer_name')
             ->get()
             ->map(function ($customer) {
                 return [
+                    'trung_tam' => $customer->distributionCenter
+                        ? $customer->distributionCenter->code . ' - ' . $customer->distributionCenter->name
+                        : '',
                     'ma_khach_hang' => $customer->customer_code,
                     'ten_khach_hang' => $customer->customer_name,
                     'dia_chi_khach_hang' => $customer->customer_address,
@@ -31,6 +42,7 @@ class CustomersExport implements FromCollection, WithHeadings
     public function headings(): array
     {
         return [
+            'trung_tam',
             'ma_khach_hang',
             'ten_khach_hang',
             'dia_chi_khach_hang',

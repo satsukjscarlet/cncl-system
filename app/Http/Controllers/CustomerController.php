@@ -6,7 +6,9 @@ use App\Exports\CustomersExport;
 use App\Helpers\ActivityLogger;
 use App\Imports\CustomersImport;
 use App\Models\Customer;
+use App\Models\DistributionCenter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -14,7 +16,9 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Customer::query();
+        $query = Customer::with('distributionCenter');
+
+        $this->scopeCustomersForCurrentUser($query);
 
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
@@ -44,13 +48,18 @@ class CustomerController extends Controller
 
     public function create()
     {
-        return view('customers.create');
+        $centers = DistributionCenter::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('customers.create', compact('centers'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
             'customer_code' => ['nullable', 'string', 'max:100', 'unique:customers,customer_code'],
+            'distribution_center_id' => ['nullable', 'exists:distribution_centers,id'],
             'customer_name' => ['required', 'string', 'max:500'],
             'customer_address' => ['nullable', 'string'],
             'tax_code' => ['nullable', 'string', 'max:100'],
@@ -63,6 +72,13 @@ class CustomerController extends Controller
         ]);
 
         $data['is_active'] = $request->boolean('is_active');
+        $data['distribution_center_id'] = $this->resolveDistributionCenterId($data);
+
+        if (Auth::user()->hasRole('TrungTam') && !$data['distribution_center_id']) {
+            return back()
+                ->withInput()
+                ->with('error', 'Tài khoản Trung tâm chưa được gán Trung tâm phân phối.');
+        }
 
         $customer = Customer::create($data);
 
@@ -81,13 +97,22 @@ class CustomerController extends Controller
 
     public function edit(Customer $customer)
     {
-        return view('customers.edit', compact('customer'));
+        $this->authorizeCustomerCenter($customer);
+
+        $centers = DistributionCenter::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('customers.edit', compact('customer', 'centers'));
     }
 
     public function update(Request $request, Customer $customer)
     {
+        $this->authorizeCustomerCenter($customer);
+
         $data = $request->validate([
             'customer_code' => ['nullable', 'string', 'max:100', 'unique:customers,customer_code,' . $customer->id],
+            'distribution_center_id' => ['nullable', 'exists:distribution_centers,id'],
             'customer_name' => ['required', 'string', 'max:500'],
             'customer_address' => ['nullable', 'string'],
             'tax_code' => ['nullable', 'string', 'max:100'],
@@ -102,6 +127,13 @@ class CustomerController extends Controller
         $oldData = $customer->toArray();
 
         $data['is_active'] = $request->boolean('is_active');
+        $data['distribution_center_id'] = $this->resolveDistributionCenterId($data, $customer);
+
+        if (Auth::user()->hasRole('TrungTam') && !$data['distribution_center_id']) {
+            return back()
+                ->withInput()
+                ->with('error', 'Tài khoản Trung tâm chưa được gán Trung tâm phân phối.');
+        }
 
         $customer->update($data);
 
@@ -120,6 +152,8 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer)
     {
+        $this->authorizeCustomerCenter($customer);
+
         $oldData = $customer->toArray();
 
         $customer->delete();
@@ -146,19 +180,25 @@ class CustomerController extends Controller
         );
 
         return Excel::download(
-            new CustomersExport(),
+            new CustomersExport($this->currentDistributionCenterId()),
             'danh_muc_khach_hang_cong_trinh.xlsx'
         );
     }
 
     public function import(Request $request)
     {
+        if (Auth::user()->hasRole('TrungTam') && !$this->currentDistributionCenterId()) {
+            return redirect()
+                ->route('customers.index')
+                ->with('error', 'Tài khoản Trung tâm chưa được gán Trung tâm phân phối.');
+        }
+
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
         ]);
 
         Excel::import(
-            new CustomersImport(),
+            new CustomersImport($this->currentDistributionCenterId()),
             $request->file('file')
         );
 
@@ -178,5 +218,39 @@ class CustomerController extends Controller
         return response()->download(
             storage_path('app/templates/template_khach_hang_cong_trinh.xlsx')
         );
+    }
+
+    private function currentDistributionCenterId(): ?int
+    {
+        return Auth::user()->hasRole('TrungTam')
+            ? Auth::user()->distribution_center_id
+            : null;
+    }
+
+    private function scopeCustomersForCurrentUser($query): void
+    {
+        $centerId = $this->currentDistributionCenterId();
+
+        if ($centerId) {
+            $query->where('distribution_center_id', $centerId);
+        }
+    }
+
+    private function resolveDistributionCenterId(array $data, ?Customer $customer = null): ?int
+    {
+        if (Auth::user()->hasRole('TrungTam')) {
+            return Auth::user()->distribution_center_id;
+        }
+
+        return $data['distribution_center_id'] ?? $customer?->distribution_center_id;
+    }
+
+    private function authorizeCustomerCenter(Customer $customer): void
+    {
+        $centerId = $this->currentDistributionCenterId();
+
+        if ($centerId && (int) $customer->distribution_center_id !== (int) $centerId) {
+            abort(403, 'Anh không có quyền thao tác khách hàng của trung tâm khác.');
+        }
     }
 }

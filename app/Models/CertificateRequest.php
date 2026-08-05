@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class CertificateRequest extends Model
 {
@@ -18,6 +19,7 @@ class CertificateRequest extends Model
         'customer_id',
         'delivery_date',
         'invoice_no',
+        'invoice_no_normalized',
         'require_hard_copy',
         'hard_copy_quantity',
         'is_urgent',
@@ -49,6 +51,11 @@ class CertificateRequest extends Model
         return $this->hasMany(CertificateRequestDetail::class);
     }
 
+    public function qualityCertificate()
+    {
+        return $this->hasOne(QualityCertificate::class, 'certificate_request_id');
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -62,5 +69,43 @@ class CertificateRequest extends Model
     public function reissueOfCertificate()
     {
         return $this->belongsTo(QualityCertificate::class, 'reissue_of_certificate_id');
+    }
+
+    public function setInvoiceNoAttribute($value): void
+    {
+        $invoiceNo = blank($value) ? null : trim((string) $value);
+
+        $this->attributes['invoice_no'] = $invoiceNo;
+        $this->attributes['invoice_no_normalized'] = self::normalizeInvoiceNo($invoiceNo);
+    }
+
+    public static function normalizeInvoiceNo(?string $invoiceNo): ?string
+    {
+        if ($invoiceNo === null || trim($invoiceNo) === '') {
+            return null;
+        }
+
+        return preg_replace('/\s+/', '', Str::upper(trim($invoiceNo)));
+    }
+
+    public static function duplicateInvoiceQuery(?string $invoiceNo, ?int $excludeId = null)
+    {
+        $normalized = self::normalizeInvoiceNo($invoiceNo);
+
+        $query = self::with([
+            'distributionCenter',
+            'customer',
+            'qualityCertificate',
+        ])->where('invoice_no_normalized', $normalized);
+
+        if ($excludeId) {
+            $query->where('id', '!=', $excludeId);
+        }
+
+        if ($normalized === null) {
+            $query->whereRaw('1 = 0');
+        }
+
+        return $query;
     }
 }

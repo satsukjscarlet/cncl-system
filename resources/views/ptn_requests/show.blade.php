@@ -91,7 +91,11 @@
                         </form>
                     @endif
 
-                    @if(in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING']))
+                    @if($certificateRequest->qualityCertificate)
+                        <a href="{{ route('quality-certificates.show', $certificateRequest->qualityCertificate) }}" class="btn btn-success">
+                            <i class="fas fa-file-signature"></i> Xem phiếu đã lập
+                        </a>
+                    @elseif(in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING']))
                         <form action="{{ route('ptn.requests.create-certificate', $certificateRequest) }}" method="POST"
                               class="d-inline" onsubmit="return confirm('Tạo phiếu CNCL từ yêu cầu này?')">
                             @csrf

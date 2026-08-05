@@ -193,6 +193,10 @@ Route::middleware(['auth'])->group(function () {
         ->only(['create', 'store'])
         ->middleware('permission:request.create');
 
+    Route::get('certificate-requests/check-invoice', [CertificateRequestController::class, 'checkInvoice'])
+        ->middleware('permission:request.view|ptn.process')
+        ->name('certificate-requests.check-invoice');
+
     Route::resource('certificate-requests', CertificateRequestController::class)
         ->only(['show'])
         ->middleware('permission:request.view');
@@ -228,6 +232,12 @@ Route::middleware(['auth'])->group(function () {
         ->group(function () {
             Route::get('requests', [PtnRequestController::class, 'index'])
                 ->name('requests.index');
+
+            Route::get('requests/direct-create', [PtnRequestController::class, 'directCreate'])
+                ->name('requests.direct-create');
+
+            Route::post('requests/direct-store', [PtnRequestController::class, 'directStore'])
+                ->name('requests.direct-store');
 
             Route::get('requests/{certificateRequest}', [PtnRequestController::class, 'show'])
                 ->name('requests.show');

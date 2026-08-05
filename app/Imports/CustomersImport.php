@@ -9,6 +9,10 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class CustomersImport implements ToModel, WithHeadingRow
 {
+    public function __construct(private ?int $distributionCenterId = null)
+    {
+    }
+
     public function model(array $row)
     {
         $customerName = trim($row['ten_khach_hang'] ?? '');
@@ -23,9 +27,18 @@ class CustomersImport implements ToModel, WithHeadingRow
             $code = 'KH-' . strtoupper(Str::slug(Str::limit($customerName, 30, ''), '-'));
         }
 
+        if ($this->distributionCenterId) {
+            $existing = Customer::where('customer_code', $code)->first();
+
+            if ($existing && (int) $existing->distribution_center_id !== (int) $this->distributionCenterId) {
+                $code = $code . '-TT' . $this->distributionCenterId;
+            }
+        }
+
         return Customer::updateOrCreate(
             ['customer_code' => $code],
             [
+                'distribution_center_id' => $this->distributionCenterId,
                 'customer_name' => $customerName,
                 'customer_address' => $row['dia_chi_khach_hang'] ?? null,
                 'tax_code' => $row['ma_so_thue'] ?? null,

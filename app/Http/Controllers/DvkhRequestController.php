@@ -44,10 +44,16 @@ class DvkhRequestController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('duplicate_invoice')) {
+            $this->applyDuplicateInvoiceFilter($query, $request->duplicate_invoice);
+        }
+
         $requests = $query
             ->latest()
             ->paginate(15)
             ->withQueryString();
+
+        $this->attachInvoiceDuplicateCounts($requests->getCollection());
 
         $centers = DistributionCenter::where('is_active', true)
             ->orderBy('name')
@@ -68,7 +74,9 @@ class DvkhRequestController extends Controller
             'reissueOfCertificate',
         ]);
 
-        return view('dvkh_requests.show', compact('certificateRequest'));
+        $invoiceDuplicates = $this->invoiceDuplicates($certificateRequest);
+
+        return view('dvkh_requests.show', compact('certificateRequest', 'invoiceDuplicates'));
     }
 
     public function approve(Request $request, CertificateRequest $certificateRequest)
@@ -160,5 +168,76 @@ class DvkhRequestController extends Controller
         return redirect()
             ->route('dvkh.requests.index')
             ->with('success', 'Đã trả lại yêu cầu.');
+    }
+
+    private function attachInvoiceDuplicateCounts($requests): void
+    {
+        $normalizedInvoices = $requests
+            ->pluck('invoice_no_normalized')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($normalizedInvoices->isEmpty()) {
+            return;
+        }
+
+        $counts = CertificateRequest::query()
+            ->select('invoice_no_normalized', DB::raw('COUNT(*) as total'))
+            ->whereIn('invoice_no_normalized', $normalizedInvoices)
+            ->groupBy('invoice_no_normalized')
+            ->pluck('total', 'invoice_no_normalized');
+
+        $requests->each(function (CertificateRequest $item) use ($counts) {
+            $total = (int) ($counts[$item->invoice_no_normalized] ?? 0);
+            $item->setAttribute('invoice_duplicate_count', max(0, $total - 1));
+        });
+    }
+
+    private function applyDuplicateInvoiceFilter($query, string $mode): void
+    {
+        if ($mode === '1') {
+            $query
+                ->whereNotNull('invoice_no_normalized')
+                ->whereExists(function ($subQuery) {
+                    $this->duplicateInvoiceExistsSubQuery($subQuery);
+                });
+
+            return;
+        }
+
+        if ($mode === '0') {
+            $query->where(function ($q) {
+                $q->whereNull('invoice_no_normalized')
+                    ->orWhereNotExists(function ($subQuery) {
+                        $this->duplicateInvoiceExistsSubQuery($subQuery);
+                    });
+            });
+        }
+    }
+
+    private function duplicateInvoiceExistsSubQuery($subQuery): void
+    {
+        $subQuery
+            ->select(DB::raw(1))
+            ->from('certificate_requests as duplicate_requests')
+            ->whereColumn('duplicate_requests.invoice_no_normalized', 'certificate_requests.invoice_no_normalized')
+            ->whereColumn('duplicate_requests.id', '!=', 'certificate_requests.id')
+            ->whereNull('duplicate_requests.deleted_at');
+    }
+
+    private function invoiceDuplicates(CertificateRequest $certificateRequest)
+    {
+        if (!$certificateRequest->invoice_no) {
+            return collect();
+        }
+
+        return CertificateRequest::duplicateInvoiceQuery(
+            $certificateRequest->invoice_no,
+            $certificateRequest->id
+        )
+            ->latest()
+            ->limit(10)
+            ->get();
     }
 }

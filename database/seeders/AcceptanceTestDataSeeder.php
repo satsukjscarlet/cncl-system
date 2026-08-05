@@ -98,6 +98,8 @@ class AcceptanceTestDataSeeder extends Seeder
 
     private function seedUsers(array $centers): array
     {
+        $testEmail = 'thientuantest@gmail.com';
+
         $data = [
             'admin_accept' => [
                 'name' => 'Acceptance Admin',
@@ -156,7 +158,7 @@ class AcceptanceTestDataSeeder extends Seeder
                 ['username' => $username],
                 [
                     'name' => $item['name'],
-                    'email' => $item['email'],
+                    'email' => $testEmail,
                     'password' => Hash::make('123123123'),
                     'distribution_center_id' => $item['center'] ? $centers[$item['center']]->id : null,
                     'is_active' => $item['is_active'],

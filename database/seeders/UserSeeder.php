@@ -11,6 +11,8 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        $testEmail = 'thientuantest@gmail.com';
+
         $users = [
             [
                 'name' => 'Quản trị hệ thống',
@@ -86,7 +88,7 @@ class UserSeeder extends Seeder
                 ['username' => $item['username']],
                 [
                     'name' => $item['name'],
-                    'email' => $item['email'],
+                    'email' => $testEmail,
                     'distribution_center_id' => $centerId,
                     'password' => Hash::make('123123123'),
                 ]

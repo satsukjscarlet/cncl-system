@@ -63,6 +63,9 @@ class CertificateRequestController extends Controller
             ->get();
 
         $customers = Customer::where('is_active', true)
+            ->when(Auth::user()->hasRole('TrungTam'), function ($query) {
+                $query->where('distribution_center_id', Auth::user()->distribution_center_id);
+            })
             ->orderBy('customer_name')
             ->get();
 
@@ -76,6 +79,42 @@ class CertificateRequestController extends Controller
             ->get();
 
         return view('certificate_requests.create', compact('centers', 'customers', 'products', 'urgentReasons'));
+    }
+
+    public function checkInvoice(Request $request)
+    {
+        $data = $request->validate([
+            'invoice_no' => ['nullable', 'string', 'max:255'],
+            'exclude_id' => ['nullable', 'integer'],
+        ]);
+
+        $items = CertificateRequest::duplicateInvoiceQuery(
+            $data['invoice_no'] ?? null,
+            $data['exclude_id'] ?? null
+        )
+            ->latest()
+            ->limit(10)
+            ->get()
+            ->map(function (CertificateRequest $item) {
+                return [
+                    'id' => $item->id,
+                    'request_no' => $item->request_no,
+                    'invoice_no' => $item->invoice_no,
+                    'customer_name' => $item->customer->customer_name ?? '-',
+                    'project_name' => $item->customer->project_name ?? '',
+                    'distribution_center' => $item->distributionCenter->name ?? '-',
+                    'status' => $item->status,
+                    'created_at' => optional($item->created_at)->format('d/m/Y H:i'),
+                    'certificate_no' => $item->qualityCertificate->certificate_no ?? null,
+                    'url' => route('certificate-requests.show', $item),
+                ];
+            });
+
+        return response()->json([
+            'duplicated' => $items->isNotEmpty(),
+            'count' => $items->count(),
+            'items' => $items,
+        ]);
     }
 
     public function store(Request $request)
@@ -153,6 +192,8 @@ class CertificateRequestController extends Controller
                 ]);
             }
 
+            $this->logDuplicateInvoiceWarning($certificateRequest);
+
             ActivityLogger::log(
                 'Yêu cầu cấp phiếu',
                 'create',
@@ -189,7 +230,9 @@ class CertificateRequestController extends Controller
             'reissueOfCertificate',
         ]);
 
-        return view('certificate_requests.show', compact('certificateRequest'));
+        $invoiceDuplicates = $this->invoiceDuplicates($certificateRequest);
+
+        return view('certificate_requests.show', compact('certificateRequest', 'invoiceDuplicates'));
     }
 
     public function edit(CertificateRequest $certificateRequest)
@@ -205,7 +248,12 @@ class CertificateRequestController extends Controller
         $certificateRequest->load('details');
 
         $centers = DistributionCenter::where('is_active', true)->orderBy('name')->get();
-        $customers = Customer::where('is_active', true)->orderBy('customer_name')->get();
+        $customers = Customer::where('is_active', true)
+            ->when(Auth::user()->hasRole('TrungTam'), function ($query) {
+                $query->where('distribution_center_id', Auth::user()->distribution_center_id);
+            })
+            ->orderBy('customer_name')
+            ->get();
         $products = Product::with(['group', 'qualityStandard'])
             ->where('is_active', true)
             ->orderBy('product_name')
@@ -300,6 +348,8 @@ class CertificateRequestController extends Controller
                 ]);
             }
 
+            $this->logDuplicateInvoiceWarning($certificateRequest);
+
             ActivityLogger::log(
                 'Yêu cầu cấp phiếu',
                 'update',
@@ -361,10 +411,22 @@ class CertificateRequestController extends Controller
     private function resolveCustomerId(array $data): int
     {
         if (($data['customer_mode'] ?? 'existing') === 'existing') {
-            return (int) $data['customer_id'];
+            $customer = Customer::findOrFail($data['customer_id']);
+
+            if (
+                Auth::user()->hasRole('TrungTam')
+                && (int) $customer->distribution_center_id !== (int) Auth::user()->distribution_center_id
+            ) {
+                abort(403, 'Anh không có quyền chọn khách hàng của trung tâm khác.');
+            }
+
+            return (int) $customer->id;
         }
 
         $customer = Customer::create([
+            'distribution_center_id' => Auth::user()->hasRole('TrungTam')
+                ? Auth::user()->distribution_center_id
+                : ($data['distribution_center_id'] ?? null),
             'customer_code' => $this->generateCustomerCode(),
             'customer_name' => $data['new_customer_name'],
             'customer_address' => $data['new_customer_address'] ?? null,
@@ -396,6 +458,43 @@ class CertificateRequestController extends Controller
                 ->count() + 1;
 
         return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function logDuplicateInvoiceWarning(CertificateRequest $certificateRequest): void
+    {
+        if (!$certificateRequest->invoice_no) {
+            return;
+        }
+
+        $duplicateCount = CertificateRequest::duplicateInvoiceQuery(
+            $certificateRequest->invoice_no,
+            $certificateRequest->id
+        )->count();
+
+        if ($duplicateCount < 1) {
+            return;
+        }
+
+        ActivityLogger::log(
+            'Yêu cầu cấp phiếu',
+            'duplicate_invoice_warning',
+            'Cảnh báo số hóa đơn trùng khi lưu yêu cầu ' . $certificateRequest->request_no . ': ' . $certificateRequest->invoice_no . ' (' . $duplicateCount . ' bản ghi trùng)'
+        );
+    }
+
+    private function invoiceDuplicates(CertificateRequest $certificateRequest)
+    {
+        if (!$certificateRequest->invoice_no) {
+            return collect();
+        }
+
+        return CertificateRequest::duplicateInvoiceQuery(
+            $certificateRequest->invoice_no,
+            $certificateRequest->id
+        )
+            ->latest()
+            ->limit(10)
+            ->get();
     }
 
     private function authorizeCenter(CertificateRequest $certificateRequest): void

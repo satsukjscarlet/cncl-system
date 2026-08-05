@@ -104,6 +104,9 @@
                 <tr>
                     <th style="width:60px">STT</th>
                     <th style="width:110px">Mã KH</th>
+                    @unless(auth()->user()->hasRole('TrungTam'))
+                        <th>Trung tâm</th>
+                    @endunless
                     <th>Khách hàng</th>
                     <th>Công trình</th>
                     <th>Email</th>
@@ -118,6 +121,9 @@
                     <tr>
                         <td>{{ $customers->firstItem() + $loop->index }}</td>
                         <td><span class="badge badge-primary">{{ $customer->customer_code ?: '-' }}</span></td>
+                        @unless(auth()->user()->hasRole('TrungTam'))
+                            <td>{{ $customer->distributionCenter ? $customer->distributionCenter->code . ' - ' . $customer->distributionCenter->name : 'Dùng chung' }}</td>
+                        @endunless
                         <td>
                             <strong>{{ $customer->customer_name }}</strong>
                             <div class="text-muted small">{{ $customer->customer_address }}</div>
@@ -154,7 +160,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">
+                        <td colspan="{{ auth()->user()->hasRole('TrungTam') ? 8 : 9 }}" class="text-center text-muted py-4">
                             <i class="fas fa-database fa-2x mb-2"></i><br>
                             Chưa có dữ liệu khách hàng - công trình.
                         </td>

@@ -61,7 +61,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => 'required|max:255',
             'username' => 'required|max:100|unique:users,username',
-            'email' => 'nullable|email|unique:users,email',
+            'email' => 'nullable|email',
             'smartca_user_id' => 'nullable|string|max:100',
             'distribution_center_id' => 'nullable|exists:distribution_centers,id',
             'role' => 'required|exists:roles,name',
@@ -103,7 +103,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => 'required|max:255',
             'username' => 'required|max:100|unique:users,username,' . $user->id,
-            'email' => 'nullable|email|unique:users,email,' . $user->id,
+            'email' => 'nullable|email',
             'smartca_user_id' => 'nullable|string|max:100',
             'distribution_center_id' => 'nullable|exists:distribution_centers,id',
             'role' => 'required|exists:roles,name',

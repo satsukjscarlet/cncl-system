@@ -1,5 +1,28 @@
 @csrf
 
+<div class="form-group">
+    <label>Trung tâm phân phối</label>
+    @if(auth()->user()->hasRole('TrungTam'))
+        <input type="text"
+               class="form-control"
+               value="{{ auth()->user()->distributionCenter->code ?? '' }} - {{ auth()->user()->distributionCenter->name ?? '' }}"
+               readonly>
+    @else
+        <select name="distribution_center_id" class="form-control select2">
+            <option value="">-- Dùng chung / chưa gán trung tâm --</option>
+            @foreach(($centers ?? collect()) as $center)
+                <option value="{{ $center->id }}"
+                    {{ old('distribution_center_id', $customer->distribution_center_id ?? '') == $center->id ? 'selected' : '' }}>
+                    {{ $center->code }} - {{ $center->name }}
+                </option>
+            @endforeach
+        </select>
+    @endif
+    @error('distribution_center_id')
+        <span class="text-danger small">{{ $message }}</span>
+    @enderror
+</div>
+
 <div class="row">
     <div class="col-md-4">
         <div class="form-group">

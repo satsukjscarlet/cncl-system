@@ -14,7 +14,7 @@ class AdminUserSeeder extends Seeder
             ['username' => 'admin'],
             [
                 'name' => 'Quản trị hệ thống',
-                'email' => 'admin@ntp.local',
+                'email' => 'thientuantest@gmail.com',
                 'password' => Hash::make('12345678'),
             ]
         );

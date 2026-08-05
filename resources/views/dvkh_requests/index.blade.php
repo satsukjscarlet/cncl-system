@@ -4,6 +4,34 @@
 
 @section('css')
     <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260611-3') }}">
+    <style>
+        .filter-toolbar.has-duplicate-filter {
+            grid-template-columns: 116px minmax(260px, 1.45fr) minmax(190px, .9fr) minmax(170px, .75fr) minmax(170px, .75fr) auto;
+        }
+
+        @media (max-width: 1399.98px) {
+            .filter-toolbar.has-duplicate-filter {
+                grid-template-columns: 100px minmax(260px, 1.35fr) minmax(190px, .9fr) minmax(170px, .75fr) minmax(170px, .75fr);
+            }
+
+            .filter-toolbar.has-duplicate-filter .filter-actions {
+                grid-column: 2 / -1;
+                justify-content: flex-start;
+            }
+        }
+
+        @media (max-width: 991.98px) {
+            .filter-toolbar.has-duplicate-filter {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .filter-toolbar.has-duplicate-filter {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 @stop
 
 @section('content_header')
@@ -34,7 +62,7 @@
 <div class="card request-filter-card">
     <div class="card-body">
         <form method="GET">
-            <div class="filter-toolbar">
+            <div class="filter-toolbar has-duplicate-filter">
                 <div class="filter-title">
                     <span class="filter-icon"><i class="fas fa-filter"></i></span>
                     <span>Bộ lọc</span>
@@ -83,6 +111,17 @@
                     </div>
                 </div>
 
+                <div class="filter-field">
+                    <label for="duplicate_invoice">Hóa đơn trùng</label>
+                    <div class="form-group mb-0">
+                        <select id="duplicate_invoice" name="duplicate_invoice" class="form-control select2">
+                            <option value="">Tất cả</option>
+                            <option value="1" {{ request('duplicate_invoice') === '1' ? 'selected' : '' }}>Có trùng</option>
+                            <option value="0" {{ request('duplicate_invoice') === '0' ? 'selected' : '' }}>Không trùng</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="filter-actions">
                     <button class="btn btn-primary">
                         <i class="fas fa-search"></i> Lọc
@@ -92,7 +131,7 @@
                         <i class="fas fa-sync"></i>
                     </a>
 
-                    @if(request()->hasAny(['keyword', 'distribution_center_id', 'status']))
+                    @if(request()->hasAny(['keyword', 'distribution_center_id', 'status', 'duplicate_invoice']))
                         <a href="{{ route('dvkh.requests.index') }}" class="btn btn-outline-danger">
                             <i class="fas fa-times"></i> Xóa lọc
                         </a>
@@ -158,7 +197,17 @@
 
                         <td>{{ $item->delivery_date ? $item->delivery_date->format('d/m/Y') : '-' }}</td>
 
-                        <td>{{ $item->invoice_no ?: '-' }}</td>
+                        <td>
+                            {{ $item->invoice_no ?: '-' }}
+                            @if(($item->invoice_duplicate_count ?? 0) > 0)
+                                <div class="mt-1">
+                                    <span class="badge badge-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Trùng {{ $item->invoice_duplicate_count }} yêu cầu
+                                    </span>
+                                </div>
+                            @endif
+                        </td>
 
                         <td>
                             @if($item->require_hard_copy)
@@ -180,10 +229,15 @@
                             </a>
 
                             @if($item->status === 'WAIT_DVKH')
+                                @php
+                                    $approveConfirm = ($item->invoice_duplicate_count ?? 0) > 0
+                                        ? 'Số hóa đơn của yêu cầu này đang trùng với ' . $item->invoice_duplicate_count . ' yêu cầu khác. Bạn vẫn muốn xác nhận và chuyển sang PTN?'
+                                        : 'Xác nhận yêu cầu này và chuyển sang PTN?';
+                                @endphp
                                 <form action="{{ route('dvkh.requests.approve', $item) }}"
                                       method="POST"
                                       class="d-inline"
-                                      onsubmit="return confirm('Xác nhận yêu cầu này và chuyển sang PTN?')">
+                                      onsubmit="return confirm({!! json_encode($approveConfirm, JSON_UNESCAPED_UNICODE) !!})">
                                     @csrf
                                     <button class="btn btn-sm btn-success" title="Xác nhận">
                                         <i class="fas fa-check"></i>

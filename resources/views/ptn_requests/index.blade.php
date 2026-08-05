@@ -11,6 +11,10 @@
         <h1 class="m-0">PTN lập phiếu CNCL</h1>
         <small class="text-muted">Tiếp nhận yêu cầu đã được DVKH xác nhận và lập Phiếu Chứng nhận Chất lượng</small>
     </div>
+
+    <a href="{{ route('ptn.requests.direct-create') }}" class="btn btn-primary mt-2 mt-md-0">
+        <i class="fas fa-plus"></i> Lập phiếu trực tiếp
+    </a>
 </div>
 @stop
 
