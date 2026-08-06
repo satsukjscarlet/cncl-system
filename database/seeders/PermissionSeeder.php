@@ -78,6 +78,7 @@ class PermissionSeeder extends Seeder
             'certificate.view',
             'certificate.create',
             'certificate.sign',
+            'certificate.reject',
             'certificate.print',
             'certificate.email',
 
@@ -114,6 +115,7 @@ class PermissionSeeder extends Seeder
         $center = Role::firstOrCreate(['name' => 'TrungTam']);
         $dvkh = Role::firstOrCreate(['name' => 'DVKH']);
         $ptn = Role::firstOrCreate(['name' => 'PTN']);
+        $truongPtn = Role::firstOrCreate(['name' => 'TruongPTN']);
         $viewer = Role::firstOrCreate(['name' => 'Viewer']);
 
         $admin->syncPermissions($permissions);
@@ -154,7 +156,15 @@ class PermissionSeeder extends Seeder
             'ptn.process',
             'certificate.view',
             'certificate.create',
+            'report.view',
+        ]);
+
+        $truongPtn->syncPermissions([
+            'dashboard.view',
+            'request.view',
+            'certificate.view',
             'certificate.sign',
+            'certificate.reject',
             'certificate.print',
             'certificate.email',
             'report.view',

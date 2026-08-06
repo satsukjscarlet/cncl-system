@@ -58,6 +58,7 @@
                         <option value="UNSIGNED" {{ request('status') == 'UNSIGNED' ? 'selected' : '' }}>Chưa ký</option>
                         <option value="SIGNED" {{ request('status') == 'SIGNED' ? 'selected' : '' }}>Đã ký/phát hành</option>
                         <option value="REVOKED" {{ request('status') == 'REVOKED' ? 'selected' : '' }}>Đã hủy/thu hồi</option>
+                        <option value="REJECTED" {{ request('status') == 'REJECTED' ? 'selected' : '' }}>Đã trả lại</option>
                     </select>
                 </div>
             </div>
@@ -136,6 +137,10 @@
                             @if($certificate->status === 'REVOKED')
                                 <span class="badge badge-danger">
                                     <i class="fas fa-ban"></i> Đã hủy/thu hồi
+                                </span>
+                            @elseif($certificate->status === 'REJECTED')
+                                <span class="badge badge-secondary">
+                                    <i class="fas fa-undo"></i> Đã trả lại
                                 </span>
                             @elseif($certificate->signed_at)
                                 <span class="badge badge-success">

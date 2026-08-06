@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Exports\ProductsExport;
 use App\Helpers\ActivityLogger;
-use App\Imports\ProductsImport;
 use App\Models\Product;
 use App\Models\ProductGroup;
 use App\Models\QualityStandard;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -227,20 +228,39 @@ class ProductController extends Controller
             ],
         ]);
 
-        Excel::import(
-            new ProductsImport(),
-            $request->file('file')
-        );
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(0);
+
+        $path = $request->file('file')->store('imports');
+        $fullPath = Storage::path($path);
+
+        try {
+            $exitCode = Artisan::call('products:import-file', [
+                'file' => $fullPath,
+                '--memory' => '1024M',
+                '--timeout' => 0,
+                '--no-progress' => true,
+            ]);
+            $output = trim(Artisan::output());
+        } finally {
+            Storage::delete($path);
+        }
+
+        if ($exitCode !== 0) {
+            return redirect()
+                ->route('products.index')
+                ->with('error', 'Import danh mục sản phẩm thất bại. ' . $output);
+        }
 
         ActivityLogger::log(
             'Sản phẩm',
             'import',
-            'Import Excel danh mục sản phẩm'
+            'Import Excel danh mục sản phẩm. ' . $output
         );
 
         return redirect()
             ->route('products.index')
-            ->with('success', 'Import danh mục sản phẩm thành công.');
+            ->with('success', 'Import danh mục sản phẩm thành công. ' . $output);
     }
 
     public function template(): BinaryFileResponse

@@ -53,7 +53,14 @@ class CertificateRequest extends Model
 
     public function qualityCertificate()
     {
-        return $this->hasOne(QualityCertificate::class, 'certificate_request_id');
+        return $this->hasOne(QualityCertificate::class, 'certificate_request_id')
+            ->where('status', '!=', 'REJECTED')
+            ->latestOfMany();
+    }
+
+    public function qualityCertificates()
+    {
+        return $this->hasMany(QualityCertificate::class, 'certificate_request_id');
     }
 
     public function creator()

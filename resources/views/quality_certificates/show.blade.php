@@ -44,6 +44,8 @@
                     <strong>Trạng thái:</strong>
                     @if ($qualityCertificate->status === 'REVOKED')
                         <span class="badge badge-danger">Đã hủy/thu hồi</span>
+                    @elseif ($qualityCertificate->status === 'REJECTED')
+                        <span class="badge badge-secondary">Đã trả lại</span>
                     @elseif ($qualityCertificate->signed_at)
                         <span class="badge badge-success">Đã ký/phát hành</span>
                     @else
@@ -70,6 +72,12 @@
                     <p><strong>Người hủy:</strong> {{ $qualityCertificate->revokedBy->name ?? '-' }}</p>
                     <p><strong>Ngày hủy:</strong> {{ $qualityCertificate->revoked_at ? $qualityCertificate->revoked_at->format('d/m/Y H:i') : '-' }}</p>
                     <p><strong>Lý do hủy:</strong> {{ $qualityCertificate->revoked_reason ?: '-' }}</p>
+                @endif
+                @if($qualityCertificate->status === 'REJECTED')
+                    <p><strong>Người trả lại:</strong> {{ $qualityCertificate->rejectedBy->name ?? '-' }}</p>
+                    <p><strong>Ngày trả lại:</strong> {{ $qualityCertificate->rejected_at ? $qualityCertificate->rejected_at->format('d/m/Y H:i') : '-' }}</p>
+                    <p><strong>Trả về bước:</strong> {{ $qualityCertificate->rejected_to === 'DVKH' ? 'DVKH xác nhận lại' : 'PTN xử lý lại' }}</p>
+                    <p><strong>Lý do trả lại:</strong> {{ $qualityCertificate->rejected_reason ?: '-' }}</p>
                 @endif
                 <p><strong>Người ký:</strong> {{ $qualityCertificate->signed_by ?: '-' }}</p>
                 <p><strong>Ngày ký:</strong> {{ $qualityCertificate->signed_at ? $qualityCertificate->signed_at->format('d/m/Y H:i') : '-' }}</p>
@@ -131,7 +139,11 @@
                         @endcan
                     @else
                         @can('certificate.sign')
-                            @if ($qualityCertificate->smartca_status === 'PENDING')
+                            @if ($qualityCertificate->status === 'REJECTED')
+                                <button class="btn btn-secondary" disabled>
+                                    <i class="fas fa-undo"></i> Phiếu đã trả lại
+                                </button>
+                            @elseif ($qualityCertificate->smartca_status === 'PENDING')
                                 <form action="{{ route('quality-certificates.smartca-status', $qualityCertificate) }}" method="POST" class="d-inline">
                                     @csrf
                                     <button class="btn btn-primary">
@@ -147,6 +159,14 @@
                                         <i class="fas fa-file-signature"></i> Gửi yêu cầu ký SmartCA
                                     </button>
                                 </form>
+                            @endif
+                        @endcan
+
+                        @can('certificate.reject')
+                            @if($qualityCertificate->status !== 'REJECTED' && $qualityCertificate->smartca_status !== 'PENDING')
+                                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectSignatureModal">
+                                    <i class="fas fa-undo"></i> Từ chối ký
+                                </button>
                             @endif
                         @endcan
                     @endif
@@ -323,6 +343,55 @@
         </form>
     </div>
 </div>
+@endcan
+
+@can('certificate.reject')
+@if(!$qualityCertificate->signed_at && $qualityCertificate->status !== 'REJECTED' && $qualityCertificate->smartca_status !== 'PENDING')
+<div class="modal fade" id="rejectSignatureModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST"
+              action="{{ route('quality-certificates.reject-signature', $qualityCertificate) }}"
+              class="modal-content">
+            @csrf
+
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-undo"></i> Từ chối ký / trả lại phiếu</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    Phiếu này sẽ bị đánh dấu đã trả lại và không dùng để ký số. Hệ thống sẽ mở lại yêu cầu gốc theo bước anh chọn bên dưới.
+                </div>
+
+                <div class="form-group">
+                    <label>Trả về bước <span class="text-danger">*</span></label>
+                    <select name="reject_to" class="form-control" required>
+                        <option value="PTN">PTN xử lý lại</option>
+                        <option value="DVKH">DVKH xác nhận lại</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Lý do trả lại <span class="text-danger">*</span></label>
+                    <textarea name="rejected_reason"
+                              class="form-control"
+                              rows="4"
+                              required
+                              placeholder="Nhập lý do để PTN/DVKH biết cần sửa gì"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Đóng</button>
+                <button class="btn btn-danger">
+                    <i class="fas fa-paper-plane"></i> Xác nhận trả lại
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
 @endcan
 
 @can('request.create')

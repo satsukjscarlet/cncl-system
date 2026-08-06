@@ -33,7 +33,7 @@
         <a href="{{ route('quality-certificates.index') }}" class="{{ request()->routeIs('quality-certificates.*') ? 'active' : '' }}">Phieu ky tuoi</a>
     @endhasanyrole
 
-    @hasanyrole('Admin|Viewer|DVKH|PTN')
+    @hasanyrole('Admin|Viewer|DVKH|PTN|TruongPTN')
         <a href="{{ route('reports.summary') }}" class="{{ request()->routeIs('reports.*') ? 'active' : '' }}">Bao cao</a>
     @endhasanyrole
 

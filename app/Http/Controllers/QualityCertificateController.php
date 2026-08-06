@@ -59,11 +59,16 @@ class QualityCertificateController extends Controller
             }
 
             if ($request->status === 'UNSIGNED') {
-                $query->whereNull('signed_at');
+                $query->whereNull('signed_at')
+                    ->whereNotIn('status', ['REJECTED', 'REVOKED']);
             }
 
             if ($request->status === 'REVOKED') {
                 $query->where('status', 'REVOKED');
+            }
+
+            if ($request->status === 'REJECTED') {
+                $query->where('status', 'REJECTED');
             }
         }
 
@@ -87,6 +92,7 @@ class QualityCertificateController extends Controller
             'details.product.group',
             'creator',
             'revokedBy',
+            'rejectedBy',
             'replacesCertificate',
             'replacedByCertificate',
             'printLogs.user',
@@ -108,6 +114,12 @@ class QualityCertificateController extends Controller
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
                 ->with('error', 'Phiếu này đã được ký số/phát hành.');
+        }
+
+        if ($qualityCertificate->status === 'REJECTED') {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Phiếu này đã bị Trưởng PTN trả lại, không thể gửi ký số.');
         }
 
         if ($qualityCertificate->smartca_status === 'PENDING') {
@@ -269,6 +281,12 @@ class QualityCertificateController extends Controller
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
                 ->with('success', 'Phiếu này đã được ký/phát hành.');
+        }
+
+        if ($qualityCertificate->status === 'REJECTED') {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Phiếu này đã bị Trưởng PTN trả lại, không thể kiểm tra kết quả ký.');
         }
 
         if (!$qualityCertificate->smartca_transaction_id) {
@@ -574,6 +592,92 @@ class QualityCertificateController extends Controller
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
                 ->with('error', 'Không thể tạo yêu cầu cấp lại: ' . $e->getMessage());
+        }
+    }
+
+    public function rejectSignature(Request $request, QualityCertificate $qualityCertificate)
+    {
+        $this->authorizeCenter($qualityCertificate);
+
+        if ($qualityCertificate->signed_at || in_array($qualityCertificate->status, ['ISSUED', 'REVOKED'])) {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Chỉ được trả lại phiếu chưa ký/phát hành.');
+        }
+
+        if ($qualityCertificate->status === 'REJECTED') {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Phiếu này đã được trả lại trước đó.');
+        }
+
+        if ($qualityCertificate->smartca_status === 'PENDING') {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Phiếu đang chờ xác nhận ký trên VNPT SmartCA, không thể trả lại ở thời điểm này.');
+        }
+
+        $data = $request->validate([
+            'reject_to' => ['required', 'in:PTN,DVKH'],
+            'rejected_reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $qualityCertificate->loadMissing('request');
+
+        if (!$qualityCertificate->request) {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Không tìm thấy yêu cầu gốc của phiếu để trả lại.');
+        }
+
+        $newRequestStatus = $data['reject_to'] === 'DVKH' ? 'WAIT_DVKH' : 'PTN_PROCESSING';
+        $targetLabel = $data['reject_to'] === 'DVKH' ? 'DVKH xác nhận lại' : 'PTN xử lý lại';
+        $noteLine = '[Trưởng PTN trả lại ' . $targetLabel . ' phiếu ' . $qualityCertificate->certificate_no . ']: ' . $data['rejected_reason'];
+
+        DB::beginTransaction();
+
+        try {
+            $oldData = [
+                'certificate' => $qualityCertificate->toArray(),
+                'request' => $qualityCertificate->request->toArray(),
+            ];
+
+            $qualityCertificate->update([
+                'status' => 'REJECTED',
+                'rejected_at' => now(),
+                'rejected_by' => Auth::id(),
+                'rejected_to' => $data['reject_to'],
+                'rejected_reason' => $data['rejected_reason'],
+                'smartca_status' => null,
+            ]);
+
+            $qualityCertificate->request->update([
+                'status' => $newRequestStatus,
+                'note' => trim(($qualityCertificate->request->note ? $qualityCertificate->request->note . "\n" : '') . $noteLine),
+            ]);
+
+            ActivityLogger::log(
+                'Phiếu CNCL',
+                'reject_signature',
+                'Trưởng PTN trả lại phiếu CNCL: ' . $qualityCertificate->certificate_no . ' về ' . $targetLabel . '. Lý do: ' . $data['rejected_reason'],
+                $oldData,
+                [
+                    'certificate' => $qualityCertificate->fresh()->toArray(),
+                    'request' => $qualityCertificate->request->fresh()->toArray(),
+                ]
+            );
+
+            DB::commit();
+
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('success', 'Đã trả lại phiếu về bước ' . $targetLabel . '.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Không thể trả lại phiếu: ' . $e->getMessage());
         }
     }
 

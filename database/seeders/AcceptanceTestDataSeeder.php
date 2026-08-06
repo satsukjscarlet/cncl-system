@@ -136,6 +136,13 @@ class AcceptanceTestDataSeeder extends Seeder
                 'center' => null,
                 'is_active' => true,
             ],
+            'truong_ptn_accept' => [
+                'name' => 'Acceptance Truong PTN',
+                'email' => 'accept.truongptn@ntp.local',
+                'role' => 'TruongPTN',
+                'center' => null,
+                'is_active' => true,
+            ],
             'viewer_accept' => [
                 'name' => 'Acceptance Viewer',
                 'email' => 'accept.viewer@ntp.local',
@@ -545,7 +552,7 @@ class AcceptanceTestDataSeeder extends Seeder
                 'request' => 'SIGNED',
                 'created_by' => 'ptn_accept',
                 'signed_at' => now()->subHours(10),
-                'signed_by' => 'Acceptance PTN',
+                'signed_by' => 'Acceptance Truong PTN',
                 'print_count' => 2,
             ],
             'COMPLETED' => [
@@ -553,7 +560,7 @@ class AcceptanceTestDataSeeder extends Seeder
                 'request' => 'COMPLETED',
                 'created_by' => 'ptn_accept',
                 'signed_at' => now()->subDay(),
-                'signed_by' => 'Acceptance PTN',
+                'signed_by' => 'Acceptance Truong PTN',
                 'print_count' => 0,
             ],
         ];
@@ -673,9 +680,9 @@ class AcceptanceTestDataSeeder extends Seeder
             ],
             [
                 'log_name' => 'Phieu CNCL',
-                'description' => 'Acceptance: PTN ky phat hanh phieu AC-CNCL-SIGNED-0001',
+                'description' => 'Acceptance: Truong PTN ky phat hanh phieu AC-CNCL-SIGNED-0001',
                 'event' => 'sign',
-                'causer' => $users['ptn_accept'],
+                'causer' => $users['truong_ptn_accept'],
                 'subject' => $requests['SIGNED'],
                 'properties' => ['action' => 'sign', 'criteria' => 'certificate'],
             ],

@@ -81,26 +81,16 @@
 
             @can('ptn.process')
                 <div class="card-footer">
-                    @if($certificateRequest->status === 'WAIT_PTN')
-                        <form action="{{ route('ptn.requests.receive', $certificateRequest) }}" method="POST"
-                              class="d-inline" onsubmit="return confirm('PTN tiếp nhận yêu cầu này?')">
-                            @csrf
-                            <button class="btn btn-primary">
-                                <i class="fas fa-inbox"></i> Tiếp nhận
-                            </button>
-                        </form>
-                    @endif
-
                     @if($certificateRequest->qualityCertificate)
                         <a href="{{ route('quality-certificates.show', $certificateRequest->qualityCertificate) }}" class="btn btn-success">
                             <i class="fas fa-file-signature"></i> Xem phiếu đã lập
                         </a>
                     @elseif(in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING']))
-                        <form action="{{ route('ptn.requests.create-certificate', $certificateRequest) }}" method="POST"
-                              class="d-inline" onsubmit="return confirm('Tạo phiếu CNCL từ yêu cầu này?')">
+                        <form action="{{ route('ptn.requests.receive-and-create-certificate', $certificateRequest) }}" method="POST"
+                              class="d-inline" onsubmit="return confirm('Tiếp nhận và lập phiếu CNCL từ yêu cầu này?')">
                             @csrf
-                            <button class="btn btn-success">
-                                <i class="fas fa-file-signature"></i> Tạo phiếu CNCL
+                            <button class="btn btn-primary">
+                                <i class="fas fa-file-signature"></i> Tiếp nhận và lập phiếu CNCL
                             </button>
                         </form>
                     @endif

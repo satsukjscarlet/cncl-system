@@ -206,6 +206,66 @@ class PtnRequestController extends Controller
             ->with('success', 'PTN đã tiếp nhận yêu cầu.');
     }
 
+    public function receiveAndCreateCertificate(CertificateRequest $certificateRequest)
+    {
+        if (!in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING'])) {
+            return redirect()
+                ->route('ptn.requests.index')
+                ->with('error', 'Yêu cầu không ở trạng thái được phép tiếp nhận và lập phiếu.');
+        }
+
+        if ($this->hasActiveQualityCertificate($certificateRequest)) {
+            return redirect()
+                ->route('ptn.requests.show', $certificateRequest)
+                ->with('error', 'Yêu cầu này đã có phiếu CNCL đang hiệu lực.');
+        }
+
+        $certificateRequest->load([
+            'details.product.qualityStandard',
+            'reissueOfCertificate',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $oldData = $certificateRequest->toArray();
+
+            if ($certificateRequest->status === 'WAIT_PTN') {
+                $certificateRequest->update([
+                    'status' => 'PTN_PROCESSING',
+                ]);
+            }
+
+            $certificate = $this->createQualityCertificateFromRequest($certificateRequest->fresh());
+
+            if ($certificateRequest->request_type === 'REISSUE' && $certificateRequest->reissueOfCertificate) {
+                $certificateRequest->reissueOfCertificate->update([
+                    'replaced_by_certificate_id' => $certificate->id,
+                ]);
+            }
+
+            ActivityLogger::log(
+                'PTN tiếp nhận và lập phiếu',
+                'receive_and_create_certificate',
+                'PTN tiếp nhận và lập phiếu CNCL từ yêu cầu: ' . $certificateRequest->request_no,
+                $oldData,
+                $certificate->load('details')->toArray()
+            );
+
+            DB::commit();
+
+            return redirect()
+                ->route('quality-certificates.show', $certificate)
+                ->with('success', 'Đã tiếp nhận yêu cầu và lập phiếu CNCL thành công.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->route('ptn.requests.show', $certificateRequest)
+                ->with('error', 'Có lỗi khi tiếp nhận và lập phiếu CNCL: ' . $e->getMessage());
+        }
+    }
+
     public function createCertificate(CertificateRequest $certificateRequest)
     {
         if (!in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING'])) {
@@ -214,10 +274,10 @@ class PtnRequestController extends Controller
                 ->with('error', 'Yêu cầu không ở trạng thái được phép lập phiếu.');
         }
 
-        if (QualityCertificate::where('certificate_request_id', $certificateRequest->id)->exists()) {
+        if ($this->hasActiveQualityCertificate($certificateRequest)) {
             return redirect()
                 ->route('ptn.requests.show', $certificateRequest)
-                ->with('error', 'Yêu cầu này đã được tạo phiếu CNCL.');
+                ->with('error', 'Yêu cầu này đã có phiếu CNCL đang hiệu lực.');
         }
 
         $certificateRequest->load([
@@ -307,6 +367,13 @@ class PtnRequestController extends Controller
         }
 
         return $certificate;
+    }
+
+    private function hasActiveQualityCertificate(CertificateRequest $certificateRequest): bool
+    {
+        return QualityCertificate::where('certificate_request_id', $certificateRequest->id)
+            ->where('status', '!=', 'REJECTED')
+            ->exists();
     }
 
     private function generateDirectRequestNo(): string

@@ -245,6 +245,9 @@ Route::middleware(['auth'])->group(function () {
             Route::post('requests/{certificateRequest}/receive', [PtnRequestController::class, 'receive'])
                 ->name('requests.receive');
 
+            Route::post('requests/{certificateRequest}/receive-and-create-certificate', [PtnRequestController::class, 'receiveAndCreateCertificate'])
+                ->name('requests.receive-and-create-certificate');
+
             Route::post('requests/{certificateRequest}/create-certificate', [PtnRequestController::class, 'createCertificate'])
                 ->name('requests.create-certificate');
         });
@@ -268,6 +271,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('quality-certificates/{qualityCertificate}/smartca-status', [QualityCertificateController::class, 'checkSmartCaStatus'])
         ->middleware('permission:certificate.sign')
         ->name('quality-certificates.smartca-status');
+
+    Route::post('quality-certificates/{qualityCertificate}/reject-signature', [QualityCertificateController::class, 'rejectSignature'])
+        ->middleware('permission:certificate.reject')
+        ->name('quality-certificates.reject-signature');
 
     Route::post('quality-certificates/{qualityCertificate}/print-hard-copy', [QualityCertificateController::class, 'printHardCopy'])
         ->middleware('permission:certificate.print')

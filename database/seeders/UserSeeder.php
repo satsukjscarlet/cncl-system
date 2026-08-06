@@ -77,6 +77,13 @@ class UserSeeder extends Seeder
                 'role' => 'PTN',
                 'center_code' => null,
             ],
+            [
+                'name' => 'Trưởng phòng thử nghiệm',
+                'username' => 'truongptn',
+                'email' => 'truongptn@ntp.local',
+                'role' => 'TruongPTN',
+                'center_code' => null,
+            ],
         ];
 
         foreach ($users as $item) {

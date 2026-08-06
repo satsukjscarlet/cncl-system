@@ -13,7 +13,6 @@ return new class extends Migration
 
             $table->foreignId('distribution_center_id')
                 ->nullable()
-                ->after('id')
                 ->constrained()
                 ->nullOnDelete();
 

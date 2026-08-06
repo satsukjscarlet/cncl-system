@@ -23,6 +23,10 @@ class QualityCertificate extends Model
         'revoked_at',
         'revoked_by',
         'revoked_reason',
+        'rejected_at',
+        'rejected_by',
+        'rejected_to',
+        'rejected_reason',
         'smartca_status',
         'smartca_transaction_id',
         'smartca_tran_code',
@@ -45,6 +49,7 @@ class QualityCertificate extends Model
     protected $casts = [
         'signed_at' => 'datetime',
         'revoked_at' => 'datetime',
+        'rejected_at' => 'datetime',
         'smartca_chain_data' => 'array',
         'smartca_response' => 'array',
         'smartca_requested_at' => 'datetime',
@@ -69,6 +74,11 @@ class QualityCertificate extends Model
     public function revokedBy()
     {
         return $this->belongsTo(User::class, 'revoked_by');
+    }
+
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 
     public function replacesCertificate()

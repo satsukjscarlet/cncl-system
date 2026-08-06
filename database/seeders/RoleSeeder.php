@@ -14,6 +14,7 @@ class RoleSeeder extends Seeder
             'TrungTam',
             'DVKH',
             'PTN',
+            'TruongPTN',
             'Viewer',
         ];
 

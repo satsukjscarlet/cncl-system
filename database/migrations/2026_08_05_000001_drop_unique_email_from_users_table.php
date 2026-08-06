@@ -13,9 +13,11 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropUnique('users_email_unique');
-        });
+        if ($this->hasIndex('users', 'users_email_unique')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropUnique('users_email_unique');
+            });
+        }
     }
 
     public function down(): void
@@ -24,8 +26,15 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('users', function (Blueprint $table) {
-            $table->unique('email', 'users_email_unique');
-        });
+        if (!$this->hasIndex('users', 'users_email_unique')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->unique('email', 'users_email_unique');
+            });
+        }
+    }
+
+    private function hasIndex(string $table, string $index): bool
+    {
+        return collect(DB::select("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$index]))->isNotEmpty();
     }
 };

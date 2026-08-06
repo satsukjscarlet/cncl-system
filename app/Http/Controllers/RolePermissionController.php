@@ -138,6 +138,7 @@ class RolePermissionController extends Controller
             'certificate.view' => 'Xem phiếu CNCL',
             'certificate.create' => 'Tạo phiếu CNCL',
             'certificate.sign' => 'Ký/phát hành phiếu',
+            'certificate.reject' => 'Từ chối ký/trả lại phiếu',
             'certificate.print' => 'In ký tươi',
             'certificate.email' => 'Gửi email phiếu',
 

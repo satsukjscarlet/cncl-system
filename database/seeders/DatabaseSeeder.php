@@ -14,8 +14,6 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             QualityStandardSeeder::class,
             ProductGroupSeeder::class,
-            ProductSeeder::class,
-            CustomerSeeder::class,
             UrgentReasonSeeder::class,
             SlaConfigSeeder::class,
             SystemSettingSeeder::class,
