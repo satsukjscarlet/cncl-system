@@ -70,6 +70,19 @@ class QualityCertificateController extends Controller
             if ($request->status === 'REJECTED') {
                 $query->where('status', 'REJECTED');
             }
+
+            if ($request->status === 'SMARTCA_EXPIRED') {
+                $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
+
+                $query->whereNull('signed_at')
+                    ->where(function ($q) use ($expiredBefore) {
+                        $q->where('smartca_status', 'EXPIRED')
+                            ->orWhere(function ($pending) use ($expiredBefore) {
+                                $pending->where('smartca_status', 'PENDING')
+                                    ->where('smartca_requested_at', '<=', $expiredBefore);
+                            });
+                    });
+            }
         }
 
         $certificates = $query
@@ -122,7 +135,7 @@ class QualityCertificateController extends Controller
                 ->with('error', 'Phiếu này đã bị Trưởng PTN trả lại, không thể gửi ký số.');
         }
 
-        if ($qualityCertificate->smartca_status === 'PENDING') {
+        if ($qualityCertificate->smartca_status === 'PENDING' && !$this->smartCaPendingExpired($qualityCertificate)) {
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
                 ->with('error', 'Phiếu này đang chờ người ký xác nhận trên VNPT SmartCA. Vui lòng bấm kiểm tra kết quả ký.');
@@ -145,6 +158,12 @@ class QualityCertificateController extends Controller
         ]);
 
         $oldData = $qualityCertificate->toArray();
+        $isResendAfterExpired = $qualityCertificate->smartca_status === 'PENDING'
+            || $qualityCertificate->smartca_status === 'EXPIRED';
+
+        if ($qualityCertificate->smartca_status === 'PENDING') {
+            $this->markSmartCaExpired($qualityCertificate, $oldData);
+        }
 
         try {
             $pdf = Pdf::loadView('quality_certificates.pdf', [
@@ -247,15 +266,15 @@ class QualityCertificateController extends Controller
 
             ActivityLogger::log(
                 'Phiếu CNCL',
-                'smartca_request',
-                'Gửi yêu cầu ký VNPT SmartCA cho phiếu CNCL: ' . $qualityCertificate->certificate_no,
+                $isResendAfterExpired ? 'smartca_request_resend' : 'smartca_request',
+                ($isResendAfterExpired ? 'Gửi lại yêu cầu ký VNPT SmartCA do giao dịch cũ hết hạn cho phiếu CNCL: ' : 'Gửi yêu cầu ký VNPT SmartCA cho phiếu CNCL: ') . $qualityCertificate->certificate_no,
                 $oldData,
                 $qualityCertificate->fresh()->toArray()
             );
 
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
-                ->with('success', 'Đã gửi yêu cầu ký sang VNPT SmartCA. Người ký cần xác nhận trên app, sau đó bấm "Kiểm tra kết quả ký".');
+                ->with('success', ($isResendAfterExpired ? 'Đã gửi lại yêu cầu ký sang VNPT SmartCA. ' : 'Đã gửi yêu cầu ký sang VNPT SmartCA. ') . 'Người ký cần xác nhận trên app trong ' . $this->smartCaPendingTtlMinutes() . ' phút, sau đó bấm "Kiểm tra kết quả ký".');
         } catch (\Throwable $e) {
             ActivityLogger::log(
                 'Phiếu CNCL',
@@ -309,8 +328,10 @@ class QualityCertificateController extends Controller
             $signature = $signatures->firstWhere('doc_id', $qualityCertificate->smartca_doc_id) ?: $signatures->first();
 
             if (!$signature || blank(data_get($signature, 'signature_value'))) {
+                $expired = $this->smartCaPendingExpired($qualityCertificate);
+
                 $qualityCertificate->update([
-                    'smartca_status' => 'PENDING',
+                    'smartca_status' => $expired ? 'EXPIRED' : 'PENDING',
                     'smartca_response' => array_merge($qualityCertificate->smartca_response ?? [], [
                         'status' => [
                             'endpoint' => $statusResult['endpoint'],
@@ -320,9 +341,21 @@ class QualityCertificateController extends Controller
                     ]),
                 ]);
 
+                if ($expired) {
+                    ActivityLogger::log(
+                        'Phiếu CNCL',
+                        'smartca_request_expired',
+                        'Yêu cầu ký VNPT SmartCA đã hết hạn cho phiếu CNCL: ' . $qualityCertificate->certificate_no,
+                        $oldData,
+                        $qualityCertificate->fresh()->toArray()
+                    );
+                }
+
                 return redirect()
                     ->route('quality-certificates.show', $qualityCertificate)
-                    ->with('error', 'VNPT SmartCA chưa trả chữ ký. Vui lòng xác nhận trên app rồi kiểm tra lại.');
+                    ->with('error', $expired
+                        ? 'Yêu cầu ký VNPT SmartCA đã quá ' . $this->smartCaPendingTtlMinutes() . ' phút và chưa có chữ ký. Vui lòng bấm gửi lại yêu cầu ký.'
+                        : 'VNPT SmartCA chưa trả chữ ký. Vui lòng xác nhận trên app rồi kiểm tra lại.');
             }
 
             $signedPdfPath = $qualityCertificate->pdf_path;
@@ -861,6 +894,46 @@ class QualityCertificateController extends Controller
             ->first();
 
         return $this->normalizeEmail($centerUser?->email);
+    }
+
+    private function smartCaPendingTtlMinutes(): int
+    {
+        return max(1, (int) config('services.smartca.pending_ttl_minutes', 5));
+    }
+
+    private function smartCaPendingExpired(QualityCertificate $qualityCertificate): bool
+    {
+        if ($qualityCertificate->smartca_status !== 'PENDING') {
+            return false;
+        }
+
+        $requestedAt = $qualityCertificate->smartca_requested_at ?: $qualityCertificate->updated_at;
+
+        if (!$requestedAt) {
+            return false;
+        }
+
+        return $requestedAt->copy()
+            ->addMinutes($this->smartCaPendingTtlMinutes())
+            ->lte(now());
+    }
+
+    private function markSmartCaExpired(QualityCertificate $qualityCertificate, array $oldData): void
+    {
+        $qualityCertificate->update([
+            'smartca_status' => 'EXPIRED',
+            'pades_status' => $qualityCertificate->pades_status === 'PENDING'
+                ? 'EXPIRED'
+                : $qualityCertificate->pades_status,
+        ]);
+
+        ActivityLogger::log(
+            'Phiếu CNCL',
+            'smartca_request_expired',
+            'Yêu cầu ký VNPT SmartCA đã hết hạn cho phiếu CNCL: ' . $qualityCertificate->certificate_no,
+            $oldData,
+            $qualityCertificate->fresh()->toArray()
+        );
     }
 
     private function extractSignedPdfContent(string $signatureValue): string

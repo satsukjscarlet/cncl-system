@@ -28,6 +28,16 @@
     </div>
 @endif
 
+@php
+    $smartCaPendingTtlMinutes = max(1, (int) config('services.smartca.pending_ttl_minutes', 5));
+    $smartCaRequestedAt = $qualityCertificate->smartca_requested_at ?: $qualityCertificate->updated_at;
+    $smartCaExpiresAt = $smartCaRequestedAt ? $smartCaRequestedAt->copy()->addMinutes($smartCaPendingTtlMinutes) : null;
+    $smartCaPendingExpired = $qualityCertificate->smartca_status === 'PENDING'
+        && $smartCaExpiresAt
+        && $smartCaExpiresAt->lte(now());
+    $smartCaCanResend = $qualityCertificate->smartca_status === 'EXPIRED' || $smartCaPendingExpired;
+@endphp
+
 <div class="row">
     <div class="col-md-4">
         <div class="card card-primary card-outline">
@@ -83,7 +93,9 @@
                 <p><strong>Ngày ký:</strong> {{ $qualityCertificate->signed_at ? $qualityCertificate->signed_at->format('d/m/Y H:i') : '-' }}</p>
                 <p>
                     <strong>SmartCA:</strong>
-                    @if ($qualityCertificate->smartca_status === 'PENDING')
+                    @if ($smartCaCanResend)
+                        <span class="badge badge-danger">Đã hết hạn</span>
+                    @elseif ($qualityCertificate->smartca_status === 'PENDING')
                         <span class="badge badge-primary">Đang chờ xác nhận</span>
                     @elseif ($qualityCertificate->smartca_status === 'SIGNED')
                         <span class="badge badge-success">Đã ký SmartCA</span>
@@ -91,6 +103,10 @@
                         <span class="text-muted">-</span>
                     @endif
                 </p>
+                @if ($qualityCertificate->smartca_status === 'PENDING' || $qualityCertificate->smartca_status === 'EXPIRED')
+                    <p><strong>Gửi ký lúc:</strong> {{ $qualityCertificate->smartca_requested_at ? $qualityCertificate->smartca_requested_at->format('d/m/Y H:i') : '-' }}</p>
+                    <p><strong>Hạn xác nhận:</strong> {{ $smartCaExpiresAt ? $smartCaExpiresAt->format('d/m/Y H:i') : '-' }}</p>
+                @endif
                 @if ($qualityCertificate->smartca_transaction_id)
                     <p><strong>Mã giao dịch:</strong> <code>{{ $qualityCertificate->smartca_transaction_id }}</code></p>
                 @endif
@@ -143,7 +159,7 @@
                                 <button class="btn btn-secondary" disabled>
                                     <i class="fas fa-undo"></i> Phiếu đã trả lại
                                 </button>
-                            @elseif ($qualityCertificate->smartca_status === 'PENDING')
+                            @elseif ($qualityCertificate->smartca_status === 'PENDING' && !$smartCaPendingExpired)
                                 <form action="{{ route('quality-certificates.smartca-status', $qualityCertificate) }}" method="POST" class="d-inline">
                                     @csrf
                                     <button class="btn btn-primary">
@@ -153,17 +169,17 @@
                             @else
                                 <form action="{{ route('quality-certificates.sign', $qualityCertificate) }}" method="POST"
                                       class="d-inline"
-                                      onsubmit="return confirm('Gửi yêu cầu ký phiếu này sang VNPT SmartCA?')">
+                                      onsubmit="return confirm('{{ $smartCaCanResend ? 'Gửi lại yêu cầu ký phiếu này sang VNPT SmartCA?' : 'Gửi yêu cầu ký phiếu này sang VNPT SmartCA?' }}')">
                                     @csrf
-                                    <button class="btn btn-success">
-                                        <i class="fas fa-file-signature"></i> Gửi yêu cầu ký SmartCA
+                                    <button class="btn {{ $smartCaCanResend ? 'btn-warning' : 'btn-success' }}">
+                                        <i class="fas fa-file-signature"></i> {{ $smartCaCanResend ? 'Gửi lại yêu cầu ký' : 'Gửi yêu cầu ký SmartCA' }}
                                     </button>
                                 </form>
                             @endif
                         @endcan
 
                         @can('certificate.reject')
-                            @if($qualityCertificate->status !== 'REJECTED' && $qualityCertificate->smartca_status !== 'PENDING')
+                            @if($qualityCertificate->status !== 'REJECTED' && ($qualityCertificate->smartca_status !== 'PENDING' || $smartCaPendingExpired))
                                 <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectSignatureModal">
                                     <i class="fas fa-undo"></i> Từ chối ký
                                 </button>
@@ -196,6 +212,7 @@
 </div>
 
 
+@role('Admin')
 @if (!empty($qualityCertificate->smartca_response))
 <div class="card">
     <div class="card-header bg-white">
@@ -236,6 +253,7 @@
     </div>
 </div>
 @endif
+@endrole
 
 <div class="card">
     <div class="card-header bg-white">
@@ -346,7 +364,7 @@
 @endcan
 
 @can('certificate.reject')
-@if(!$qualityCertificate->signed_at && $qualityCertificate->status !== 'REJECTED' && $qualityCertificate->smartca_status !== 'PENDING')
+@if(!$qualityCertificate->signed_at && $qualityCertificate->status !== 'REJECTED' && ($qualityCertificate->smartca_status !== 'PENDING' || $smartCaPendingExpired))
 <div class="modal fade" id="rejectSignatureModal" tabindex="-1">
     <div class="modal-dialog">
         <form method="POST"

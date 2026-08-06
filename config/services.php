@@ -50,6 +50,7 @@ return [
         'pades_hash_encoding' => env('SMARTCA_PADES_HASH_ENCODING', 'hex'),
         'python_bin' => env('SMARTCA_PYTHON_BIN', 'python'),
         'timeout' => (int) env('SMARTCA_TIMEOUT', 30),
+        'pending_ttl_minutes' => (int) env('SMARTCA_PENDING_TTL_MINUTES', 5),
     ],
 
 ];

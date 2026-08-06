@@ -57,6 +57,7 @@
                         <option value="">Tất cả</option>
                         <option value="UNSIGNED" {{ request('status') == 'UNSIGNED' ? 'selected' : '' }}>Chưa ký</option>
                         <option value="SIGNED" {{ request('status') == 'SIGNED' ? 'selected' : '' }}>Đã ký/phát hành</option>
+                        <option value="SMARTCA_EXPIRED" {{ request('status') == 'SMARTCA_EXPIRED' ? 'selected' : '' }}>Yêu cầu ký hết hạn</option>
                         <option value="REVOKED" {{ request('status') == 'REVOKED' ? 'selected' : '' }}>Đã hủy/thu hồi</option>
                         <option value="REJECTED" {{ request('status') == 'REJECTED' ? 'selected' : '' }}>Đã trả lại</option>
                     </select>
@@ -141,6 +142,14 @@
                             @elseif($certificate->status === 'REJECTED')
                                 <span class="badge badge-secondary">
                                     <i class="fas fa-undo"></i> Đã trả lại
+                                </span>
+                            @elseif($certificate->smartca_status === 'EXPIRED' || ($certificate->smartca_status === 'PENDING' && $certificate->smartca_requested_at && $certificate->smartca_requested_at->copy()->addMinutes(max(1, (int) config('services.smartca.pending_ttl_minutes', 5)))->lte(now())))
+                                <span class="badge badge-danger">
+                                    <i class="fas fa-hourglass-end"></i> Hết hạn ký
+                                </span>
+                            @elseif($certificate->smartca_status === 'PENDING')
+                                <span class="badge badge-primary">
+                                    <i class="fas fa-hourglass-half"></i> Chờ ký
                                 </span>
                             @elseif($certificate->signed_at)
                                 <span class="badge badge-success">
