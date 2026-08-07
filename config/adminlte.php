@@ -374,6 +374,12 @@ return [
             'can'  => 'certificate.view',
         ],
         [
+            'text' => 'Trưởng PTN duyệt ký',
+            'url'  => 'quality-certificates/signing-queue',
+            'icon' => 'fas fa-user-check',
+            'can'  => 'certificate.sign',
+        ],
+        [
             'text' => 'Lịch sử in ký tươi',
             'url'  => 'print-logs',
             'icon' => 'fas fa-print',

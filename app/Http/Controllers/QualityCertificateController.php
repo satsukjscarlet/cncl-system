@@ -93,6 +93,115 @@ class QualityCertificateController extends Controller
         return view('quality_certificates.index', compact('certificates'));
     }
 
+    public function signingQueue(Request $request)
+    {
+        $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
+
+        $baseQuery = QualityCertificate::with([
+            'request.distributionCenter',
+            'request.customer',
+            'request.urgentReason',
+            'creator',
+        ]);
+
+        $metrics = [
+            'ready' => (clone $baseQuery)
+                ->whereNull('signed_at')
+                ->where('status', 'DRAFT')
+                ->where(function ($q) {
+                    $q->whereNull('smartca_status')
+                        ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+                })
+                ->count(),
+            'pending' => (clone $baseQuery)
+                ->whereNull('signed_at')
+                ->where('smartca_status', 'PENDING')
+                ->where('smartca_requested_at', '>', $expiredBefore)
+                ->count(),
+            'expired' => (clone $baseQuery)
+                ->whereNull('signed_at')
+                ->where(function ($q) use ($expiredBefore) {
+                    $q->where('smartca_status', 'EXPIRED')
+                        ->orWhere(function ($pending) use ($expiredBefore) {
+                            $pending->where('smartca_status', 'PENDING')
+                                ->where('smartca_requested_at', '<=', $expiredBefore);
+                        });
+                })
+                ->count(),
+            'rejected' => (clone $baseQuery)
+                ->where('status', 'REJECTED')
+                ->count(),
+            'signed_today' => (clone $baseQuery)
+                ->where('status', 'ISSUED')
+                ->whereDate('signed_at', now()->toDateString())
+                ->count(),
+            'urgent' => (clone $baseQuery)
+                ->whereNull('signed_at')
+                ->whereHas('request', fn ($q) => $q->where('is_urgent', true))
+                ->count(),
+        ];
+
+        $query = $baseQuery;
+
+        if ($request->filled('keyword')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('certificate_no', 'like', '%' . $request->keyword . '%')
+                    ->orWhereHas('request', function ($r) use ($request) {
+                        $r->where('request_no', 'like', '%' . $request->keyword . '%')
+                            ->orWhere('invoice_no', 'like', '%' . $request->keyword . '%');
+                    })
+                    ->orWhereHas('request.customer', function ($c) use ($request) {
+                        $c->where('customer_name', 'like', '%' . $request->keyword . '%')
+                            ->orWhere('project_name', 'like', '%' . $request->keyword . '%');
+                    });
+            });
+        }
+
+        match ($request->get('status', 'ACTIONABLE')) {
+            'READY' => $query->whereNull('signed_at')
+                ->where('status', 'DRAFT')
+                ->where(function ($q) {
+                    $q->whereNull('smartca_status')
+                        ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+                }),
+            'PENDING' => $query->whereNull('signed_at')
+                ->where('smartca_status', 'PENDING')
+                ->where('smartca_requested_at', '>', $expiredBefore),
+            'EXPIRED' => $query->whereNull('signed_at')
+                ->where(function ($q) use ($expiredBefore) {
+                    $q->where('smartca_status', 'EXPIRED')
+                        ->orWhere(function ($pending) use ($expiredBefore) {
+                            $pending->where('smartca_status', 'PENDING')
+                                ->where('smartca_requested_at', '<=', $expiredBefore);
+                        });
+                }),
+            'REJECTED' => $query->where('status', 'REJECTED'),
+            'SIGNED_TODAY' => $query->where('status', 'ISSUED')
+                ->whereDate('signed_at', now()->toDateString()),
+            'URGENT' => $query->whereNull('signed_at')
+                ->whereHas('request', fn ($q) => $q->where('is_urgent', true)),
+            default => $query->whereNull('signed_at')
+                ->whereNotIn('status', ['ISSUED', 'REVOKED'])
+                ->where(function ($q) use ($expiredBefore) {
+                    $q->where('status', 'DRAFT')
+                        ->orWhere('status', 'REJECTED')
+                        ->orWhere('smartca_status', 'PENDING')
+                        ->orWhere('smartca_status', 'EXPIRED')
+                        ->orWhere(function ($pending) use ($expiredBefore) {
+                            $pending->where('smartca_status', 'PENDING')
+                                ->where('smartca_requested_at', '<=', $expiredBefore);
+                        });
+                }),
+        };
+
+        $certificates = $query
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('quality_certificates.signing_queue', compact('certificates', 'metrics'));
+    }
+
     public function show(QualityCertificate $qualityCertificate)
     {
         $this->authorizeCenter($qualityCertificate);
@@ -314,196 +423,88 @@ class QualityCertificateController extends Controller
                 ->with('error', 'Phiếu này chưa có giao dịch ký VNPT SmartCA.');
         }
 
-        $qualityCertificate->load([
+        $result = $this->processSmartCaStatus($qualityCertificate, $smartCaService, $padesService);
+
+        return redirect()
+            ->route('quality-certificates.show', $qualityCertificate)
+            ->with($result['level'], $result['message']);
+    }
+
+    public function bulkCheckSmartCaStatus(
+        Request $request,
+        SmartCaService $smartCaService,
+        SmartCaPadesService $padesService
+    )
+    {
+        $limit = min(max((int) $request->input('limit', 30), 1), 50);
+
+        $certificates = QualityCertificate::with([
+            'request.distributionCenter',
             'request.customer',
+            'request.creator.roles',
             'details.product',
-        ]);
+        ])
+            ->whereNull('signed_at')
+            ->whereIn('smartca_status', ['PENDING', 'EXPIRED'])
+            ->whereNotNull('smartca_transaction_id')
+            ->latest('smartca_requested_at')
+            ->limit($limit)
+            ->get();
 
-        $oldData = $qualityCertificate->toArray();
+        $summary = [
+            'signed' => 0,
+            'pending' => 0,
+            'expired' => 0,
+            'email_warning' => 0,
+            'error' => 0,
+            'skipped' => 0,
+        ];
+        $errors = [];
 
-        try {
-            $statusResult = $smartCaService->signatureStatus($qualityCertificate->smartca_transaction_id);
-            $statusResponse = $statusResult['response'];
-            $signatures = collect(data_get($statusResponse, 'data.signatures', []));
-            $signature = $signatures->firstWhere('doc_id', $qualityCertificate->smartca_doc_id) ?: $signatures->first();
-
-            if (!$signature || blank(data_get($signature, 'signature_value'))) {
-                $expired = $this->smartCaPendingExpired($qualityCertificate);
-
-                $qualityCertificate->update([
-                    'smartca_status' => $expired ? 'EXPIRED' : 'PENDING',
-                    'smartca_response' => array_merge($qualityCertificate->smartca_response ?? [], [
-                        'status' => [
-                            'endpoint' => $statusResult['endpoint'],
-                            'request' => $statusResult['request'],
-                            'response' => $statusResponse,
-                        ],
-                    ]),
-                ]);
-
-                if ($expired) {
-                    ActivityLogger::log(
-                        'Phiếu CNCL',
-                        'smartca_request_expired',
-                        'Yêu cầu ký VNPT SmartCA đã hết hạn cho phiếu CNCL: ' . $qualityCertificate->certificate_no,
-                        $oldData,
-                        $qualityCertificate->fresh()->toArray()
-                    );
-                }
-
-                return redirect()
-                    ->route('quality-certificates.show', $qualityCertificate)
-                    ->with('error', $expired
-                        ? 'Yêu cầu ký VNPT SmartCA đã quá ' . $this->smartCaPendingTtlMinutes() . ' phút và chưa có chữ ký. Vui lòng bấm gửi lại yêu cầu ký.'
-                        : 'VNPT SmartCA chưa trả chữ ký. Vui lòng xác nhận trên app rồi kiểm tra lại.');
+        foreach ($certificates as $certificate) {
+            if ($certificate->status === 'REJECTED') {
+                $summary['skipped']++;
+                continue;
             }
 
-            $signedPdfPath = $qualityCertificate->pdf_path;
-            $signType = strtolower((string) config('services.smartca.sign_type', 'hash'));
-            $padesStatus = 'SIGNATURE_ONLY';
-            $padesError = 'SmartCA da tra chu ky hash nhung he thong chua nhung PAdES vao PDF.';
-            $storedStatusResponse = array_merge($qualityCertificate->smartca_response ?? [], [
-                'status' => [
-                    'endpoint' => $statusResult['endpoint'],
-                    'request' => $statusResult['request'],
-                    'response' => $statusResponse,
-                ],
-            ]);
+            $result = $this->processSmartCaStatus($certificate, $smartCaService, $padesService);
 
-            if ($signType === 'file') {
-                $signedPdfContent = $this->extractSignedPdfContent((string) data_get($signature, 'signature_value'));
-                $signedPdfPath = 'quality-certificates/smartca/' . $qualityCertificate->id . '/' . $qualityCertificate->smartca_transaction_id . '_signed.pdf';
+            match ($result['status']) {
+                'SIGNED_EMAIL_SENT', 'SIGNED_NO_EMAIL' => $summary['signed']++,
+                'SIGNED_EMAIL_MISSING', 'SIGNED_EMAIL_FAILED' => $summary['email_warning']++,
+                'EXPIRED' => $summary['expired']++,
+                'PENDING' => $summary['pending']++,
+                default => $summary['error']++,
+            };
 
-                Storage::disk('local')->put($signedPdfPath, $signedPdfContent);
-                $padesStatus = 'SIGNED_PDF';
-                $padesError = null;
-
-                $storedStatusResponse['status']['response']['data']['signatures'] = collect(data_get($statusResponse, 'data.signatures', []))
-                    ->map(function ($item) use ($qualityCertificate, $signedPdfPath) {
-                        if (data_get($item, 'doc_id') === $qualityCertificate->smartca_doc_id) {
-                            $item['signature_value'] = '[signed_pdf_stored:' . $signedPdfPath . ']';
-                        }
-
-                        return $item;
-                    })
-                    ->values()
-                    ->all();
+            if (($result['level'] ?? null) === 'error' && count($errors) < 5) {
+                $errors[] = $certificate->certificate_no . ': ' . $result['message'];
             }
-
-            if ($signType === 'hash' && config('services.smartca.pades_enabled') && strtolower((string) config('services.smartca.pades_provider', 'vnpt')) === 'vnpt') {
-                $hashTransactionId = data_get($qualityCertificate->smartca_response, 'calculate_hash.transaction_id');
-                $fileId = data_get($qualityCertificate->smartca_response, 'calculate_hash.file_id');
-
-                if (blank($hashTransactionId) || blank($fileId)) {
-                    throw new \RuntimeException('Thieu tranId/fileID cua buoc VNPT calculateHash nen khong the goi signExternal.');
-                }
-
-                $signExternalResult = $smartCaService->externalizePdfSignature(
-                    (string) $hashTransactionId,
-                    (string) $fileId,
-                    (string) data_get($signature, 'signature_value')
-                );
-
-                $signedPdfPath = 'quality-certificates/smartca/' . $qualityCertificate->id . '/' . $qualityCertificate->smartca_transaction_id . '_signed.pdf';
-                Storage::disk('local')->put($signedPdfPath, $signExternalResult['signed_pdf']);
-
-                $storedStatusResponse['sign_external'] = [
-                    'endpoint' => $signExternalResult['endpoint'],
-                    'request' => $signExternalResult['request'],
-                    'response' => $signExternalResult['response'],
-                    'signed_pdf_path' => $signedPdfPath,
-                ];
-
-                $padesStatus = 'SIGNED_PDF';
-                $padesError = null;
-            } elseif ($signType === 'hash' && config('services.smartca.pades_enabled')) {
-                $signedPdfPath = $padesService->finalize($qualityCertificate, (string) data_get($signature, 'signature_value'));
-                $padesStatus = 'SIGNED_PDF';
-                $padesError = null;
-            }
-
-            $qualityCertificate->update([
-                'signed_at' => now(),
-                'status' => 'ISSUED',
-                'signed_by' => Auth::user()->name,
-                'pdf_path' => $signedPdfPath,
-                'smartca_status' => 'SIGNED',
-                'smartca_signature_value' => $signType === 'file' ? null : data_get($signature, 'signature_value'),
-                'smartca_timestamp_signature' => data_get($signature, 'timestamp_signature'),
-                'smartca_response' => $storedStatusResponse,
-                'smartca_completed_at' => now(),
-                'pades_status' => $padesStatus,
-                'pades_error' => $padesError,
-            ]);
-
-            if ($qualityCertificate->request) {
-                $qualityCertificate->request->update([
-                    'status' => 'COMPLETED',
-                ]);
-            }
-        } catch (\Throwable $e) {
-            ActivityLogger::log(
-                'Phiếu CNCL',
-                'smartca_status_failed',
-                'Lỗi kiểm tra kết quả ký VNPT SmartCA cho phiếu CNCL: ' . $qualityCertificate->certificate_no . '. Lỗi: ' . $e->getMessage()
-            );
-
-            return redirect()
-                ->route('quality-certificates.show', $qualityCertificate)
-                ->with('error', 'Kiểm tra kết quả ký VNPT SmartCA thất bại: ' . $e->getMessage());
         }
 
-        $autoSendEmail = SystemSetting::getValue('auto_send_email_after_sign', true);
+        $message = 'Đã kiểm tra ' . $certificates->count() . ' phiếu đang chờ app. '
+            . 'Ký thành công: ' . $summary['signed']
+            . ', còn chờ: ' . $summary['pending']
+            . ', hết hạn: ' . $summary['expired']
+            . ', đã ký nhưng cần kiểm tra email: ' . $summary['email_warning']
+            . ', lỗi: ' . $summary['error']
+            . ', bỏ qua: ' . $summary['skipped'] . '.';
 
-        if (!$autoSendEmail) {
-            ActivityLogger::log(
-                'Phiếu CNCL',
-                'smartca_signed_without_email',
-                'Hoàn tất ký VNPT SmartCA phiếu CNCL không gửi email tự động: ' . $qualityCertificate->certificate_no,
-                $oldData,
-                $qualityCertificate->fresh()->load('request')->toArray()
-            );
-
-            return redirect()
-                ->route('quality-certificates.show', $qualityCertificate)
-                ->with('success', 'Đã hoàn tất ký VNPT SmartCA. Hệ thống đang tắt tự động gửi email.');
+        if ($errors) {
+            $message .= ' Lỗi đầu tiên: ' . implode(' | ', $errors);
         }
 
-        try {
-            $recipients = $this->qualityCertificateMailRecipients($qualityCertificate->fresh());
+        ActivityLogger::log(
+            'Phiếu CNCL',
+            'bulk_smartca_status',
+            $message,
+            null,
+            $summary
+        );
 
-            if (!$recipients['to']) {
-                return redirect()
-                    ->route('quality-certificates.show', $qualityCertificate)
-                    ->with('error', 'Phiếu đã ký VNPT SmartCA nhưng tài khoản Trung tâm phân phối tạo yêu cầu chưa có email nhận phiếu.');
-            }
-
-            Mail::to($recipients['to'])
-                ->cc($recipients['cc'])
-                ->send(new QualityCertificateIssuedMail($qualityCertificate->fresh()));
-
-            ActivityLogger::log(
-                'Phiếu CNCL',
-                'smartca_signed_and_send_email',
-                'Hoàn tất ký VNPT SmartCA và gửi email phiếu CNCL: ' . $qualityCertificate->certificate_no . ' tới ' . $recipients['to'] . ($recipients['cc'] ? '. CC: ' . implode(', ', $recipients['cc']) : ''),
-                $oldData,
-                $qualityCertificate->fresh()->load('request')->toArray()
-            );
-
-            return redirect()
-                ->route('quality-certificates.show', $qualityCertificate)
-                ->with('success', 'Đã hoàn tất ký VNPT SmartCA và gửi email phiếu CNCL cho Trung tâm phân phối thành công.');
-        } catch (\Throwable $e) {
-            ActivityLogger::log(
-                'Phiếu CNCL',
-                'send_email_failed',
-                'Lỗi gửi email phiếu CNCL: ' . $qualityCertificate->certificate_no . '. Lỗi: ' . $e->getMessage()
-            );
-
-            return redirect()
-                ->route('quality-certificates.show', $qualityCertificate)
-                ->with('error', 'Phiếu đã ký VNPT SmartCA nhưng gửi email thất bại: ' . $e->getMessage());
-        }
+        return redirect()
+            ->route('quality-certificates.signing-queue', ['status' => 'ACTIONABLE'])
+            ->with($summary['error'] > 0 ? 'error' : 'success', $message);
     }
 
     public function pdf(QualityCertificate $qualityCertificate)
@@ -864,6 +865,221 @@ class QualityCertificateController extends Controller
             'to' => $to,
             'cc' => $cc,
         ];
+    }
+
+    private function processSmartCaStatus(
+        QualityCertificate $qualityCertificate,
+        SmartCaService $smartCaService,
+        SmartCaPadesService $padesService
+    ): array {
+        $qualityCertificate->loadMissing([
+            'request.distributionCenter',
+            'request.customer',
+            'request.creator.roles',
+            'details.product',
+        ]);
+
+        $oldData = $qualityCertificate->toArray();
+
+        try {
+            $statusResult = $smartCaService->signatureStatus($qualityCertificate->smartca_transaction_id);
+            $statusResponse = $statusResult['response'];
+            $signatures = collect(data_get($statusResponse, 'data.signatures', []));
+            $signature = $signatures->firstWhere('doc_id', $qualityCertificate->smartca_doc_id) ?: $signatures->first();
+
+            if (!$signature || blank(data_get($signature, 'signature_value'))) {
+                $expired = $qualityCertificate->smartca_status === 'EXPIRED'
+                    || $this->smartCaPendingExpired($qualityCertificate);
+
+                $qualityCertificate->update([
+                    'smartca_status' => $expired ? 'EXPIRED' : 'PENDING',
+                    'pades_status' => $expired && $qualityCertificate->pades_status === 'PENDING'
+                        ? 'EXPIRED'
+                        : $qualityCertificate->pades_status,
+                    'smartca_response' => array_merge($qualityCertificate->smartca_response ?? [], [
+                        'status' => [
+                            'endpoint' => $statusResult['endpoint'],
+                            'request' => $statusResult['request'],
+                            'response' => $statusResponse,
+                        ],
+                    ]),
+                ]);
+
+                if ($expired) {
+                    ActivityLogger::log(
+                        'Phiếu CNCL',
+                        'smartca_request_expired',
+                        'Yêu cầu ký VNPT SmartCA đã hết hạn cho phiếu CNCL: ' . $qualityCertificate->certificate_no,
+                        $oldData,
+                        $qualityCertificate->fresh()->toArray()
+                    );
+                }
+
+                return [
+                    'status' => $expired ? 'EXPIRED' : 'PENDING',
+                    'level' => 'error',
+                    'message' => $expired
+                        ? 'Yêu cầu ký VNPT SmartCA đã quá ' . $this->smartCaPendingTtlMinutes() . ' phút và chưa có chữ ký. Vui lòng bấm gửi lại yêu cầu ký.'
+                        : 'VNPT SmartCA chưa trả chữ ký. Vui lòng xác nhận trên app rồi kiểm tra lại.',
+                ];
+            }
+
+            $signedPdfPath = $qualityCertificate->pdf_path;
+            $signType = strtolower((string) config('services.smartca.sign_type', 'hash'));
+            $padesStatus = 'SIGNATURE_ONLY';
+            $padesError = 'SmartCA da tra chu ky hash nhung he thong chua nhung PAdES vao PDF.';
+            $storedStatusResponse = array_merge($qualityCertificate->smartca_response ?? [], [
+                'status' => [
+                    'endpoint' => $statusResult['endpoint'],
+                    'request' => $statusResult['request'],
+                    'response' => $statusResponse,
+                ],
+            ]);
+
+            if ($signType === 'file') {
+                $signedPdfContent = $this->extractSignedPdfContent((string) data_get($signature, 'signature_value'));
+                $signedPdfPath = 'quality-certificates/smartca/' . $qualityCertificate->id . '/' . $qualityCertificate->smartca_transaction_id . '_signed.pdf';
+
+                Storage::disk('local')->put($signedPdfPath, $signedPdfContent);
+                $padesStatus = 'SIGNED_PDF';
+                $padesError = null;
+
+                $storedStatusResponse['status']['response']['data']['signatures'] = collect(data_get($statusResponse, 'data.signatures', []))
+                    ->map(function ($item) use ($qualityCertificate, $signedPdfPath) {
+                        if (data_get($item, 'doc_id') === $qualityCertificate->smartca_doc_id) {
+                            $item['signature_value'] = '[signed_pdf_stored:' . $signedPdfPath . ']';
+                        }
+
+                        return $item;
+                    })
+                    ->values()
+                    ->all();
+            }
+
+            if ($signType === 'hash' && config('services.smartca.pades_enabled') && strtolower((string) config('services.smartca.pades_provider', 'vnpt')) === 'vnpt') {
+                $hashTransactionId = data_get($qualityCertificate->smartca_response, 'calculate_hash.transaction_id');
+                $fileId = data_get($qualityCertificate->smartca_response, 'calculate_hash.file_id');
+
+                if (blank($hashTransactionId) || blank($fileId)) {
+                    throw new \RuntimeException('Thieu tranId/fileID cua buoc VNPT calculateHash nen khong the goi signExternal.');
+                }
+
+                $signExternalResult = $smartCaService->externalizePdfSignature(
+                    (string) $hashTransactionId,
+                    (string) $fileId,
+                    (string) data_get($signature, 'signature_value')
+                );
+
+                $signedPdfPath = 'quality-certificates/smartca/' . $qualityCertificate->id . '/' . $qualityCertificate->smartca_transaction_id . '_signed.pdf';
+                Storage::disk('local')->put($signedPdfPath, $signExternalResult['signed_pdf']);
+
+                $storedStatusResponse['sign_external'] = [
+                    'endpoint' => $signExternalResult['endpoint'],
+                    'request' => $signExternalResult['request'],
+                    'response' => $signExternalResult['response'],
+                    'signed_pdf_path' => $signedPdfPath,
+                ];
+
+                $padesStatus = 'SIGNED_PDF';
+                $padesError = null;
+            } elseif ($signType === 'hash' && config('services.smartca.pades_enabled')) {
+                $signedPdfPath = $padesService->finalize($qualityCertificate, (string) data_get($signature, 'signature_value'));
+                $padesStatus = 'SIGNED_PDF';
+                $padesError = null;
+            }
+
+            $qualityCertificate->update([
+                'signed_at' => now(),
+                'status' => 'ISSUED',
+                'signed_by' => Auth::user()->name,
+                'pdf_path' => $signedPdfPath,
+                'smartca_status' => 'SIGNED',
+                'smartca_signature_value' => $signType === 'file' ? null : data_get($signature, 'signature_value'),
+                'smartca_timestamp_signature' => data_get($signature, 'timestamp_signature'),
+                'smartca_response' => $storedStatusResponse,
+                'smartca_completed_at' => now(),
+                'pades_status' => $padesStatus,
+                'pades_error' => $padesError,
+            ]);
+
+            if ($qualityCertificate->request) {
+                $qualityCertificate->request->update([
+                    'status' => 'COMPLETED',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            ActivityLogger::log(
+                'Phiếu CNCL',
+                'smartca_status_failed',
+                'Lỗi kiểm tra kết quả ký VNPT SmartCA cho phiếu CNCL: ' . $qualityCertificate->certificate_no . '. Lỗi: ' . $e->getMessage()
+            );
+
+            return [
+                'status' => 'ERROR',
+                'level' => 'error',
+                'message' => 'Kiểm tra kết quả ký VNPT SmartCA thất bại: ' . $e->getMessage(),
+            ];
+        }
+
+        $autoSendEmail = SystemSetting::getValue('auto_send_email_after_sign', true);
+
+        if (!$autoSendEmail) {
+            ActivityLogger::log(
+                'Phiếu CNCL',
+                'smartca_signed_without_email',
+                'Hoàn tất ký VNPT SmartCA phiếu CNCL không gửi email tự động: ' . $qualityCertificate->certificate_no,
+                $oldData,
+                $qualityCertificate->fresh()->load('request')->toArray()
+            );
+
+            return [
+                'status' => 'SIGNED_NO_EMAIL',
+                'level' => 'success',
+                'message' => 'Đã hoàn tất ký VNPT SmartCA. Hệ thống đang tắt tự động gửi email.',
+            ];
+        }
+
+        try {
+            $recipients = $this->qualityCertificateMailRecipients($qualityCertificate->fresh());
+
+            if (!$recipients['to']) {
+                return [
+                    'status' => 'SIGNED_EMAIL_MISSING',
+                    'level' => 'error',
+                    'message' => 'Phiếu đã ký VNPT SmartCA nhưng tài khoản Trung tâm phân phối tạo yêu cầu chưa có email nhận phiếu.',
+                ];
+            }
+
+            Mail::to($recipients['to'])
+                ->cc($recipients['cc'])
+                ->send(new QualityCertificateIssuedMail($qualityCertificate->fresh()));
+
+            ActivityLogger::log(
+                'Phiếu CNCL',
+                'smartca_signed_and_send_email',
+                'Hoàn tất ký VNPT SmartCA và gửi email phiếu CNCL: ' . $qualityCertificate->certificate_no . ' tới ' . $recipients['to'] . ($recipients['cc'] ? '. CC: ' . implode(', ', $recipients['cc']) : ''),
+                $oldData,
+                $qualityCertificate->fresh()->load('request')->toArray()
+            );
+
+            return [
+                'status' => 'SIGNED_EMAIL_SENT',
+                'level' => 'success',
+                'message' => 'Đã hoàn tất ký VNPT SmartCA và gửi email phiếu CNCL cho Trung tâm phân phối thành công.',
+            ];
+        } catch (\Throwable $e) {
+            ActivityLogger::log(
+                'Phiếu CNCL',
+                'send_email_failed',
+                'Lỗi gửi email phiếu CNCL: ' . $qualityCertificate->certificate_no . '. Lỗi: ' . $e->getMessage()
+            );
+
+            return [
+                'status' => 'SIGNED_EMAIL_FAILED',
+                'level' => 'error',
+                'message' => 'Phiếu đã ký VNPT SmartCA nhưng gửi email thất bại: ' . $e->getMessage(),
+            ];
+        }
     }
 
     private function normalizeEmail(?string $email): ?string

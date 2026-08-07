@@ -256,6 +256,14 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:certificate.view')
         ->name('quality-certificates.index');
 
+    Route::get('quality-certificates/signing-queue', [QualityCertificateController::class, 'signingQueue'])
+        ->middleware('permission:certificate.sign')
+        ->name('quality-certificates.signing-queue');
+
+    Route::post('quality-certificates/bulk-smartca-status', [QualityCertificateController::class, 'bulkCheckSmartCaStatus'])
+        ->middleware('permission:certificate.sign')
+        ->name('quality-certificates.bulk-smartca-status');
+
     Route::get('quality-certificates/{qualityCertificate}', [QualityCertificateController::class, 'show'])
         ->middleware('permission:certificate.view')
         ->name('quality-certificates.show');
