@@ -12,77 +12,86 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $testEmail = 'thientuantest@gmail.com';
+        $defaultPassword = '123123123';
 
         $users = [
             [
                 'name' => 'Quản trị hệ thống',
                 'username' => 'admin',
-                'email' => 'admin@ntp.local',
                 'role' => 'Admin',
                 'center_code' => null,
+                'smartca_user_id' => null,
             ],
             [
                 'name' => 'Lãnh đạo',
                 'username' => 'lanhdao',
-                'email' => 'lanhdao@ntp.local',
                 'role' => 'LanhDao',
                 'center_code' => null,
+                'smartca_user_id' => null,
             ],
             [
                 'name' => 'Trung tâm Nam Phương',
                 'username' => 'trungtam_np',
-                'email' => 'trungtam.np@ntp.local',
                 'role' => 'TrungTam',
                 'center_code' => 'NP',
+                'smartca_user_id' => null,
             ],
             [
                 'name' => 'Trung tâm Tam Phước',
                 'username' => 'trungtam_tp',
-                'email' => 'trungtam.tp@ntp.local',
                 'role' => 'TrungTam',
                 'center_code' => 'TP',
+                'smartca_user_id' => null,
             ],
             [
                 'name' => 'Trung tâm Hồng Phước',
                 'username' => 'trungtam_hp',
-                'email' => 'trungtam.hp@ntp.local',
                 'role' => 'TrungTam',
                 'center_code' => 'HP',
+                'smartca_user_id' => null,
             ],
             [
                 'name' => 'Trung tâm Hà Dung',
                 'username' => 'trungtam_hd',
-                'email' => 'trungtam.hd@ntp.local',
                 'role' => 'TrungTam',
                 'center_code' => 'HD',
+                'smartca_user_id' => null,
             ],
             [
                 'name' => 'Trung tâm Thái Hoà',
                 'username' => 'trungtam_th',
-                'email' => 'trungtam.th@ntp.local',
                 'role' => 'TrungTam',
                 'center_code' => 'TH',
+                'smartca_user_id' => null,
             ],
             [
                 'name' => 'Dịch vụ khách hàng',
                 'username' => 'dvkh',
-                'email' => 'dvkh@ntp.local',
                 'role' => 'DVKH',
                 'center_code' => null,
+                'smartca_user_id' => null,
             ],
             [
                 'name' => 'Phòng thử nghiệm',
                 'username' => 'ptn',
-                'email' => 'ptn@ntp.local',
                 'role' => 'PTN',
                 'center_code' => null,
+                'smartca_user_id' => null,
             ],
             [
                 'name' => 'Trưởng phòng thử nghiệm',
                 'username' => 'truongptn',
-                'email' => 'truongptn@ntp.local',
                 'role' => 'TruongPTN',
                 'center_code' => null,
+                // Điền CCCD/MST/SĐT SmartCA thật trên màn Người dùng trước khi test ký số.
+                'smartca_user_id' => null,
+            ],
+            [
+                'name' => 'Tài khoản chỉ xem',
+                'username' => 'viewer',
+                'role' => 'Viewer',
+                'center_code' => null,
+                'smartca_user_id' => null,
             ],
         ];
 
@@ -97,7 +106,9 @@ class UserSeeder extends Seeder
                     'name' => $item['name'],
                     'email' => $testEmail,
                     'distribution_center_id' => $centerId,
-                    'password' => Hash::make('123123123'),
+                    'smartca_user_id' => $item['smartca_user_id'],
+                    'is_active' => true,
+                    'password' => Hash::make($defaultPassword),
                 ]
             );
 

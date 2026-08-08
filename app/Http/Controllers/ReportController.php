@@ -18,6 +18,11 @@ class ReportController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = auth()->user();
+        $canViewAllCenters = $this->canViewAllCenters($user);
+
+        if (!$canViewAllCenters && !$user->hasRole('TrungTam')) {
+            abort(403, 'Tai khoan nay khong duoc xem bao cao tong hop.');
+        }
 
         $query = CertificateRequest::with([
             'distributionCenter',
@@ -25,7 +30,7 @@ class ReportController extends Controller
             'creator',
         ]);
 
-        if ($user->hasRole('TrungTam')) {
+        if (!$canViewAllCenters) {
             $query->where('distribution_center_id', $user->distribution_center_id);
         }
 
@@ -41,7 +46,7 @@ class ReportController extends Controller
             $query->where('status', $request->status);
         }
 
-        if ($request->filled('distribution_center_id') && !$user->hasRole('TrungTam')) {
+        if ($request->filled('distribution_center_id') && $canViewAllCenters) {
             $query->where('distribution_center_id', $request->distribution_center_id);
         }
 
@@ -55,7 +60,7 @@ class ReportController extends Controller
         $cancelledRequests = (clone $query)->where('status', 'CANCELLED')->count();
 
         $certificateQuery = QualityCertificate::whereHas('request', function ($q) use ($user) {
-            if ($user->hasRole('TrungTam')) {
+            if (!$this->canViewAllCenters($user)) {
                 $q->where('distribution_center_id', $user->distribution_center_id);
             }
         });
@@ -99,6 +104,7 @@ class ReportController extends Controller
         return view('reports.summary', compact(
             'requests',
             'centers',
+            'canViewAllCenters',
             'totalRequests',
             'completedRequests',
             'cancelledRequests',
@@ -112,8 +118,13 @@ class ReportController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = auth()->user();
+        $canViewAllCenters = $this->canViewAllCenters($user);
 
-        $distributionCenterId = $user->hasRole('TrungTam')
+        if (!$canViewAllCenters && !$user->hasRole('TrungTam')) {
+            abort(403, 'Tai khoan nay khong duoc xuat bao cao tong hop.');
+        }
+
+        $distributionCenterId = !$canViewAllCenters
             ? $user->distribution_center_id
             : ($request->distribution_center_id ? (int) $request->distribution_center_id : null);
 
@@ -126,5 +137,10 @@ class ReportController extends Controller
             ),
             'bao_cao_tong_hop_cncl.xlsx'
         );
+    }
+
+    private function canViewAllCenters($user): bool
+    {
+        return $user->hasAnyRole(['Admin', 'LanhDao']);
     }
 }

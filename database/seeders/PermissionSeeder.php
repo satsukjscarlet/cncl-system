@@ -147,7 +147,6 @@ class PermissionSeeder extends Seeder
             'request.view',
             'dvkh.process',
             'certificate.view',
-            'report.view',
         ]);
 
         $ptn->syncPermissions([
@@ -156,7 +155,6 @@ class PermissionSeeder extends Seeder
             'ptn.process',
             'certificate.view',
             'certificate.create',
-            'report.view',
         ]);
 
         $truongPtn->syncPermissions([
@@ -167,14 +165,12 @@ class PermissionSeeder extends Seeder
             'certificate.reject',
             'certificate.print',
             'certificate.email',
-            'report.view',
         ]);
 
         $viewer->syncPermissions([
             'dashboard.view',
             'request.view',
             'certificate.view',
-            'report.view',
         ]);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();

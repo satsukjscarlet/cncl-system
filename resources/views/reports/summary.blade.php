@@ -81,6 +81,7 @@
                 </div>
             </div>
 
+            @if($canViewAllCenters)
             <div class="col-lg-3 col-md-6">
                 <div class="form-group">
                     <label>Trung tâm</label>
@@ -94,8 +95,9 @@
                     </select>
                 </div>
             </div>
+            @endif
 
-            <div class="col-lg-3 col-md-6">
+            <div class="{{ $canViewAllCenters ? 'col-lg-3' : 'col-lg-6' }} col-md-6">
                 <div class="form-group">
                     <label>Trạng thái</label>
                     <select name="status" class="form-control select2">

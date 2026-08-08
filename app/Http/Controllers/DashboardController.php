@@ -63,10 +63,11 @@ class DashboardController extends Controller
         $secondaryList = $this->secondaryListForRole($role, $user);
         $slaAlerts = $this->slaAlerts($user);
 
+        $monthExpression = $this->monthExpression('created_at');
         $monthlyCertificates = (clone $certificateQuery)
-            ->selectRaw('MONTH(created_at) as month, COUNT(*) as total')
+            ->selectRaw($monthExpression . ' as month, COUNT(*) as total')
             ->whereYear('created_at', now()->year)
-            ->groupByRaw('MONTH(created_at)')
+            ->groupByRaw($monthExpression)
             ->pluck('total', 'month')
             ->toArray();
 
@@ -319,6 +320,15 @@ class DashboardController extends Controller
     private function card(string $label, int $value, string $icon, string $color, string $url): array
     {
         return compact('label', 'value', 'icon', 'color', 'url');
+    }
+
+    private function monthExpression(string $column): string
+    {
+        if (config('database.default') === 'sqlite') {
+            return "CAST(strftime('%m', {$column}) AS INTEGER)";
+        }
+
+        return "MONTH({$column})";
     }
 
     private function smartCaPendingTtlMinutes(): int

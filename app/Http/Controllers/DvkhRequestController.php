@@ -64,6 +64,8 @@ class DvkhRequestController extends Controller
 
     public function show(CertificateRequest $certificateRequest)
     {
+        $this->authorizeDvkhRequest($certificateRequest);
+
         $certificateRequest->load([
             'distributionCenter',
             'customer',
@@ -81,6 +83,8 @@ class DvkhRequestController extends Controller
 
     public function approve(Request $request, CertificateRequest $certificateRequest)
     {
+        $this->authorizeDvkhRequest($certificateRequest);
+
         if ($certificateRequest->status !== 'WAIT_DVKH') {
             return redirect()
                 ->route('dvkh.requests.index')
@@ -140,6 +144,8 @@ class DvkhRequestController extends Controller
 
     public function reject(Request $request, CertificateRequest $certificateRequest)
     {
+        $this->authorizeDvkhRequest($certificateRequest);
+
         if ($certificateRequest->status !== 'WAIT_DVKH') {
             return redirect()
                 ->route('dvkh.requests.index')
@@ -239,5 +245,12 @@ class DvkhRequestController extends Controller
             ->latest()
             ->limit(10)
             ->get();
+    }
+
+    private function authorizeDvkhRequest(CertificateRequest $certificateRequest): void
+    {
+        if (!in_array($certificateRequest->status, ['WAIT_DVKH', 'WAIT_PTN', 'CANCELLED'])) {
+            abort(403, 'Yeu cau nay khong thuoc man xu ly cua DVKH.');
+        }
     }
 }

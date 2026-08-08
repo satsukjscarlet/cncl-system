@@ -308,7 +308,7 @@ return [
             'can'  => 'dashboard.view',
         ],
 
-        ['header' => 'DANH MỤC'],
+        ['header' => 'DANH MỤC', 'can' => 'customer.view'],
         [
             'text' => 'Trung tâm phân phối',
             'url'  => 'distribution-centers',
@@ -346,7 +346,7 @@ return [
             'can'  => 'urgent_reason.view',
         ],
 
-        ['header' => 'NGHIỆP VỤ'],
+        ['header' => 'NGHIỆP VỤ', 'can' => 'request.view'],
         [
             'text' => 'Yêu cầu cấp phiếu',
             'url'  => 'certificate-requests',
@@ -366,7 +366,7 @@ return [
             'can'  => 'ptn.process',
         ],
 
-        ['header' => 'PHIẾU CNCL'],
+        ['header' => 'PHIẾU CNCL', 'can' => 'certificate.view'],
         [
             'text' => 'Danh sách phiếu',
             'url'  => 'quality-certificates',
@@ -386,7 +386,7 @@ return [
             'can'  => 'certificate.print',
         ],
 
-        ['header' => 'BÁO CÁO'],
+        ['header' => 'BÁO CÁO', 'can' => 'report.view'],
         [
             'text' => 'Báo cáo tổng hợp',
             'url'  => 'reports/summary',
@@ -394,7 +394,7 @@ return [
             'can'  => 'report.view',
         ],
 
-        ['header' => 'HỆ THỐNG'],
+        ['header' => 'HỆ THỐNG', 'can' => 'log.view'],
         [
             'text' => 'Cấu hình SLA',
             'url'  => 'sla-configs',

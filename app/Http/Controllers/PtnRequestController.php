@@ -165,6 +165,8 @@ class PtnRequestController extends Controller
 
     public function show(CertificateRequest $certificateRequest)
     {
+        $this->authorizePtnRequest($certificateRequest);
+
         $certificateRequest->load([
             'distributionCenter',
             'customer',
@@ -181,6 +183,8 @@ class PtnRequestController extends Controller
 
     public function receive(CertificateRequest $certificateRequest)
     {
+        $this->authorizePtnRequest($certificateRequest);
+
         if ($certificateRequest->status !== 'WAIT_PTN') {
             return redirect()
                 ->route('ptn.requests.index')
@@ -208,6 +212,8 @@ class PtnRequestController extends Controller
 
     public function receiveAndCreateCertificate(CertificateRequest $certificateRequest)
     {
+        $this->authorizePtnRequest($certificateRequest);
+
         if (!in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING'])) {
             return redirect()
                 ->route('ptn.requests.index')
@@ -268,6 +274,8 @@ class PtnRequestController extends Controller
 
     public function createCertificate(CertificateRequest $certificateRequest)
     {
+        $this->authorizePtnRequest($certificateRequest);
+
         if (!in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING'])) {
             return redirect()
                 ->route('ptn.requests.index')
@@ -435,6 +443,13 @@ class PtnRequestController extends Controller
                 ->count() + 1;
 
         return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function authorizePtnRequest(CertificateRequest $certificateRequest): void
+    {
+        if (!in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING'])) {
+            abort(403, 'Yeu cau nay khong thuoc man xu ly cua PTN.');
+        }
     }
 
     private function logDuplicateInvoiceWarning(CertificateRequest $certificateRequest): void
