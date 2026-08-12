@@ -103,8 +103,8 @@
                     <select name="status" class="form-control select2">
                         <option value="">Tất cả</option>
                         <option value="WAIT_DVKH" {{ request('status') == 'WAIT_DVKH' ? 'selected' : '' }}>Chờ DVKH</option>
-                        <option value="WAIT_PTN" {{ request('status') == 'WAIT_PTN' ? 'selected' : '' }}>Chờ PTN</option>
-                        <option value="PTN_PROCESSING" {{ request('status') == 'PTN_PROCESSING' ? 'selected' : '' }}>PTN xử lý</option>
+                        <option value="WAIT_PTN" {{ request('status') == 'WAIT_PTN' ? 'selected' : '' }}>Chờ PTN lập phiếu</option>
+                        <option value="PTN_PROCESSING" {{ request('status') == 'PTN_PROCESSING' ? 'selected' : '' }}>Đã lập phiếu - Chờ ký</option>
                         <option value="COMPLETED" {{ request('status') == 'COMPLETED' ? 'selected' : '' }}>Hoàn tất</option>
                         <option value="CANCELLED" {{ request('status') == 'CANCELLED' ? 'selected' : '' }}>Hủy/Trả lại</option>
                     </select>

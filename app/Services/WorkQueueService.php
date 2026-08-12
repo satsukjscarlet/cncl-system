@@ -32,7 +32,7 @@ class WorkQueueService
             'TrungTam' => [
                 $this->item('Yêu cầu bị trả lại', (clone $requests)->where('status', 'CANCELLED')->count(), 'fas fa-reply', 'danger', route('certificate-requests.index', ['status' => 'CANCELLED'])),
                 $this->item('Đang chờ DVKH', (clone $requests)->where('status', 'WAIT_DVKH')->count(), 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
-                $this->item('Đang chờ PTN', (clone $requests)->whereIn('status', ['WAIT_PTN', 'PTN_PROCESSING'])->count(), 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
+                $this->item('Chờ PTN / Chờ ký', (clone $requests)->whereIn('status', ['WAIT_PTN', 'PTN_PROCESSING'])->count(), 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
             ],
             'DVKH' => [
                 $this->item('Yêu cầu chờ kiểm tra', (clone $requests)->where('status', 'WAIT_DVKH')->count(), 'fas fa-user-check', 'warning', route('dvkh.requests.index', ['status' => 'WAIT_DVKH'])),
@@ -40,8 +40,8 @@ class WorkQueueService
                 $this->item('Trùng số hóa đơn', $this->duplicateInvoiceCount((clone $requests)->where('status', 'WAIT_DVKH')), 'fas fa-copy', 'warning', route('dvkh.requests.index', ['duplicate_invoice' => '1'])),
             ],
             'PTN' => [
-                $this->item('Chờ PTN tiếp nhận', (clone $requests)->where('status', 'WAIT_PTN')->count(), 'fas fa-inbox', 'warning', route('ptn.requests.index', ['status' => 'WAIT_PTN'])),
-                $this->item('PTN đang lập phiếu', (clone $requests)->where('status', 'PTN_PROCESSING')->count(), 'fas fa-vials', 'primary', route('ptn.requests.index', ['status' => 'PTN_PROCESSING'])),
+                $this->item('Chờ PTN lập phiếu', (clone $requests)->where('status', 'WAIT_PTN')->count(), 'fas fa-inbox', 'warning', route('ptn.requests.index', ['status' => 'WAIT_PTN'])),
+                $this->item('Đã lập phiếu - Chờ ký', (clone $requests)->where('status', 'PTN_PROCESSING')->count(), 'fas fa-vials', 'primary', route('ptn.requests.index', ['status' => 'PTN_PROCESSING'])),
                 $this->item('Yêu cầu gấp', (clone $requests)->whereIn('status', ['WAIT_PTN', 'PTN_PROCESSING'])->where('is_urgent', true)->count(), 'fas fa-bolt', 'danger', route('ptn.requests.index')),
             ],
             'TruongPTN' => [
@@ -51,7 +51,7 @@ class WorkQueueService
             ],
             default => [
                 $this->item('Chờ DVKH', (clone $requests)->where('status', 'WAIT_DVKH')->count(), 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
-                $this->item('Chờ PTN', (clone $requests)->whereIn('status', ['WAIT_PTN', 'PTN_PROCESSING'])->count(), 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
+                $this->item('Chờ PTN / Chờ ký', (clone $requests)->whereIn('status', ['WAIT_PTN', 'PTN_PROCESSING'])->count(), 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
                 $this->item('Phiếu chờ ký', $this->signReadyCount(clone $certificates), 'fas fa-file-signature', 'primary', route('quality-certificates.index', ['status' => 'UNSIGNED'])),
             ],
         };

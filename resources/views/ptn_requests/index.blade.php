@@ -9,7 +9,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center">
     <div>
         <h1 class="m-0">PTN lập phiếu CNCL</h1>
-        <small class="text-muted">Tiếp nhận yêu cầu đã được DVKH xác nhận và lập Phiếu Chứng nhận Chất lượng</small>
+        <small class="text-muted">Lập Phiếu Chứng nhận Chất lượng từ các yêu cầu đã được DVKH xác nhận</small>
     </div>
 
     <a href="{{ route('ptn.requests.direct-create') }}" class="btn btn-primary mt-2 mt-md-0">
@@ -59,8 +59,8 @@
                     <label>Trạng thái</label>
                     <select name="status" class="form-control select2">
                         <option value="">Tất cả</option>
-                        <option value="WAIT_PTN" {{ request('status') == 'WAIT_PTN' ? 'selected' : '' }}>Chờ PTN</option>
-                        <option value="PTN_PROCESSING" {{ request('status') == 'PTN_PROCESSING' ? 'selected' : '' }}>PTN đang xử lý</option>
+                        <option value="WAIT_PTN" {{ request('status') == 'WAIT_PTN' ? 'selected' : '' }}>Chờ PTN lập phiếu</option>
+                        <option value="PTN_PROCESSING" {{ request('status') == 'PTN_PROCESSING' ? 'selected' : '' }}>Đã lập phiếu - Chờ ký</option>
                     </select>
                 </div>
             </div>
@@ -148,7 +148,7 @@
                         <td class="text-center">
                             <a href="{{ route('ptn.requests.show', $item) }}"
                                class="btn btn-sm btn-info"
-                               title="Xem / xử lý">
+                               title="Xem / lập phiếu">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </td>
@@ -158,7 +158,7 @@
                         <td colspan="9" class="text-center text-muted py-4">
                             <i class="fas fa-database fa-2x mb-2"></i>
                             <br>
-                            Không có yêu cầu cần PTN xử lý.
+                            Không có yêu cầu chờ PTN lập phiếu.
                         </td>
                     </tr>
                 @endforelse

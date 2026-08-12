@@ -266,17 +266,16 @@ class WorkflowReportTestDataSeeder extends Seeder
                 'age_days' => $index === 1 ? 5 : 1,
                 'label' => 'Chờ DVKH để test SLA DVKH',
             ],
-            in_array($index, [3, 4], true) => [
+            in_array($index, [3, 4, 5, 6], true) => [
                 'request_status' => 'WAIT_PTN',
                 'create_certificate' => false,
-                'age_days' => $index === 3 ? 4 : 2,
-                'label' => 'Chờ PTN tiếp nhận để test SLA PTN',
-            ],
-            in_array($index, [5, 6], true) => [
-                'request_status' => 'PTN_PROCESSING',
-                'create_certificate' => false,
-                'age_days' => $index === 5 ? 3 : 1,
-                'label' => 'PTN đang xử lý nhưng chưa lập phiếu',
+                'age_days' => match ($index) {
+                    3 => 4,
+                    4 => 2,
+                    5 => 3,
+                    default => 1,
+                },
+                'label' => 'Cho PTN lap phieu de test SLA PTN',
             ],
             default => [
                 'request_status' => 'PTN_PROCESSING',

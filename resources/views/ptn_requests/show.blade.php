@@ -1,11 +1,11 @@
 @extends('adminlte::page')
 
-@section('title', 'PTN xử lý yêu cầu')
+@section('title', 'PTN lập phiếu CNCL')
 
 @section('content_header')
 <div class="d-flex justify-content-between align-items-center">
     <div>
-        <h1 class="m-0">PTN xử lý yêu cầu</h1>
+        <h1 class="m-0">PTN lập phiếu CNCL</h1>
         <small class="text-muted">{{ $certificateRequest->request_no }}</small>
     </div>
 
@@ -87,10 +87,10 @@
                         </a>
                     @elseif(in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING']))
                         <form action="{{ route('ptn.requests.receive-and-create-certificate', $certificateRequest) }}" method="POST"
-                              class="d-inline" onsubmit="return confirm('Tiếp nhận và lập phiếu CNCL từ yêu cầu này?')">
+                              class="d-inline" onsubmit="return confirm('Lập phiếu CNCL từ yêu cầu này?')">
                             @csrf
                             <button class="btn btn-primary">
-                                <i class="fas fa-file-signature"></i> Tiếp nhận và lập phiếu CNCL
+                                <i class="fas fa-file-signature"></i> Lập phiếu CNCL
                             </button>
                         </form>
                     @endif

@@ -79,16 +79,16 @@ class NotificationService
     {
         $this->sendToRole('PTN', [
             'type' => 'request_approved',
-            'title' => 'Yêu cầu đã chuyển sang PTN',
-            'message' => 'Yêu cầu ' . $request->request_no . ' đã được DVKH duyệt.',
+            'title' => 'Có yêu cầu chờ PTN lập phiếu',
+            'message' => 'Yêu cầu ' . $request->request_no . ' đã được DVKH duyệt và đang chờ PTN lập phiếu CNCL.',
             'url' => route('ptn.requests.show', $request),
             'data' => $this->requestData($request),
         ]);
 
         $this->sendToCenter($request->distribution_center_id, [
             'type' => 'request_approved_for_center',
-            'title' => 'Yêu cầu đã được DVKH duyệt',
-            'message' => 'Yêu cầu ' . $request->request_no . ' đã chuyển sang PTN.',
+            'title' => 'Yêu cầu đã chuyển PTN lập phiếu',
+            'message' => 'Yêu cầu ' . $request->request_no . ' đã được DVKH duyệt và đang chờ PTN lập phiếu.',
             'url' => route('certificate-requests.show', $request),
             'data' => $this->requestData($request),
         ]);

@@ -133,7 +133,7 @@ class RolePermissionController extends Controller
             'request.delete' => 'Xóa yêu cầu cấp phiếu',
 
             'dvkh.process' => 'DVKH xử lý yêu cầu',
-            'ptn.process' => 'PTN xử lý yêu cầu',
+            'ptn.process' => 'PTN lập phiếu CNCL',
 
             'certificate.view' => 'Xem phiếu CNCL',
             'certificate.create' => 'Tạo phiếu CNCL',

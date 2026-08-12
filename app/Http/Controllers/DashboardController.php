@@ -131,7 +131,7 @@ class DashboardController extends Controller
             'TrungTam' => [
                 $this->card('Yêu cầu của tôi', $metrics['total_requests'], 'fas fa-file-alt', 'primary', route('certificate-requests.index')),
                 $this->card('Chờ DVKH', $metrics['wait_dvkh'], 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
-                $this->card('Đang PTN xử lý', $metrics['wait_ptn'] + $metrics['ptn_processing'], 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
+                $this->card('Chờ PTN / Chờ ký', $metrics['wait_ptn'] + $metrics['ptn_processing'], 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
                 $this->card('Phiếu đã cấp', $metrics['signed_certificates'], 'fas fa-file-signature', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
             ],
             'DVKH' => [
@@ -141,8 +141,8 @@ class DashboardController extends Controller
                 $this->card('Đã chuyển PTN', $metrics['wait_ptn'], 'fas fa-vials', 'info', route('dvkh.requests.index', ['status' => 'WAIT_PTN'])),
             ],
             'PTN' => [
-                $this->card('Chờ PTN tiếp nhận', $metrics['wait_ptn'], 'fas fa-inbox', 'warning', route('ptn.requests.index', ['status' => 'WAIT_PTN'])),
-                $this->card('PTN đang lập phiếu', $metrics['ptn_processing'], 'fas fa-vials', 'info', route('ptn.requests.index', ['status' => 'PTN_PROCESSING'])),
+                $this->card('Chờ PTN lập phiếu', $metrics['wait_ptn'], 'fas fa-inbox', 'warning', route('ptn.requests.index', ['status' => 'WAIT_PTN'])),
+                $this->card('Đã lập phiếu - Chờ ký', $metrics['ptn_processing'], 'fas fa-vials', 'info', route('ptn.requests.index', ['status' => 'PTN_PROCESSING'])),
                 $this->card('Phiếu chờ trưởng PTN', $metrics['sign_ready'], 'fas fa-file-signature', 'primary', route('quality-certificates.index', ['status' => 'UNSIGNED'])),
                 $this->card('Yêu cầu gấp', $metrics['urgent'], 'fas fa-bolt', 'danger', route('ptn.requests.index')),
             ],
@@ -155,7 +155,7 @@ class DashboardController extends Controller
             default => [
                 $this->card('Tổng yêu cầu', $metrics['total_requests'], 'fas fa-file-alt', 'primary', route('certificate-requests.index')),
                 $this->card('Chờ DVKH', $metrics['wait_dvkh'], 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
-                $this->card('Chờ PTN', $metrics['wait_ptn'] + $metrics['ptn_processing'], 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
+                $this->card('Chờ PTN / Chờ ký', $metrics['wait_ptn'] + $metrics['ptn_processing'], 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
                 $this->card('Phiếu đã cấp', $metrics['signed_certificates'], 'fas fa-check-circle', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
             ],
         };
@@ -190,9 +190,9 @@ class DashboardController extends Controller
                 ]);
 
             return [
-                'title' => 'Phiếu cần Trưởng PTN xử lý',
+                'title' => 'Phiếu cần Trưởng PTN xử lý ký số',
                 'icon' => 'fas fa-user-check',
-                'empty' => 'Không có phiếu cần xử lý.',
+                'empty' => 'Không có phiếu cần xử lý ký số.',
                 'items' => $items,
             ];
         }
@@ -224,15 +224,15 @@ class DashboardController extends Controller
             'title' => match ($role) {
                 'TrungTam' => 'Yêu cầu của trung tâm cần theo dõi',
                 'DVKH' => 'Yêu cầu chờ DVKH kiểm tra',
-                'PTN' => 'Yêu cầu PTN cần xử lý',
-                default => 'Công việc đang chờ xử lý',
+                'PTN' => 'Yêu cầu chờ PTN lập phiếu / chờ ký',
+                default => 'Công việc đang chờ thực hiện',
             },
             'icon' => match ($role) {
                 'DVKH' => 'fas fa-user-check',
                 'PTN' => 'fas fa-vials',
                 default => 'fas fa-tasks',
             },
-            'empty' => 'Không có dữ liệu cần xử lý.',
+            'empty' => 'Không có công việc cần thực hiện.',
             'items' => $items,
         ];
     }
@@ -293,7 +293,7 @@ class DashboardController extends Controller
 
             $item->sla_level = $minutes >= $sla->limit_minutes ? 'danger' : 'warning';
             $item->sla_minutes = $minutes;
-            $item->sla_step_name = $item->status === 'WAIT_DVKH' ? 'DVKH kiểm tra' : 'PTN xử lý';
+            $item->sla_step_name = $item->status === 'WAIT_DVKH' ? 'DVKH kiểm tra' : 'PTN lập phiếu';
             $item->sla_limit_minutes = $sla->limit_minutes;
 
             $alerts->push($item);

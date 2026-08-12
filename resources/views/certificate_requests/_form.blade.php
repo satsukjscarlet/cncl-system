@@ -393,8 +393,8 @@
                 const statuses = {
                     DRAFT: 'Nháp',
                     WAIT_DVKH: 'Chờ DVKH',
-                    WAIT_PTN: 'Chờ PTN',
-                    PTN_PROCESSING: 'PTN xử lý',
+                    WAIT_PTN: 'Chờ PTN lập phiếu',
+                    PTN_PROCESSING: 'Đã lập phiếu - Chờ ký',
                     SIGNED: 'Đã ký số',
                     COMPLETED: 'Hoàn tất',
                     CANCELLED: 'Hủy/Trả lại'

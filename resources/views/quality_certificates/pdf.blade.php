@@ -211,13 +211,44 @@
             padding-left: 58px;
         }
 
+        .signature-area {
+            margin: 22px 8px 6px 0;
+            min-height: 74px;
+            page-break-inside: avoid;
+            text-align: right;
+        }
+
         .digital-signature {
-            margin-top: 18px;
+            display: inline-block;
+            width: 310px;
+            border: 1px solid #d84a4a;
+            padding: 7px 10px 6px;
             text-align: center;
-            color: #c74d4d;
-            font-size: 10px;
-            line-height: 1.25;
-            font-weight: normal;
+            color: #b82222;
+            font-family: Arial, "DejaVu Sans", sans-serif;
+            font-size: 9.5px;
+            line-height: 1.28;
+            background: #fffdfd;
+        }
+
+        .digital-signature .signature-title {
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .2px;
+            margin-bottom: 3px;
+        }
+
+        .digital-signature .signature-name {
+            color: #111;
+            font-size: 10.5px;
+            font-weight: bold;
+            margin: 2px 0;
+        }
+
+        .digital-signature .signature-meta {
+            color: #444;
+            font-size: 8.8px;
         }
 
         .footer-wrap {
@@ -271,6 +302,7 @@
     $detailsCount = $certificate->details->count();
     $minimumRows = 9;
     $blankRows = max(0, $minimumRows - $detailsCount);
+    $signedBy = $certificate->signed_by ?: 'VNPT SmartCA';
 @endphp
 
     <table class="header-table">
@@ -363,9 +395,19 @@
     </div>
 
     @if ($certificate->signed_at && !($hardCopy ?? false))
-        <div class="digital-signature">
-            Phiếu được ký điện tử bởi {{ $certificate->signed_by }}
-            - Ngày ký: {{ $certificate->signed_at->format('d/m/Y') }}
+        <div class="signature-area">
+            <div class="digital-signature">
+                <div class="signature-title">Phi&#7871;u &#273;&#432;&#7907;c k&#253; &#273;i&#7879;n t&#7917;</div>
+                <div>K&#253; b&#7903;i</div>
+                <div class="signature-name">{{ $signedBy }}</div>
+                <div class="signature-meta">
+                    S&#7889; phi&#7871;u: {{ $certificate->certificate_no }}<br>
+                    Th&#7901;i gian k&#253;: {{ $certificate->signed_at->format('d/m/Y H:i') }}
+                    @if ($certificate->smartca_certificate_serial)
+                        <br>Serial CTS: {{ $certificate->smartca_certificate_serial }}
+                    @endif
+                </div>
+            </div>
         </div>
     @endif
 
