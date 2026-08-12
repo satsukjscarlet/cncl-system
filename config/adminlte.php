@@ -285,7 +285,7 @@ return [
     'laravel_js_path' => 'js/app.js',
 
     'css' => [
-        'css/cncl-ui.css?v=20260725-1',
+        'css/cncl-ui.css?v=20260725-2',
     ],
 
     /*
@@ -536,6 +536,16 @@ return [
                     'type' => 'css',
                     'asset' => true,
                     'location' => 'vendor/select2/css/select2.min.css',
+                ],
+            ],
+        ],
+        'CnclLoading' => [
+            'active' => true,
+            'files' => [
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'js/cncl-loading.js?v=20260725-1',
                 ],
             ],
         ],
