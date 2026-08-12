@@ -28,6 +28,7 @@ class ReportController extends Controller
             'distributionCenter',
             'customer',
             'creator',
+            'qualityCertificate',
         ]);
 
         if (!$canViewAllCenters) {

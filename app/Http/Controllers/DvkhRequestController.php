@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\ActivityLogger;
 use App\Models\CertificateRequest;
 use App\Models\DistributionCenter;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,7 @@ class DvkhRequestController extends Controller
             'creator',
             'urgentReason',
             'reissueOfCertificate',
+            'qualityCertificate',
         ])->whereIn('status', [
             'WAIT_DVKH',
             'CANCELLED',
@@ -74,6 +76,7 @@ class DvkhRequestController extends Controller
             'creator',
             'urgentReason',
             'reissueOfCertificate',
+            'qualityCertificate',
         ]);
 
         $invoiceDuplicates = $this->invoiceDuplicates($certificateRequest);
@@ -137,6 +140,10 @@ class DvkhRequestController extends Controller
             $certificateRequest->fresh()->toArray()
         );
 
+        app(NotificationService::class)->notifyRequestApproved(
+            $certificateRequest->fresh(['distributionCenter', 'customer'])
+        );
+
         return redirect()
             ->route('dvkh.requests.index')
             ->with('success', 'Đã xác nhận yêu cầu và chuyển sang PTN xử lý.');
@@ -169,6 +176,10 @@ class DvkhRequestController extends Controller
             'DVKH trả lại yêu cầu: ' . $certificateRequest->request_no . '. Lý do: ' . $data['reason'],
             $oldData,
             $certificateRequest->fresh()->toArray()
+        );
+
+        app(NotificationService::class)->notifyRequestRejected(
+            $certificateRequest->fresh(['distributionCenter', 'customer'])
         );
 
         return redirect()

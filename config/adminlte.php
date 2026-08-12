@@ -302,6 +302,38 @@ return [
 
     'menu' => [
         [
+            'type' => 'navbar-notification',
+            'id' => 'cncl-work-queue',
+            'icon' => 'fas fa-tasks',
+            'icon_color' => 'muted',
+            'label' => '',
+            'label_color' => 'secondary',
+            'url' => 'dashboard',
+            'topnav_right' => true,
+            'dropdown_mode' => true,
+            'dropdown_flabel' => 'Mở dashboard công việc',
+            'update_cfg' => [
+                'route' => 'work-queue.feed',
+                'period' => 30,
+            ],
+        ],
+        [
+            'type' => 'navbar-notification',
+            'id' => 'cncl-notification-bell',
+            'icon' => 'far fa-bell',
+            'icon_color' => 'muted',
+            'label' => '',
+            'label_color' => 'secondary',
+            'url' => 'notifications',
+            'topnav_right' => true,
+            'dropdown_mode' => true,
+            'dropdown_flabel' => 'Xem tất cả thông báo',
+            'update_cfg' => [
+                'route' => 'notifications.feed',
+                'period' => 30,
+            ],
+        ],
+        [
             'text' => 'Dashboard',
             'url'  => 'dashboard',
             'icon' => 'fas fa-tachometer-alt',

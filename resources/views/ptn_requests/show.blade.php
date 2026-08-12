@@ -51,7 +51,7 @@
                 @endif
                 <p>
                     <strong>Trạng thái:</strong>
-                    @include('certificate_requests.partials.status_badge', ['status' => $certificateRequest->status])
+                    @include('certificate_requests.partials.status_badge', ['certificateRequest' => $certificateRequest])
                 </p>
                 <p><strong>Trung tâm:</strong> {{ $certificateRequest->distributionCenter->name ?? '-' }}</p>
                 <p><strong>Ngày xuất hàng:</strong> {{ $certificateRequest->delivery_date ? $certificateRequest->delivery_date->format('d/m/Y') : '-' }}</p>

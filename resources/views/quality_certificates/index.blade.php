@@ -54,6 +54,8 @@
                 <div class="form-group">
                     <label>Trạng thái ký</label>
                     <select name="status" class="form-control select2">
+                        <option value="SIGN_READY" {{ request('status') == 'SIGN_READY' ? 'selected' : '' }}>Chờ Trưởng PTN ký</option>
+                        <option value="SMARTCA_PENDING" {{ request('status') == 'SMARTCA_PENDING' ? 'selected' : '' }}>Đang chờ ký số</option>
                         <option value="">Tất cả</option>
                         <option value="UNSIGNED" {{ request('status') == 'UNSIGNED' ? 'selected' : '' }}>Chưa ký</option>
                         <option value="SIGNED" {{ request('status') == 'SIGNED' ? 'selected' : '' }}>Đã ký/phát hành</option>

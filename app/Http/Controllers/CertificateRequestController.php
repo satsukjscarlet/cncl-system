@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\DistributionCenter;
 use App\Models\Product;
 use App\Models\UrgentReason;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,7 @@ class CertificateRequestController extends Controller
             'creator',
             'urgentReason',
             'reissueOfCertificate',
+            'qualityCertificate',
         ]);
 
         if (Auth::user()->hasRole('TrungTam')) {
@@ -40,7 +42,7 @@ class CertificateRequestController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $this->applyStatusFilter($query, $request->status);
         }
 
         if ($request->filled('distribution_center_id') && !Auth::user()->hasRole('TrungTam')) {
@@ -204,6 +206,10 @@ class CertificateRequestController extends Controller
 
             DB::commit();
 
+            app(NotificationService::class)->notifyRequestCreated(
+                $certificateRequest->fresh(['distributionCenter', 'customer'])
+            );
+
             return redirect()
                 ->route('certificate-requests.index')
                 ->with('success', 'Tạo yêu cầu cấp phiếu thành công.');
@@ -228,6 +234,7 @@ class CertificateRequestController extends Controller
             'creator',
             'urgentReason',
             'reissueOfCertificate',
+            'qualityCertificate',
         ]);
 
         $invoiceDuplicates = $this->invoiceDuplicates($certificateRequest);
@@ -505,5 +512,64 @@ class CertificateRequestController extends Controller
         ) {
             abort(403, 'Anh không có quyền xem dữ liệu của trung tâm khác.');
         }
+    }
+
+    private function applyStatusFilter($query, string $status): void
+    {
+        if (in_array($status, ['DRAFT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'COMPLETED', 'CANCELLED'], true)) {
+            $query->where('status', $status);
+
+            return;
+        }
+
+        $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
+
+        if ($status === 'SIGN_READY') {
+            $query->whereHas('qualityCertificates', function ($certificate) {
+                $certificate
+                    ->whereNull('signed_at')
+                    ->where('status', 'DRAFT')
+                    ->where(function ($q) {
+                        $q->whereNull('smartca_status')
+                            ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+                    });
+            });
+        }
+
+        if ($status === 'SIGN_PENDING') {
+            $query->whereHas('qualityCertificates', function ($certificate) use ($expiredBefore) {
+                $certificate
+                    ->whereNull('signed_at')
+                    ->where('smartca_status', 'PENDING')
+                    ->where('smartca_requested_at', '>', $expiredBefore);
+            });
+        }
+
+        if ($status === 'SIGN_EXPIRED') {
+            $query->whereHas('qualityCertificates', function ($certificate) use ($expiredBefore) {
+                $certificate
+                    ->whereNull('signed_at')
+                    ->where(function ($q) use ($expiredBefore) {
+                        $q->where('smartca_status', 'EXPIRED')
+                            ->orWhere(function ($pending) use ($expiredBefore) {
+                                $pending->where('smartca_status', 'PENDING')
+                                    ->where('smartca_requested_at', '<=', $expiredBefore);
+                            });
+                    });
+            });
+        }
+
+        if ($status === 'SIGNED') {
+            $query->whereHas('qualityCertificates', function ($certificate) {
+                $certificate
+                    ->whereNotNull('signed_at')
+                    ->where('status', 'ISSUED');
+            });
+        }
+    }
+
+    private function smartCaPendingTtlMinutes(): int
+    {
+        return max(1, (int) config('services.smartca.pending_ttl_minutes', 5));
     }
 }

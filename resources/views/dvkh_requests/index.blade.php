@@ -218,7 +218,7 @@
                         </td>
 
                         <td>
-                            @include('certificate_requests.partials.status_badge', ['status' => $item->status])
+                            @include('certificate_requests.partials.status_badge', ['certificateRequest' => $item])
                         </td>
 
                         <td class="text-center">

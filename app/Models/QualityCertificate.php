@@ -103,4 +103,54 @@ class QualityCertificate extends Model
     {
         return $this->hasMany(PrintLog::class, 'quality_certificate_id');
     }
+
+    public function displayStatusMeta(): array
+    {
+        if ($this->status === 'REVOKED') {
+            return ['class' => 'badge-danger', 'text' => 'Đã hủy / thu hồi', 'icon' => 'fas fa-ban'];
+        }
+
+        if ($this->status === 'REJECTED') {
+            return ['class' => 'badge-secondary', 'text' => 'Trưởng PTN trả lại', 'icon' => 'fas fa-undo'];
+        }
+
+        if ($this->signed_at || $this->status === 'ISSUED') {
+            return ['class' => 'badge-success', 'text' => 'Đã ký / phát hành', 'icon' => 'fas fa-check'];
+        }
+
+        if ($this->smartcaStatusExpired()) {
+            return ['class' => 'badge-danger', 'text' => 'Quá hạn ký số', 'icon' => 'fas fa-hourglass-end'];
+        }
+
+        if ($this->smartca_status === 'PENDING') {
+            return ['class' => 'badge-primary', 'text' => 'Đang chờ ký số', 'icon' => 'fas fa-mobile-alt'];
+        }
+
+        if ($this->status === 'DRAFT') {
+            return ['class' => 'badge-warning', 'text' => 'Chờ Trưởng PTN ký', 'icon' => 'fas fa-pen-nib'];
+        }
+
+        return ['class' => 'badge-light', 'text' => $this->status ?: '-', 'icon' => 'fas fa-circle'];
+    }
+
+    public function smartcaStatusExpired(): bool
+    {
+        if ($this->smartca_status === 'EXPIRED') {
+            return true;
+        }
+
+        if ($this->smartca_status !== 'PENDING') {
+            return false;
+        }
+
+        $requestedAt = $this->smartca_requested_at ?: $this->updated_at;
+
+        if (!$requestedAt) {
+            return false;
+        }
+
+        return $requestedAt->copy()
+            ->addMinutes(max(1, (int) config('services.smartca.pending_ttl_minutes', 5)))
+            ->lte(now());
+    }
 }

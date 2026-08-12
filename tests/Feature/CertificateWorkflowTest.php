@@ -9,6 +9,7 @@ use App\Models\ProductGroup;
 use App\Models\QualityCertificate;
 use App\Models\QualityStandard;
 use App\Models\User;
+use App\Models\UserNotification;
 use Database\Seeders\DistributionCenterSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\UserSeeder;
@@ -68,10 +69,30 @@ class CertificateWorkflowTest extends TestCase
         $this->assertCount(1, $certificateRequest->details);
 
         $this->actingAs($dvkh)
+            ->getJson(route('work-queue.feed'))
+            ->assertOk()
+            ->assertJson([
+                'label' => 1,
+                'label_color' => 'danger',
+            ])
+            ->assertJsonPath('dropdown', fn ($html) => str_contains($html, 'Yêu cầu chờ kiểm tra'));
+
+        $this->assertSame(1, UserNotification::where('user_id', $dvkh->id)
+            ->where('type', 'request_created')
+            ->where('url', route('dvkh.requests.show', $certificateRequest))
+            ->count());
+
+        $this->actingAs($dvkh)
             ->post(route('dvkh.requests.approve', $certificateRequest))
             ->assertRedirect(route('dvkh.requests.index'));
 
         $this->assertSame('WAIT_PTN', $certificateRequest->fresh()->status);
+        $this->assertSame(1, UserNotification::where('user_id', $ptn->id)
+            ->where('type', 'request_approved')
+            ->count());
+        $this->assertSame(1, UserNotification::where('user_id', $centerUser->id)
+            ->where('type', 'request_approved_for_center')
+            ->count());
 
         $this->actingAs($ptn)
             ->post(route('ptn.requests.receive-and-create-certificate', $certificateRequest))
@@ -88,6 +109,24 @@ class CertificateWorkflowTest extends TestCase
         $this->assertCount(1, $certificate->details);
         $this->assertSame('DN110', $certificate->details->first()->nominal_size);
         $this->assertSame('AC-TCVN-PVC', $certificate->details->first()->quality_standard);
+        $this->assertSame(
+            'Chờ Trưởng PTN ký',
+            $certificateRequest->fresh('qualityCertificate')->displayStatusMeta()['text']
+        );
+        $this->assertSame(1, UserNotification::where('user_id', $truongPtn->id)
+            ->where('type', 'certificate_created')
+            ->where('url', route('quality-certificates.show', $certificate))
+            ->count());
+
+        $this->actingAs($centerUser)
+            ->get(route('certificate-requests.index', ['status' => 'SIGN_READY']))
+            ->assertOk()
+            ->assertSee($certificateRequest->request_no);
+
+        $this->actingAs($truongPtn)
+            ->get(route('quality-certificates.index', ['status' => 'SIGN_READY']))
+            ->assertOk()
+            ->assertSee($certificate->certificate_no);
 
         $this->actingAs($truongPtn)
             ->get(route('quality-certificates.signing-queue', ['status' => 'READY']))
@@ -135,6 +174,10 @@ class CertificateWorkflowTest extends TestCase
         $this->assertSame('DVKH', $certificate->fresh()->rejected_to);
         $this->assertSame('WAIT_DVKH', $certificateRequest->fresh()->status);
         $this->assertStringContainsString('Thong tin khach hang can DVKH xac nhan lai', $certificateRequest->fresh()->note);
+        $this->assertSame(1, UserNotification::where('user_id', $dvkh->id)
+            ->where('type', 'certificate_returned')
+            ->where('url', route('quality-certificates.show', $certificate))
+            ->count());
     }
 
     private function createProduct(): Product

@@ -51,7 +51,7 @@
                                 <div class="text-muted small">{{ $duplicate->customer->project_name ?? '' }}</div>
                             </td>
                             <td>{{ $duplicate->distributionCenter->name ?? '-' }}</td>
-                            <td>@include('certificate_requests.partials.status_badge', ['status' => $duplicate->status])</td>
+                            <td>@include('certificate_requests.partials.status_badge', ['certificateRequest' => $duplicate])</td>
                             <td>{{ $duplicate->qualityCertificate->certificate_no ?? '-' }}</td>
                         </tr>
                     @endforeach
@@ -82,7 +82,7 @@
                     <p><strong>Phiếu cũ:</strong> {{ $certificateRequest->reissueOfCertificate->certificate_no ?? '—' }}</p>
                     <p><strong>Lý do cấp lại:</strong> {{ $certificateRequest->reissue_reason ?: '—' }}</p>
                 @endif
-                <p><strong>Trạng thái:</strong> @include('certificate_requests.partials.status_badge', ['status' => $certificateRequest->status])</p>
+                <p><strong>Trạng thái:</strong> @include('certificate_requests.partials.status_badge', ['certificateRequest' => $certificateRequest])</p>
                 <p><strong>Trung tâm:</strong> {{ $certificateRequest->distributionCenter->name ?? '—' }}</p>
                 <p><strong>Ngày xuất hàng:</strong> {{ $certificateRequest->delivery_date ? $certificateRequest->delivery_date->format('d/m/Y') : '—' }}</p>
                 <p><strong>Số hóa đơn:</strong> {{ $certificateRequest->invoice_no ?: '—' }}</p>

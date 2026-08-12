@@ -9,6 +9,7 @@ use App\Models\PrintLog;
 use App\Models\QualityCertificate;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\NotificationService;
 use App\Services\SmartCaPadesService;
 use App\Services\SmartCaService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -61,6 +62,23 @@ class QualityCertificateController extends Controller
             if ($request->status === 'UNSIGNED') {
                 $query->whereNull('signed_at')
                     ->whereNotIn('status', ['REJECTED', 'REVOKED']);
+            }
+
+            if ($request->status === 'SIGN_READY') {
+                $query->whereNull('signed_at')
+                    ->where('status', 'DRAFT')
+                    ->where(function ($q) {
+                        $q->whereNull('smartca_status')
+                            ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+                    });
+            }
+
+            if ($request->status === 'SMARTCA_PENDING') {
+                $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
+
+                $query->whereNull('signed_at')
+                    ->where('smartca_status', 'PENDING')
+                    ->where('smartca_requested_at', '>', $expiredBefore);
             }
 
             if ($request->status === 'REVOKED') {
@@ -703,6 +721,11 @@ class QualityCertificateController extends Controller
 
             DB::commit();
 
+            app(NotificationService::class)->notifyCertificateReturned(
+                $qualityCertificate->fresh(['request.distributionCenter', 'request.customer']),
+                $data['reject_to']
+            );
+
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
                 ->with('success', 'Đã trả lại phiếu về bước ' . $targetLabel . '.');
@@ -1007,6 +1030,10 @@ class QualityCertificateController extends Controller
                     'status' => 'COMPLETED',
                 ]);
             }
+
+            app(NotificationService::class)->notifyCertificateSigned(
+                $qualityCertificate->fresh(['request.distributionCenter', 'request.customer'])
+            );
         } catch (\Throwable $e) {
             ActivityLogger::log(
                 'Phiếu CNCL',

@@ -21,7 +21,9 @@ use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\LoginLogController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RolePermissionController;
+use App\Http\Controllers\WorkQueueController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -40,6 +42,24 @@ Route::middleware(['auth'])->group(function () {
 
     Route::delete('/profile', [ProfileController::class, 'destroy'])
         ->name('profile.destroy');
+
+    Route::get('work-queue/feed', [WorkQueueController::class, 'feed'])
+        ->name('work-queue.feed');
+
+    Route::get('notifications/feed', [NotificationController::class, 'feed'])
+        ->name('notifications.feed');
+
+    Route::get('notifications', [NotificationController::class, 'index'])
+        ->name('notifications.index');
+
+    Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])
+        ->name('notifications.mark-all-read');
+
+    Route::get('notifications/{notification}/open', [NotificationController::class, 'open'])
+        ->name('notifications.open');
+
+    Route::post('notifications/{notification}/mark-read', [NotificationController::class, 'markAsRead'])
+        ->name('notifications.mark-read');
 
     Route::resource('distribution-centers', DistributionCenterController::class)
         ->only(['index'])

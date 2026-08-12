@@ -9,6 +9,7 @@ use App\Models\DistributionCenter;
 use App\Models\Product;
 use App\Models\QualityCertificate;
 use App\Models\UrgentReason;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,7 @@ class PtnRequestController extends Controller
             'creator',
             'urgentReason',
             'reissueOfCertificate',
+            'qualityCertificate',
         ])->whereIn('status', [
             'WAIT_PTN',
             'PTN_PROCESSING',
@@ -151,6 +153,10 @@ class PtnRequestController extends Controller
 
             DB::commit();
 
+            app(NotificationService::class)->notifyCertificateCreated(
+                $certificate->fresh(['request.distributionCenter', 'request.customer'])
+            );
+
             return redirect()
                 ->route('quality-certificates.show', $certificate)
                 ->with('success', 'Đã lập trực tiếp phiếu CNCL. Bạn có thể kiểm tra PDF, ký số và gửi email cho khách hàng.');
@@ -260,6 +266,10 @@ class PtnRequestController extends Controller
 
             DB::commit();
 
+            app(NotificationService::class)->notifyCertificateCreated(
+                $certificate->fresh(['request.distributionCenter', 'request.customer'])
+            );
+
             return redirect()
                 ->route('quality-certificates.show', $certificate)
                 ->with('success', 'Đã tiếp nhận yêu cầu và lập phiếu CNCL thành công.');
@@ -319,6 +329,10 @@ class PtnRequestController extends Controller
             );
 
             DB::commit();
+
+            app(NotificationService::class)->notifyCertificateCreated(
+                $certificate->fresh(['request.distributionCenter', 'request.customer'])
+            );
 
             return redirect()
                 ->route('quality-certificates.show', $certificate)

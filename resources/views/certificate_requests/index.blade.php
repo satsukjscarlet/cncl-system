@@ -77,6 +77,9 @@
                     <label for="status">Trạng thái</label>
                     <div class="form-group mb-0">
                         <select id="status" name="status" class="form-control select2">
+                            <option value="SIGN_READY" {{ request('status') == 'SIGN_READY' ? 'selected' : '' }}>Chờ Trưởng PTN ký</option>
+                            <option value="SIGN_PENDING" {{ request('status') == 'SIGN_PENDING' ? 'selected' : '' }}>Đang chờ ký số</option>
+                            <option value="SIGN_EXPIRED" {{ request('status') == 'SIGN_EXPIRED' ? 'selected' : '' }}>Quá hạn ký số</option>
                             <option value="">Tất cả trạng thái</option>
                             <option value="DRAFT" {{ request('status') == 'DRAFT' ? 'selected' : '' }}>Nháp</option>
                             <option value="WAIT_DVKH" {{ request('status') == 'WAIT_DVKH' ? 'selected' : '' }}>Chờ DVKH</option>
@@ -161,7 +164,7 @@
                             @endif
                         </td>
                         <td>
-                            @include('certificate_requests.partials.status_badge', ['status' => $item->status])
+                            @include('certificate_requests.partials.status_badge', ['certificateRequest' => $item])
                         </td>
                         <td class="text-center">
                             <a href="{{ route('certificate-requests.show', $item) }}" class="btn btn-sm btn-info" title="Xem">

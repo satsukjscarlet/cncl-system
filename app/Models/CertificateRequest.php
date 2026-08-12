@@ -78,6 +78,32 @@ class CertificateRequest extends Model
         return $this->belongsTo(QualityCertificate::class, 'reissue_of_certificate_id');
     }
 
+    public function displayStatusMeta(): array
+    {
+        $certificate = $this->qualityCertificate;
+
+        if ($certificate) {
+            return $certificate->displayStatusMeta();
+        }
+
+        return self::statusMeta($this->status);
+    }
+
+    public static function statusMeta(?string $status): array
+    {
+        $map = [
+            'DRAFT' => ['class' => 'badge-secondary', 'text' => 'Nháp'],
+            'WAIT_DVKH' => ['class' => 'badge-warning', 'text' => 'Chờ DVKH kiểm tra'],
+            'WAIT_PTN' => ['class' => 'badge-info', 'text' => 'Chờ PTN tiếp nhận'],
+            'PTN_PROCESSING' => ['class' => 'badge-primary', 'text' => 'PTN đang lập phiếu'],
+            'SIGNED' => ['class' => 'badge-success', 'text' => 'Đã ký số'],
+            'COMPLETED' => ['class' => 'badge-success', 'text' => 'Hoàn tất'],
+            'CANCELLED' => ['class' => 'badge-danger', 'text' => 'Đã trả lại / hủy'],
+        ];
+
+        return $map[$status] ?? ['class' => 'badge-light', 'text' => $status ?: '-'];
+    }
+
     public function setInvoiceNoAttribute($value): void
     {
         $invoiceNo = blank($value) ? null : trim((string) $value);

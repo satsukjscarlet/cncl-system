@@ -1,17 +1,16 @@
 @php
-    $map = [
-        'DRAFT' => ['class' => 'badge-secondary', 'text' => 'Nháp'],
-        'WAIT_DVKH' => ['class' => 'badge-warning', 'text' => 'Chờ DVKH'],
-        'WAIT_PTN' => ['class' => 'badge-info', 'text' => 'Chờ PTN'],
-        'PTN_PROCESSING' => ['class' => 'badge-primary', 'text' => 'PTN xử lý'],
-        'SIGNED' => ['class' => 'badge-success', 'text' => 'Đã ký số'],
-        'COMPLETED' => ['class' => 'badge-success', 'text' => 'Hoàn tất'],
-        'CANCELLED' => ['class' => 'badge-danger', 'text' => 'Hủy/Trả lại'],
-    ];
-
-    $item = $map[$status] ?? ['class' => 'badge-light', 'text' => $status];
+    if (isset($certificateRequest) && $certificateRequest) {
+        $item = $certificateRequest->displayStatusMeta();
+    } elseif (isset($qualityCertificate) && $qualityCertificate) {
+        $item = $qualityCertificate->displayStatusMeta();
+    } else {
+        $item = \App\Models\CertificateRequest::statusMeta($status ?? null);
+    }
 @endphp
 
 <span class="badge {{ $item['class'] }}">
+    @if(!empty($item['icon']))
+        <i class="{{ $item['icon'] }}"></i>
+    @endif
     {{ $item['text'] }}
 </span>
