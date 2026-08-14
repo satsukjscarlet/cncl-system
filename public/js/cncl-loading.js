@@ -3,40 +3,58 @@
 
     var showTimer = null;
     var active = false;
+    var defaultMessage = 'Đang xử lý, vui lòng chờ...';
+    var submitterSelector = 'button:not([type]), button[type="submit"], input[type="submit"], input[type="image"]';
 
-    function ensureOverlay() {
+    function ensureOverlay(message) {
         var overlay = document.querySelector('.cncl-loading-overlay');
 
-        if (overlay) {
-            return overlay;
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'cncl-loading-overlay';
+            overlay.setAttribute('aria-live', 'polite');
+            overlay.setAttribute('aria-busy', 'true');
+            overlay.innerHTML = [
+                '<div class="cncl-loading-box" role="status">',
+                '<span class="cncl-loading-spinner" aria-hidden="true"></span>',
+                '<span class="cncl-loading-text"></span>',
+                '</div>'
+            ].join('');
+
+            document.body.appendChild(overlay);
         }
 
-        overlay = document.createElement('div');
-        overlay.className = 'cncl-loading-overlay';
-        overlay.setAttribute('aria-live', 'polite');
-        overlay.setAttribute('aria-busy', 'true');
-        overlay.innerHTML = [
-            '<div class="cncl-loading-box" role="status">',
-            '<span class="cncl-loading-spinner" aria-hidden="true"></span>',
-            '<span class="cncl-loading-text">Đang xử lý, vui lòng chờ...</span>',
-            '</div>'
-        ].join('');
-
-        document.body.appendChild(overlay);
+        setMessage(message || defaultMessage);
 
         return overlay;
     }
 
-    function showLoading(delay) {
+    function setMessage(message) {
+        var text = document.querySelector('.cncl-loading-text');
+
+        if (text) {
+            text.textContent = message || defaultMessage;
+        }
+    }
+
+    function showLoading(delay, message) {
         if (active) {
+            ensureOverlay(message);
+            document.body.classList.add('cncl-loading');
             return;
         }
 
         active = true;
         clearTimeout(showTimer);
 
+        if (typeof delay === 'number' && delay <= 0) {
+            ensureOverlay(message);
+            document.body.classList.add('cncl-loading');
+            return;
+        }
+
         showTimer = setTimeout(function () {
-            ensureOverlay();
+            ensureOverlay(message);
             document.body.classList.add('cncl-loading');
         }, typeof delay === 'number' ? delay : 120);
     }
@@ -74,7 +92,13 @@
     }
 
     function rememberSubmitter(event) {
-        var button = event.target.closest('button[type="submit"], input[type="submit"]');
+        var target = event.target;
+
+        if (!target || typeof target.closest !== 'function') {
+            return;
+        }
+
+        var button = target.closest(submitterSelector);
 
         if (button && button.form) {
             button.form.__cnclSubmitter = button;
@@ -95,7 +119,7 @@
     }
 
     function disableSubmitButtons(form, submitter) {
-        var buttons = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+        var buttons = form.querySelectorAll(submitterSelector);
 
         buttons.forEach(function (button) {
             button.disabled = true;
@@ -108,6 +132,19 @@
         }
     }
 
+    function loadingMessageFor(form, submitter) {
+        return (submitter && submitter.getAttribute('data-loading-message'))
+            || form.getAttribute('data-loading-message')
+            || defaultMessage;
+    }
+
+    function loadingDelayFor(form, submitter) {
+        return form.hasAttribute('data-loading-lock')
+            || (submitter && submitter.hasAttribute('data-loading-lock'))
+            ? 0
+            : 80;
+    }
+
     document.addEventListener('click', function (event) {
         rememberSubmitter(event);
 
@@ -117,11 +154,15 @@
             return;
         }
 
-        showLoading(140);
+        showLoading(140, link.getAttribute('data-loading-message'));
     }, true);
 
     document.addEventListener('submit', function (event) {
         var form = event.target;
+
+        if (event.defaultPrevented) {
+            return;
+        }
 
         if (!form || shouldIgnoreForm(form)) {
             return;
@@ -141,8 +182,15 @@
         var submitter = event.submitter || form.__cnclSubmitter;
         preserveSubmitterValue(form, submitter);
         disableSubmitButtons(form, submitter);
-        showLoading(80);
-    }, true);
+        showLoading(loadingDelayFor(form, submitter), loadingMessageFor(form, submitter));
+    }, false);
+
+    window.CnclLoading = {
+        show: function (message) {
+            showLoading(0, message);
+        },
+        hide: hideLoading
+    };
 
     window.addEventListener('pageshow', hideLoading);
     window.addEventListener('pagehide', hideLoading);

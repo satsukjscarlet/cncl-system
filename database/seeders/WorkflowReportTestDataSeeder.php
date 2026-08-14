@@ -207,7 +207,7 @@ class WorkflowReportTestDataSeeder extends Seeder
 
         $details = $selected->map(fn (Product $product) => [
             'product' => $product,
-            'quantity' => mt_rand(1, 500) + ($index / 100),
+            'quantity' => mt_rand(1, 500),
         ]);
 
         $rows = $details->map(fn (array $detail) => [

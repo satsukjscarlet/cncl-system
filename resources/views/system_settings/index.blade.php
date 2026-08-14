@@ -1,6 +1,6 @@
-@extends('adminlte::page')
+﻿@extends('adminlte::page')
 
-@section('title', 'Cấu hình hệ thống')
+@section('title', 'Cáº¥u hÃ¬nh há»‡ thá»‘ng')
 
 @section('css')
     <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260611-3') }}">
@@ -66,8 +66,8 @@
 
 @section('content_header')
 <div>
-    <h1 class="m-0">Cấu hình hệ thống</h1>
-    <small class="text-muted">Thiết lập vận hành chung và mẫu chữ ký số VNPT SmartCA</small>
+    <h1 class="m-0">Cáº¥u hÃ¬nh há»‡ thá»‘ng</h1>
+    <small class="text-muted">Thiáº¿t láº­p váº­n hÃ nh chung vÃ  máº«u chá»¯ kÃ½ sá»‘ VNPT SmartCA</small>
 </div>
 @stop
 
@@ -81,7 +81,7 @@
 
 @if($errors->any())
     <div class="alert alert-danger alert-dismissible fade show">
-        <i class="fas fa-exclamation-triangle"></i> Vui lòng kiểm tra lại dữ liệu cấu hình.
+        <i class="fas fa-exclamation-triangle"></i> Vui lÃ²ng kiá»ƒm tra láº¡i dá»¯ liá»‡u cáº¥u hÃ¬nh.
         <button type="button" class="close" data-dismiss="alert">&times;</button>
     </div>
 @endif
@@ -91,6 +91,7 @@
     $imageUrl = $imagePath ? asset('storage/' . $imagePath) : null;
     $renderMode = (int) old('smartca_signature_render_mode', $signatureSettings['render_mode']);
     $signatureText = old('smartca_signature_text', $signatureSettings['signature_text']);
+    $pageMode = old('smartca_signature_page_mode', $signatureSettings['page_mode'] ?? 'last');
 @endphp
 
 <form method="POST" action="{{ route('system-settings.update') }}" enctype="multipart/form-data">
@@ -98,7 +99,7 @@
 
     <div class="card card-primary card-outline">
         <div class="card-header">
-            <h3 class="card-title"><i class="fas fa-envelope"></i> Cấu hình email</h3>
+            <h3 class="card-title"><i class="fas fa-envelope"></i> Cáº¥u hÃ¬nh email</h3>
         </div>
         <div class="card-body">
             <div class="custom-control custom-switch">
@@ -109,7 +110,7 @@
                        id="auto_send_email_after_sign"
                        {{ old('auto_send_email_after_sign', $autoSendEmail) ? 'checked' : '' }}>
                 <label class="custom-control-label" for="auto_send_email_after_sign">
-                    Tự động gửi email sau khi ký số/phát hành phiếu CNCL
+                    Tá»± Ä‘á»™ng gá»­i email sau khi kÃ½ sá»‘/phÃ¡t hÃ nh phiáº¿u CNCL
                 </label>
             </div>
         </div>
@@ -117,7 +118,7 @@
 
     <div class="card card-info card-outline">
         <div class="card-header">
-            <h3 class="card-title"><i class="fas fa-signature"></i> Thiết kế mẫu chữ ký số</h3>
+            <h3 class="card-title"><i class="fas fa-signature"></i> Thiáº¿t káº¿ máº«u chá»¯ kÃ½ sá»‘</h3>
         </div>
 
         <div class="card-body">
@@ -125,19 +126,19 @@
                 <div>
                     <div class="form-row">
                         <div class="form-group col-md-6">
-                            <label for="smartca_signature_render_mode">Kiểu hiển thị</label>
+                            <label for="smartca_signature_render_mode">Kiá»ƒu hiá»ƒn thá»‹</label>
                             <select name="smartca_signature_render_mode" id="smartca_signature_render_mode" class="form-control @error('smartca_signature_render_mode') is-invalid @enderror">
-                                <option value="0" {{ $renderMode === 0 ? 'selected' : '' }}>Chỉ chữ</option>
-                                <option value="1" {{ $renderMode === 1 ? 'selected' : '' }}>Chữ + logo bên trái</option>
-                                <option value="2" {{ $renderMode === 2 ? 'selected' : '' }}>Chỉ logo</option>
-                                <option value="3" {{ $renderMode === 3 ? 'selected' : '' }}>Chữ + logo phía trên</option>
-                                <option value="4" {{ $renderMode === 4 ? 'selected' : '' }}>Chữ + ảnh nền toàn khung</option>
+                                <option value="0" {{ $renderMode === 0 ? 'selected' : '' }}>Chá»‰ chá»¯</option>
+                                <option value="1" {{ $renderMode === 1 ? 'selected' : '' }}>Chá»¯ + logo bÃªn trÃ¡i</option>
+                                <option value="2" {{ $renderMode === 2 ? 'selected' : '' }}>Chá»‰ logo</option>
+                                <option value="3" {{ $renderMode === 3 ? 'selected' : '' }}>Chá»¯ + logo phÃ­a trÃªn</option>
+                                <option value="4" {{ $renderMode === 4 ? 'selected' : '' }}>Chá»¯ + áº£nh ná»n toÃ n khung</option>
                             </select>
                             @error('smartca_signature_render_mode')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
                         <div class="form-group col-md-3">
-                            <label for="smartca_signature_font_size">Cỡ chữ</label>
+                            <label for="smartca_signature_font_size">Cá»¡ chá»¯</label>
                             <input type="number" name="smartca_signature_font_size" id="smartca_signature_font_size"
                                    class="form-control @error('smartca_signature_font_size') is-invalid @enderror"
                                    min="8" max="24"
@@ -146,7 +147,7 @@
                         </div>
 
                         <div class="form-group col-md-3">
-                            <label for="smartca_signature_font_color">Màu chữ</label>
+                            <label for="smartca_signature_font_color">MÃ u chá»¯</label>
                             <input type="color" name="smartca_signature_font_color" id="smartca_signature_font_color"
                                    class="form-control @error('smartca_signature_font_color') is-invalid @enderror"
                                    value="{{ old('smartca_signature_font_color', $signatureSettings['font_color']) }}">
@@ -155,64 +156,74 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="smartca_signature_text">Nội dung chữ ký</label>
+                        <label for="smartca_signature_text">Ná»™i dung chá»¯ kÃ½</label>
                         <textarea name="smartca_signature_text" id="smartca_signature_text" rows="4"
                                   class="form-control @error('smartca_signature_text') is-invalid @enderror">{{ $signatureText }}</textarea>
                         @error('smartca_signature_text')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         <small class="text-muted">
-                            Biến hỗ trợ: <code>{certificate_no}</code>, <code>{signed_by}</code>, <code>{signed_at}</code>.
+                            Biáº¿n há»— trá»£: <code>{certificate_no}</code>, <code>{signed_by}</code>, <code>{signed_at}</code>.
                         </small>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group col-md-3">
-                            <label for="smartca_signature_page">Trang ký</label>
+                            <label for="smartca_signature_page_mode">V&#7883; tr&#237; trang k&#253;</label>
+                            <select name="smartca_signature_page_mode" id="smartca_signature_page_mode"
+                                    class="form-control @error('smartca_signature_page_mode') is-invalid @enderror">
+                                <option value="last" {{ $pageMode === 'last' ? 'selected' : '' }}>Trang cu&#7889;i</option>
+                                <option value="fixed" {{ $pageMode === 'fixed' ? 'selected' : '' }}>Trang c&#7909; th&#7875;</option>
+                            </select>
+                            @error('smartca_signature_page_mode')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="form-group col-md-2">
+                            <label for="smartca_signature_page">Trang k&#253;</label>
                             <input type="number" name="smartca_signature_page" id="smartca_signature_page"
                                    class="form-control @error('smartca_signature_page') is-invalid @enderror"
                                    min="1" max="50"
                                    value="{{ old('smartca_signature_page', $signatureSettings['page']) }}">
                             @error('smartca_signature_page')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <small class="text-muted">Ch&#7881; d&#249;ng khi ch&#7885;n trang c&#7909; th&#7875;.</small>
                         </div>
-
-                        <div class="form-group col-md-9">
-                            <label for="smartca_signature_rectangle">Khung chữ ký PDF</label>
+                        <div class="form-group col-md-7">
+                            <label for="smartca_signature_rectangle">Khung chá»¯ kÃ½ PDF</label>
                             <div class="input-group">
                                 <input type="text" name="smartca_signature_rectangle" id="smartca_signature_rectangle"
                                        class="form-control @error('smartca_signature_rectangle') is-invalid @enderror"
                                        value="{{ old('smartca_signature_rectangle', $signatureSettings['rectangle']) }}"
-                                       placeholder="130,72,470,125">
+                                       placeholder="315,150,565,220">
                                 <div class="input-group-append">
                                     <button type="button" class="btn btn-outline-secondary" id="signatureBottomPreset">
-                                        Vùng ký
+                                        VÃ¹ng kÃ½
                                     </button>
                                 </div>
                                 @error('smartca_signature_rectangle')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
-                            <small class="text-muted">Định dạng: <code>x1,y1,x2,y2</code>. A4 dọc thường rộng 595 point, cao 842 point. Vùng ký phía trên footer: <code>130,72,470,125</code>.</small>
+                            <small class="text-muted">Äá»‹nh dáº¡ng: <code>x1,y1,x2,y2</code>. A4 dá»c thÆ°á»ng rá»™ng 595 point, cao 842 point. VÃ¹ng kÃ½ phÃ­a trÃªn footer: <code>315,150,565,220</code>.</small>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="smartca_signature_image">Ảnh/logo chữ ký</label>
+                        <label for="smartca_signature_image">áº¢nh/logo chá»¯ kÃ½</label>
                         <div class="custom-file">
                             <input type="file" name="smartca_signature_image" id="smartca_signature_image"
                                    class="custom-file-input @error('smartca_signature_image') is-invalid @enderror"
                                    accept="image/png,image/jpeg">
-                            <label class="custom-file-label" for="smartca_signature_image">Chọn ảnh PNG/JPG tối đa 2MB</label>
+                            <label class="custom-file-label" for="smartca_signature_image">Chá»n áº£nh PNG/JPG tá»‘i Ä‘a 2MB</label>
                         </div>
                         @error('smartca_signature_image')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
 
                         @if($imageUrl)
                             <div class="mt-3 d-flex align-items-center">
-                                <img src="{{ $imageUrl }}" alt="Mẫu chữ ký" class="border rounded mr-3" style="width:120px;height:72px;object-fit:contain;">
+                                <img src="{{ $imageUrl }}" alt="Máº«u chá»¯ kÃ½" class="border rounded mr-3" style="width:120px;height:72px;object-fit:contain;">
                                 <div>
-                                    <div class="small text-muted mb-1">Đã lưu: <code>{{ $imagePath }}</code></div>
+                                    <div class="small text-muted mb-1">ÄÃ£ lÆ°u: <code>{{ $imagePath }}</code></div>
                                     <a href="{{ $imageUrl }}" target="_blank" class="btn btn-sm btn-outline-info mr-2">
-                                        <i class="fas fa-external-link-alt"></i> Mở ảnh
+                                        <i class="fas fa-external-link-alt"></i> Má»Ÿ áº£nh
                                     </a>
                                     <div class="custom-control custom-checkbox d-inline-block">
                                         <input type="checkbox" class="custom-control-input" id="remove_smartca_signature_image" name="remove_smartca_signature_image" value="1">
-                                        <label class="custom-control-label" for="remove_smartca_signature_image">Xóa ảnh hiện tại</label>
+                                        <label class="custom-control-label" for="remove_smartca_signature_image">XÃ³a áº£nh hiá»‡n táº¡i</label>
                                     </div>
                                 </div>
                             </div>
@@ -222,22 +233,22 @@
 
                 <div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <strong>Xem trước</strong>
-                        <span class="badge badge-light border">A4 mô phỏng</span>
+                        <strong>Xem trÆ°á»›c</strong>
+                        <span class="badge badge-light border">A4 mÃ´ phá»ng</span>
                     </div>
 
                     <div class="signature-preview-page">
                         <div id="signaturePreviewBox" class="signature-preview-box">
                             <img id="signaturePreviewImage"
                                  src="{{ $imageUrl ?: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==' }}"
-                                 alt="Ảnh chữ ký"
+                                 alt="áº¢nh chá»¯ kÃ½"
                                  class="signature-preview-image">
                             <div id="signaturePreviewText" class="signature-preview-text"></div>
                         </div>
                     </div>
 
                     <small class="text-muted d-block mt-2">
-                        Preview chỉ mô phỏng bố cục. File PDF ký thật sẽ do VNPT trả về sau bước <code>signExternal</code>.
+                        Preview chá»‰ mÃ´ phá»ng bá»‘ cá»¥c. File PDF kÃ½ tháº­t sáº½ do VNPT tráº£ vá» sau bÆ°á»›c <code>signExternal</code>.
                     </small>
                 </div>
             </div>
@@ -245,7 +256,7 @@
 
         <div class="card-footer d-flex justify-content-end">
             <button class="btn btn-primary">
-                <i class="fas fa-save"></i> Lưu cấu hình
+                <i class="fas fa-save"></i> LÆ°u cáº¥u hÃ¬nh
             </button>
         </div>
     </div>
@@ -269,7 +280,7 @@
         function sampleText() {
             return text.value
                 .replaceAll('{certificate_no}', 'CNCL-20260626-0001')
-                .replaceAll('{signed_by}', 'Quản trị hệ thống')
+                .replaceAll('{signed_by}', 'Quáº£n trá»‹ há»‡ thá»‘ng')
                 .replaceAll('{signed_at}', '26/06/2026 09:30:00');
         }
 
@@ -302,13 +313,13 @@
         });
 
         preset.addEventListener('click', function () {
-            rectangle.value = '130,72,470,125';
+            rectangle.value = '315,150,565,220';
         });
 
         file.addEventListener('change', function () {
             const selected = file.files && file.files[0];
             const label = file.nextElementSibling;
-            label.textContent = selected ? selected.name : 'Chọn ảnh PNG/JPG tối đa 2MB';
+            label.textContent = selected ? selected.name : 'Chá»n áº£nh PNG/JPG tá»‘i Ä‘a 2MB';
 
             if (!selected) {
                 applyPreview();

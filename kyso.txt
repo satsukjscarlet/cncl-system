@@ -1,0 +1,52 @@
+Có thể thiết kế và cấu hình được, nhưng cần tách rõ 2 lớp:
+
+1. **Chữ ký số thật trong PDF**
+Đây là chữ ký PAdES được nhúng vào file PDF. Nó có giá trị pháp lý/kỹ thuật, khi mở bằng Adobe Reader sẽ thấy trạng thái chữ ký hợp lệ, chứng thư, thời gian ký, tổ chức ký.
+
+2. **Mẫu hiển thị chữ ký trên mặt PDF**
+Đây là phần nhìn thấy trên trang: khung chữ ký, ảnh dấu, tên người ký, thời gian ký, serial chứng thư, logo SmartCA... Phần này chỉ là “appearance” của chữ ký số.
+
+Với hệ thống hiện tại, phần cấu hình VNPT đang có `sigOptions`, trong đó quan trọng nhất là:
+
+```php
+'page' => ...
+'rectangle' => ...
+'renderMode' => ...
+'signatureText' => ...
+'customImage' => ...
+```
+
+Nghĩa là mình có thể cấu hình:
+
+- Ký hiển thị ở **trang đầu**
+- Ký hiển thị ở **một trang cụ thể**
+- Ký hiển thị ở **trang cuối**, nếu phía VNPT/signature service hỗ trợ giá trị page cuối hoặc mình tự tính số trang trước khi gửi
+- Thay đổi vị trí bằng `rectangle`, ví dụ vùng dưới bên phải, giữa trang, hoặc cuối nội dung
+- Dùng chữ, ảnh, hoặc cả chữ + ảnh tùy `renderMode`
+
+Về ký từng trang: thường **không cần ký từng trang**. Một chữ ký số PAdES ký toàn bộ nội dung PDF, không chỉ trang đang hiển thị chữ ký. Dù khung chữ ký nằm ở trang đầu, trang cuối hay trang bất kỳ, chữ ký vẫn bảo vệ toàn bộ file. Nếu PDF bị sửa bất kỳ trang nào sau khi ký, chữ ký sẽ báo không hợp lệ.
+
+Nếu muốn “mỗi trang đều có dấu/nhãn ký”, có 2 hướng:
+
+- **Không ký nhiều lần**, chỉ đóng watermark/nhãn “Đã ký số” trên từng trang, sau đó ký số toàn file một lần. Đây là hướng tôi khuyên dùng.
+- **Ký nhiều chữ ký trên nhiều trang**, mỗi trang một signature appearance. Cách này nặng, rối, dễ lỗi, và thường không cần cho phiếu CNCL.
+
+Với phiếu CNCL của mình, tôi đề xuất:
+
+- File ký điện tử: hiển thị chữ ký ở **trang cuối**, khu vực phía trên footer xanh.
+- Nếu phiếu chỉ có 1 trang thì chữ ký nằm trang 1.
+- Nếu phiếu nhiều trang thì chữ ký nằm trang cuối, tránh che bảng sản phẩm.
+- Trên các trang còn lại có thể thêm dòng nhỏ ở footer hoặc watermark nhẹ: `Phiếu được ký số điện tử - tra cứu theo mã phiếu ...`.
+
+Mẫu chữ ký nên gồm:
+
+```text
+PHIẾU ĐƯỢC KÝ ĐIỆN TỬ
+Ký bởi: CÔNG TY CỔ PHẦN NHỰA THIẾU NIÊN TIỀN PHONG
+Người ký: ...
+Thời gian ký: dd/mm/yyyy HH:mm:ss
+Serial CTS: ...
+Mã phiếu: CNCL-...
+```
+
+Nếu muốn đẹp và chuyên nghiệp hơn, có thể thêm logo/dấu đỏ dạng ảnh vào appearance, nhưng giá trị pháp lý vẫn nằm ở chữ ký số PAdES, không nằm ở ảnh.

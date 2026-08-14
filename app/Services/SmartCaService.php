@@ -110,6 +110,8 @@ class SmartCaService
 
         $transactionId = 'HASH-' . $certificate->id . '-' . Str::upper((string) Str::uuid());
         $fileName = $certificate->certificate_no . '.pdf';
+        $pageCount = $this->countPdfPages($pdfContent);
+        $signatureOptions = $this->signatureOptions($certificate, $pageCount);
 
         $payload = [
             'transaction_id' => $transactionId,
@@ -122,7 +124,7 @@ class SmartCaService
                     'storage_file_name' => '',
                     'name' => $fileName,
                     'pdfContent' => base64_encode($pdfContent),
-                    'sigOptions' => $this->signatureOptions($certificate),
+                    'sigOptions' => $signatureOptions,
                 ],
             ],
         ];
@@ -146,6 +148,8 @@ class SmartCaService
             'file_id' => (string) data_get($hashResponse, 'fileID'),
             'hash_base64' => $hashBase64,
             'hash_hex' => bin2hex($hashBytes),
+            'page_count' => $pageCount,
+            'signature_options' => $signatureOptions,
             'response' => $response,
             'request' => $this->maskPayload($payload),
             'endpoint' => $this->signatureUrl('/calculateHash'),
@@ -278,11 +282,15 @@ class SmartCaService
         return preg_replace('#/sca/sp\d+$#', '/rest/v2/signature', $baseUrl) ?: $baseUrl . '/rest/v2/signature';
     }
 
-    private function signatureOptions(QualityCertificate $certificate): array
+    private function signatureOptions(QualityCertificate $certificate, ?int $pageCount = null): array
     {
         $renderMode = (int) SystemSetting::getValue('smartca_signature_render_mode', 0);
         $imagePath = SystemSetting::getValue('smartca_signature_image_path');
         $hasImage = $imagePath && Storage::disk('public')->exists($imagePath);
+        $pageMode = (string) SystemSetting::getValue('smartca_signature_page_mode', 'last');
+        $page = $pageMode === 'fixed'
+            ? (int) SystemSetting::getValue('smartca_signature_page', 1)
+            : max(1, (int) ($pageCount ?: 1));
 
         if ($renderMode > 0 && !$hasImage) {
             $renderMode = 0;
@@ -295,8 +303,8 @@ class SmartCaService
             'signatureText' => $this->signatureText($certificate),
             'signatures' => [
                 [
-                    'page' => (int) SystemSetting::getValue('smartca_signature_page', 1),
-                    'rectangle' => (string) SystemSetting::getValue('smartca_signature_rectangle', '130,72,470,125'),
+                    'page' => $page,
+                    'rectangle' => (string) SystemSetting::getValue('smartca_signature_rectangle', '315,150,565,220'),
                 ],
             ],
         ];
@@ -308,11 +316,20 @@ class SmartCaService
         return $options;
     }
 
+    private function countPdfPages(string $pdfContent): int
+    {
+        if (preg_match_all('/\/Type\s*\/Page\b/', $pdfContent, $matches)) {
+            return max(1, count($matches[0]));
+        }
+
+        return 1;
+    }
+
     private function signatureText(QualityCertificate $certificate): string
     {
         $template = (string) SystemSetting::getValue(
             'smartca_signature_text',
-            "Phieu CNCL: {certificate_no}\nThoi gian ky: {signed_at}"
+            "PHIEU DUOC KY DIEN TU\nPhieu CNCL: {certificate_no}\nNguoi ky: {signed_by}\nThoi gian ky: {signed_at}"
         );
 
         return strtr($template, [

@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Activitylog\Models\Activity;
 
 class QualityCertificateController extends Controller
 {
@@ -238,7 +239,28 @@ class QualityCertificateController extends Controller
             'printLogs.user',
         ]);
 
-        return view('quality_certificates.show', compact('qualityCertificate'));
+        $historyKeywords = collect([
+            $qualityCertificate->certificate_no,
+            $qualityCertificate->request?->request_no,
+            $qualityCertificate->replacesCertificate?->certificate_no,
+            $qualityCertificate->replacedByCertificate?->certificate_no,
+            $qualityCertificate->request?->reissueOfCertificate?->certificate_no,
+        ])->filter()->unique()->values();
+
+        $certificateHistoryLogs = Activity::query()
+            ->with('causer')
+            ->when($historyKeywords->isNotEmpty(), function ($query) use ($historyKeywords) {
+                $query->where(function ($logQuery) use ($historyKeywords) {
+                    foreach ($historyKeywords as $keyword) {
+                        $logQuery->orWhere('description', 'like', '%' . $keyword . '%');
+                    }
+                });
+            })
+            ->latest()
+            ->limit(30)
+            ->get();
+
+        return view('quality_certificates.show', compact('qualityCertificate', 'certificateHistoryLogs'));
     }
 
     public function sign(
@@ -287,6 +309,19 @@ class QualityCertificateController extends Controller
         $oldData = $qualityCertificate->toArray();
         $isResendAfterExpired = $qualityCertificate->smartca_status === 'PENDING'
             || $qualityCertificate->smartca_status === 'EXPIRED';
+
+        if ($isResendAfterExpired && $qualityCertificate->smartca_transaction_id) {
+            $statusResult = $this->processSmartCaStatus($qualityCertificate, $smartCaService, $padesService);
+
+            if ($this->isSmartCaSignedResult($statusResult)) {
+                return redirect()
+                    ->route('quality-certificates.show', $qualityCertificate->fresh())
+                    ->with('success', 'Giao dịch ký cũ đã được VNPT SmartCA xác nhận ký thành công. Hệ thống đã hoàn tất phiếu, không gửi lại yêu cầu ký mới. ' . $statusResult['message']);
+            }
+
+            $qualityCertificate->refresh();
+            $oldData = $qualityCertificate->toArray();
+        }
 
         if ($qualityCertificate->smartca_status === 'PENDING') {
             $this->markSmartCaExpired($qualityCertificate, $oldData);
@@ -367,6 +402,8 @@ class QualityCertificateController extends Controller
                     'file_id' => $calculateHashResult['file_id'],
                     'hash_base64' => $calculateHashResult['hash_base64'],
                     'hash_hex' => $calculateHashResult['hash_hex'],
+                    'page_count' => $calculateHashResult['page_count'] ?? null,
+                    'signature_options' => $calculateHashResult['signature_options'] ?? null,
                 ];
             }
 
@@ -1107,6 +1144,16 @@ class QualityCertificateController extends Controller
                 'message' => 'Phiếu đã ký VNPT SmartCA nhưng gửi email thất bại: ' . $e->getMessage(),
             ];
         }
+    }
+
+    private function isSmartCaSignedResult(array $result): bool
+    {
+        return in_array($result['status'] ?? null, [
+            'SIGNED_EMAIL_SENT',
+            'SIGNED_NO_EMAIL',
+            'SIGNED_EMAIL_MISSING',
+            'SIGNED_EMAIL_FAILED',
+        ], true);
     }
 
     private function normalizeEmail(?string $email): ?string

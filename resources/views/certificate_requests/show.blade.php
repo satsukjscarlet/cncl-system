@@ -107,6 +107,32 @@
                 <p><strong>Người tạo:</strong> {{ $certificateRequest->creator->name ?? '—' }}</p>
                 <p><strong>Ngày tạo:</strong> {{ optional($certificateRequest->created_at)->format('d/m/Y H:i') }}</p>
             </div>
+
+            @can('dvkh.process')
+                @if($certificateRequest->status === 'WAIT_DVKH')
+                    <div class="card-footer">
+                        @php
+                            $approveConfirm = ($invoiceDuplicates ?? collect())->isNotEmpty()
+                                ? 'Số hóa đơn của yêu cầu này đang trùng với yêu cầu khác. Bạn vẫn muốn xác nhận và chuyển sang PTN?'
+                                : 'Xác nhận yêu cầu này và chuyển sang PTN?';
+                        @endphp
+
+                        <form action="{{ route('dvkh.requests.approve', $certificateRequest) }}"
+                              method="POST"
+                              class="d-inline"
+                              onsubmit="return confirm({!! json_encode($approveConfirm, JSON_UNESCAPED_UNICODE) !!})">
+                            @csrf
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check"></i> Xác nhận chuyển PTN
+                            </button>
+                        </form>
+
+                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#dvkhRejectModal">
+                            <i class="fas fa-times"></i> Trả lại
+                        </button>
+                    </div>
+                @endif
+            @endcan
         </div>
     </div>
 
@@ -165,5 +191,36 @@
         </table>
     </div>
 </div>
+
+@can('dvkh.process')
+    @if($certificateRequest->status === 'WAIT_DVKH')
+        <div class="modal fade" id="dvkhRejectModal" tabindex="-1">
+            <div class="modal-dialog">
+                <form method="POST" action="{{ route('dvkh.requests.reject', $certificateRequest) }}" class="modal-content">
+                    @csrf
+
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-times-circle"></i> Trả lại yêu cầu</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+
+                    <div class="modal-body">
+                        <p>Yêu cầu: <strong>{{ $certificateRequest->request_no }}</strong></p>
+
+                        <div class="form-group">
+                            <label>Lý do trả lại <span class="text-danger">*</span></label>
+                            <textarea name="reason" class="form-control" rows="4" required></textarea>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-danger"><i class="fas fa-times"></i> Trả lại</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+@endcan
 
 @stop

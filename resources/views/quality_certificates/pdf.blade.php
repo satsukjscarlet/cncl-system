@@ -53,7 +53,7 @@
 
         .company-title {
             color: #d71920;
-            font-family: Arial, "DejaVu Sans", sans-serif;
+            font-family: "Times New Roman", "DejaVu Serif", serif;
             font-size: 15.7px;
             font-weight: bold;
             line-height: 1.18;
@@ -63,7 +63,7 @@
 
         .company-subtitle {
             color: #d71920;
-            font-family: Arial, "DejaVu Sans", sans-serif;
+            font-family: "Times New Roman", "DejaVu Serif", serif;
             font-size: 13.5px;
             font-weight: bold;
             line-height: 1.18;
@@ -251,6 +251,18 @@
             font-size: 8.8px;
         }
 
+        .electronic-trace {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 8px;
+            color: #6aa842;
+            font-family: Arial, "DejaVu Sans", sans-serif;
+            font-size: 8.5px;
+            line-height: 1.2;
+            text-align: center;
+        }
+
         .footer-wrap {
             position: fixed;
             left: -22px;
@@ -303,6 +315,7 @@
     $minimumRows = 9;
     $blankRows = max(0, $minimumRows - $detailsCount);
     $signedBy = $certificate->signed_by ?: 'VNPT SmartCA';
+    $electronicLookupUrl = route('quality-certificates.show', $certificate);
 @endphp
 
     <table class="header-table">
@@ -408,6 +421,12 @@
                     @endif
                 </div>
             </div>
+        </div>
+    @endif
+
+    @if (!($hardCopy ?? false))
+        <div class="electronic-trace">
+            Phi&#7871;u k&#253; s&#7889; &#273;i&#7879;n t&#7917; - M&#227; phi&#7871;u: {{ $certificate->certificate_no }} - Tra c&#7913;u: {{ $electronicLookupUrl }}
         </div>
     @endif
 

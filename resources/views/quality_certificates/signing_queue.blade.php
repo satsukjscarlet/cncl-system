@@ -65,7 +65,10 @@
         <form action="{{ route('quality-certificates.bulk-smartca-status') }}"
               method="POST"
               class="mt-2 mt-md-0"
-              onsubmit="return confirm('Kiểm tra tối đa 30 phiếu đang chờ app VNPT SmartCA?')">
+              onsubmit="if (!confirm('Kiểm tra tối đa 30 phiếu đang chờ app VNPT SmartCA?')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;"
+              data-loading-lock
+              data-loading-message="Đang kiểm tra hàng loạt kết quả ký VNPT SmartCA và gửi email cho các phiếu ký thành công. Vui lòng chờ..."
+              >
             @csrf
             <input type="hidden" name="limit" value="30">
             <button class="btn btn-primary">
@@ -251,13 +254,28 @@
                             </a>
 
                             @if(!$certificate->signed_at && $certificate->status !== 'REJECTED')
-                                @if($certificate->smartca_status === 'PENDING' && !$expired)
-                                    <form action="{{ route('quality-certificates.smartca-status', $certificate) }}" method="POST" class="d-inline">
+                                @if(in_array($certificate->smartca_status, ['PENDING', 'EXPIRED'], true) && $certificate->smartca_transaction_id)
+                                    <form action="{{ route('quality-certificates.smartca-status', $certificate) }}"
+                                          method="POST"
+                                          class="d-inline"
+                                          onsubmit="window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message'))"
+                                          data-loading-lock
+                                          data-loading-message="Đang kiểm tra kết quả ký VNPT SmartCA và gửi email nếu ký thành công. Vui lòng chờ...">
                                         @csrf
-                                        <button class="btn btn-sm btn-primary" title="Kiểm tra kết quả ký">
+                                        <button type="submit" class="btn btn-sm btn-primary" title="Kiểm tra kết quả ký">
                                             <i class="fas fa-sync"></i>
                                         </button>
                                     </form>
+                                    @if($expired)
+                                        <form action="{{ route('quality-certificates.sign', $certificate) }}" method="POST"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Gửi lại yêu cầu ký phiếu này? Hệ thống sẽ kiểm tra giao dịch cũ trước khi gửi lại.')">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-warning" title="Gửi lại yêu cầu ký">
+                                                <i class="fas fa-file-signature"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 @else
                                     <form action="{{ route('quality-certificates.sign', $certificate) }}" method="POST"
                                           class="d-inline"

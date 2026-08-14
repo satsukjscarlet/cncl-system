@@ -545,7 +545,7 @@ return [
                 [
                     'type' => 'js',
                     'asset' => true,
-                    'location' => 'js/cncl-loading.js?v=20260725-1',
+                    'location' => 'js/cncl-loading.js?v=20260725-5',
                 ],
             ],
         ],

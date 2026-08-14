@@ -17,8 +17,9 @@ class SystemSettingController extends Controller
             'font_size' => SystemSetting::getValue('smartca_signature_font_size', 11),
             'font_color' => SystemSetting::getValue('smartca_signature_font_color', '#000000'),
             'signature_text' => SystemSetting::getValue('smartca_signature_text', "Phiếu CNCL: {certificate_no}\nThời gian ký: {signed_at}"),
+            'page_mode' => SystemSetting::getValue('smartca_signature_page_mode', 'last'),
             'page' => SystemSetting::getValue('smartca_signature_page', 1),
-            'rectangle' => SystemSetting::getValue('smartca_signature_rectangle', '130,72,470,125'),
+            'rectangle' => SystemSetting::getValue('smartca_signature_rectangle', '315,150,565,220'),
             'image_path' => SystemSetting::getValue('smartca_signature_image_path'),
         ];
 
@@ -33,6 +34,7 @@ class SystemSettingController extends Controller
             'smartca_signature_font_size' => ['required', 'integer', 'between:8,24'],
             'smartca_signature_font_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'smartca_signature_text' => ['required', 'string', 'max:1000'],
+            'smartca_signature_page_mode' => ['required', 'in:last,fixed'],
             'smartca_signature_page' => ['required', 'integer', 'min:1', 'max:50'],
             'smartca_signature_rectangle' => ['required', 'regex:/^\d+,\d+,\d+,\d+$/'],
             'smartca_signature_image' => ['nullable', 'image', 'mimes:png,jpg,jpeg', 'max:2048'],
@@ -68,8 +70,9 @@ class SystemSettingController extends Controller
             'smartca_signature_font_size' => SystemSetting::getValue('smartca_signature_font_size', 11),
             'smartca_signature_font_color' => SystemSetting::getValue('smartca_signature_font_color', '#000000'),
             'smartca_signature_text' => SystemSetting::getValue('smartca_signature_text'),
+            'smartca_signature_page_mode' => SystemSetting::getValue('smartca_signature_page_mode', 'last'),
             'smartca_signature_page' => SystemSetting::getValue('smartca_signature_page', 1),
-            'smartca_signature_rectangle' => SystemSetting::getValue('smartca_signature_rectangle', '130,72,470,125'),
+            'smartca_signature_rectangle' => SystemSetting::getValue('smartca_signature_rectangle', '315,150,565,220'),
             'smartca_signature_image_path' => $currentImagePath,
         ];
 
@@ -105,6 +108,7 @@ class SystemSettingController extends Controller
         $this->setSetting('smartca_signature_font_size', $data['smartca_signature_font_size'], 'integer', 'Cỡ chữ mẫu chữ ký VNPT SmartCA.');
         $this->setSetting('smartca_signature_font_color', $data['smartca_signature_font_color'], 'string', 'Màu chữ mẫu chữ ký VNPT SmartCA.');
         $this->setSetting('smartca_signature_text', $data['smartca_signature_text'], 'string', 'Nội dung chữ ký hiển thị trên PDF.');
+        $this->setSetting('smartca_signature_page_mode', $data['smartca_signature_page_mode'], 'string', 'Cach chon trang dat chu ky so tren PDF.');
         $this->setSetting('smartca_signature_page', $data['smartca_signature_page'], 'integer', 'Trang đặt chữ ký số trên PDF.');
         $this->setSetting('smartca_signature_rectangle', $data['smartca_signature_rectangle'], 'string', 'Tọa độ khung chữ ký số trên PDF.');
         $this->setSetting('smartca_signature_image_path', $imagePath, 'string', 'Ảnh/logo dùng trong mẫu chữ ký VNPT SmartCA.');
@@ -120,6 +124,7 @@ class SystemSettingController extends Controller
                 'smartca_signature_font_size' => $data['smartca_signature_font_size'],
                 'smartca_signature_font_color' => $data['smartca_signature_font_color'],
                 'smartca_signature_text' => $data['smartca_signature_text'],
+                'smartca_signature_page_mode' => $data['smartca_signature_page_mode'],
                 'smartca_signature_page' => $data['smartca_signature_page'],
                 'smartca_signature_rectangle' => $data['smartca_signature_rectangle'],
                 'smartca_signature_image_path' => $imagePath,

@@ -119,6 +119,26 @@
                             <div class="text-muted small">
                                 {{ optional($certificate->created_at)->format('d/m/Y H:i') }}
                             </div>
+                            @if($certificate->replacesCertificate)
+                                <div class="mt-1">
+                                    <span class="badge badge-info">
+                                        <i class="fas fa-redo"></i> Phiếu cấp lại
+                                    </span>
+                                    <a class="small d-block mt-1" href="{{ route('quality-certificates.show', $certificate->replacesCertificate) }}">
+                                        Cấp lại cho: {{ $certificate->replacesCertificate->certificate_no }}
+                                    </a>
+                                </div>
+                            @endif
+                            @if($certificate->replacedByCertificate)
+                                <div class="mt-1">
+                                    <span class="badge badge-warning">
+                                        <i class="fas fa-exchange-alt"></i> Đã có phiếu thay thế
+                                    </span>
+                                    <a class="small d-block mt-1" href="{{ route('quality-certificates.show', $certificate->replacedByCertificate) }}">
+                                        Phiếu mới: {{ $certificate->replacedByCertificate->certificate_no }}
+                                    </a>
+                                </div>
+                            @endif
                         </td>
 
                         <td>{{ $certificate->request->request_no ?? '-' }}</td>

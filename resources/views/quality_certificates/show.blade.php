@@ -127,7 +127,7 @@
                                 <form action="{{ route('quality-certificates.resend-email', $qualityCertificate) }}" method="POST"
                                       class="d-inline" onsubmit="return confirm('Gửi lại email phiếu CNCL cho khách hàng?')">
                                     @csrf
-                                    <button class="btn btn-primary">
+                                    <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-envelope"></i> Gửi lại email
                                     </button>
                                 </form>
@@ -159,19 +159,34 @@
                                 <button class="btn btn-secondary" disabled>
                                     <i class="fas fa-undo"></i> Phiếu đã trả lại
                                 </button>
-                            @elseif ($qualityCertificate->smartca_status === 'PENDING' && !$smartCaPendingExpired)
-                                <form action="{{ route('quality-certificates.smartca-status', $qualityCertificate) }}" method="POST" class="d-inline">
+                            @elseif (in_array($qualityCertificate->smartca_status, ['PENDING', 'EXPIRED'], true) && $qualityCertificate->smartca_transaction_id)
+                                <form action="{{ route('quality-certificates.smartca-status', $qualityCertificate) }}"
+                                      method="POST"
+                                      class="d-inline"
+                                      onsubmit="window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message'))"
+                                      data-loading-lock
+                                      data-loading-message="Đang kiểm tra kết quả ký VNPT SmartCA và gửi email nếu ký thành công. Vui lòng chờ...">
                                     @csrf
-                                    <button class="btn btn-primary">
+                                    <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-sync"></i> Kiểm tra kết quả ký
                                     </button>
                                 </form>
+                                @if($smartCaCanResend)
+                                    <form action="{{ route('quality-certificates.sign', $qualityCertificate) }}" method="POST"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Gửi lại yêu cầu ký phiếu này sang VNPT SmartCA? Hệ thống sẽ kiểm tra giao dịch cũ trước khi gửi lại.')">
+                                        @csrf
+                                        <button type="submit" class="btn btn-warning">
+                                            <i class="fas fa-file-signature"></i> Gửi lại yêu cầu ký
+                                        </button>
+                                    </form>
+                                @endif
                             @else
                                 <form action="{{ route('quality-certificates.sign', $qualityCertificate) }}" method="POST"
                                       class="d-inline"
                                       onsubmit="return confirm('{{ $smartCaCanResend ? 'Gửi lại yêu cầu ký phiếu này sang VNPT SmartCA?' : 'Gửi yêu cầu ký phiếu này sang VNPT SmartCA?' }}')">
                                     @csrf
-                                    <button class="btn {{ $smartCaCanResend ? 'btn-warning' : 'btn-success' }}">
+                                    <button type="submit" class="btn {{ $smartCaCanResend ? 'btn-warning' : 'btn-success' }}">
                                         <i class="fas fa-file-signature"></i> {{ $smartCaCanResend ? 'Gửi lại yêu cầu ký' : 'Gửi yêu cầu ký SmartCA' }}
                                     </button>
                                 </form>
@@ -189,6 +204,61 @@
                 </div>
             </div>
         </div>
+
+        @if($qualityCertificate->replacesCertificate || $qualityCertificate->replacedByCertificate || $qualityCertificate->status === 'REVOKED')
+            <div class="card card-warning card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-exchange-alt"></i> Lịch sử cấp lại / thu hồi</h3>
+                </div>
+
+                <div class="card-body">
+                    @if($qualityCertificate->replacesCertificate)
+                        <div class="mb-3">
+                            <div class="text-muted small text-uppercase font-weight-bold">Phiếu hiện tại cấp lại cho</div>
+                            <a class="font-weight-bold" href="{{ route('quality-certificates.show', $qualityCertificate->replacesCertificate) }}">
+                                {{ $qualityCertificate->replacesCertificate->certificate_no }}
+                            </a>
+                            <div class="mt-1">
+                                @if($qualityCertificate->replacesCertificate->status === 'REVOKED')
+                                    <span class="badge badge-danger"><i class="fas fa-ban"></i> Phiếu cũ đã hủy / thu hồi</span>
+                                @else
+                                    <span class="badge badge-secondary">{{ $qualityCertificate->replacesCertificate->status }}</span>
+                                @endif
+                            </div>
+                            @if($qualityCertificate->replacesCertificate->revoked_reason)
+                                <div class="small mt-2">
+                                    <strong>Lý do hủy:</strong> {{ $qualityCertificate->replacesCertificate->revoked_reason }}
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    @if($qualityCertificate->replacedByCertificate)
+                        <div class="mb-3">
+                            <div class="text-muted small text-uppercase font-weight-bold">Phiếu thay thế</div>
+                            <a class="font-weight-bold" href="{{ route('quality-certificates.show', $qualityCertificate->replacedByCertificate) }}">
+                                {{ $qualityCertificate->replacedByCertificate->certificate_no }}
+                            </a>
+                            <div class="mt-1">
+                                <span class="badge badge-info"><i class="fas fa-redo"></i> Phiếu cấp lại</span>
+                                @if($qualityCertificate->replacedByCertificate->signed_at)
+                                    <span class="badge badge-success"><i class="fas fa-check"></i> Đã ký / phát hành</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($qualityCertificate->status === 'REVOKED')
+                        <div class="border-top pt-3">
+                            <div class="text-muted small text-uppercase font-weight-bold">Thông tin hủy phiếu cũ</div>
+                            <div><strong>Người hủy:</strong> {{ $qualityCertificate->revokedBy->name ?? '-' }}</div>
+                            <div><strong>Ngày hủy:</strong> {{ $qualityCertificate->revoked_at ? $qualityCertificate->revoked_at->format('d/m/Y H:i') : '-' }}</div>
+                            <div><strong>Lý do:</strong> {{ $qualityCertificate->revoked_reason ?: '-' }}</div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endif
     </div>
 
     <div class="col-md-8">
@@ -291,6 +361,8 @@
         </table>
     </div>
 </div>
+
+@include('quality_certificates.partials.history_timeline', ['logs' => $certificateHistoryLogs])
 
 <div class="card">
     <div class="card-header bg-white">
