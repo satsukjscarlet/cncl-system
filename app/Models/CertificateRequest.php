@@ -78,6 +78,16 @@ class CertificateRequest extends Model
         return $this->belongsTo(QualityCertificate::class, 'reissue_of_certificate_id');
     }
 
+    public function reissueCertificates()
+    {
+        return $this->belongsToMany(
+            QualityCertificate::class,
+            'certificate_request_reissue_certificates',
+            'certificate_request_id',
+            'quality_certificate_id'
+        )->withTimestamps();
+    }
+
     public function displayStatusMeta(): array
     {
         $certificate = $this->qualityCertificate;

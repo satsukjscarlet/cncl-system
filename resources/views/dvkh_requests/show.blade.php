@@ -91,6 +91,16 @@
                 </p>
                 @if($certificateRequest->request_type === 'REISSUE')
                     <p><strong>Phiếu cũ:</strong> {{ $certificateRequest->reissueOfCertificate->certificate_no ?? '-' }}</p>
+                    @if($certificateRequest->reissueCertificates->count() > 1)
+                        <p>
+                            <strong>Các phiếu cũ được gom:</strong><br>
+                            @foreach($certificateRequest->reissueCertificates as $oldCertificate)
+                                <a href="{{ route('quality-certificates.show', $oldCertificate) }}" target="_blank" class="badge badge-light">
+                                    {{ $oldCertificate->certificate_no }}
+                                </a>
+                            @endforeach
+                        </p>
+                    @endif
                     <p><strong>Lý do cấp lại:</strong> {{ $certificateRequest->reissue_reason ?: '-' }}</p>
                 @endif
                 <p>

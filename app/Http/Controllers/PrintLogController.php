@@ -64,13 +64,23 @@ class PrintLogController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $users = User::query()
-            ->when(!$canViewAllCenters, function ($q) use ($user) {
-                $q->where('distribution_center_id', $user->distribution_center_id);
-            })
-            ->orderBy('name')
-            ->get();
+        $selectedUsers = $this->selectedUsersForFilter($request, $canViewAllCenters, $user);
 
-        return view('print_logs.index', compact('logs', 'users'));
+        return view('print_logs.index', compact('logs', 'selectedUsers'));
+    }
+
+    private function selectedUsersForFilter(Request $request, bool $canViewAllCenters, User $currentUser)
+    {
+        if (!$request->filled('user_id')) {
+            return collect();
+        }
+
+        return User::query()
+            ->where('id', $request->user_id)
+            ->when(!$canViewAllCenters, function ($q) use ($currentUser) {
+                $q->where('distribution_center_id', $currentUser->distribution_center_id);
+            })
+            ->get()
+            ->keyBy('id');
     }
 }

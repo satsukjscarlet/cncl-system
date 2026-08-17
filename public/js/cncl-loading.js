@@ -72,12 +72,18 @@
     function shouldIgnoreLink(link) {
         var href = link.getAttribute('href') || '';
 
+        var lowerHref = href.toLowerCase();
+
         return link.hasAttribute('data-no-loading')
             || link.classList.contains('no-loading')
+            || link.hasAttribute('data-download')
             || link.hasAttribute('download')
             || link.getAttribute('target') === '_blank'
             || link.getAttribute('data-toggle')
             || link.getAttribute('data-widget')
+            || lowerHref.indexOf('template') !== -1
+            || lowerHref.indexOf('export') !== -1
+            || /\.(xlsx|xls|csv|pdf|zip)(\?|#|$)/i.test(href)
             || href === ''
             || href.charAt(0) === '#'
             || href.indexOf('javascript:') === 0

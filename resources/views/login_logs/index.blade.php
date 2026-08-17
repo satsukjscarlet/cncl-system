@@ -37,9 +37,12 @@
             <div class="col-lg-3 col-md-6">
                 <div class="form-group">
                     <label>Người dùng</label>
-                    <select name="user_id" class="form-control select2">
+                    <select name="user_id"
+                            class="form-control select2"
+                            data-ajax-url="{{ route('users.options') }}"
+                            data-minimum-input-length="1">
                         <option value="">Tất cả</option>
-                        @foreach($users as $user)
+                        @foreach($selectedUsers as $user)
                             <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
                                 {{ $user->name }} - {{ $user->username }}
                             </option>

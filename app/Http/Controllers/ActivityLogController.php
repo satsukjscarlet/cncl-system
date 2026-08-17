@@ -43,7 +43,7 @@ class ActivityLogController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $users = User::orderBy('name')->get();
+        $selectedUsers = $this->selectedUsersForFilter($request);
 
         $logNames = Activity::select('log_name')
             ->whereNotNull('log_name')
@@ -53,7 +53,7 @@ class ActivityLogController extends Controller
 
         return view('activity_logs.index', compact(
             'logs',
-            'users',
+            'selectedUsers',
             'logNames'
         ));
     }
@@ -63,5 +63,16 @@ class ActivityLogController extends Controller
         $activityLog->load('causer');
 
         return view('activity_logs.show', compact('activityLog'));
+    }
+
+    private function selectedUsersForFilter(Request $request)
+    {
+        if (!$request->filled('causer_id')) {
+            return collect();
+        }
+
+        return User::where('id', $request->causer_id)
+            ->get()
+            ->keyBy('id');
     }
 }

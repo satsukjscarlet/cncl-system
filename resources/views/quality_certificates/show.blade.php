@@ -28,6 +28,8 @@
     </div>
 @endif
 
+@include('quality_certificates.partials.workflow_steps', ['steps' => $certificateWorkflowSteps])
+
 @php
     $smartCaPendingTtlMinutes = max(1, (int) config('services.smartca.pending_ttl_minutes', 5));
     $smartCaRequestedAt = $qualityCertificate->smartca_requested_at ?: $qualityCertificate->updated_at;
@@ -68,6 +70,16 @@
                         <a href="{{ route('quality-certificates.show', $qualityCertificate->replacesCertificate) }}">
                             {{ $qualityCertificate->replacesCertificate->certificate_no }}
                         </a>
+                    </p>
+                @endif
+                @if(($qualityCertificate->request?->reissueCertificates?->count() ?? 0) > 1)
+                    <p>
+                        <strong>Cấp lại cho các phiếu:</strong><br>
+                        @foreach($qualityCertificate->request->reissueCertificates as $oldCertificate)
+                            <a href="{{ route('quality-certificates.show', $oldCertificate) }}" class="badge badge-light">
+                                {{ $oldCertificate->certificate_no }}
+                            </a>
+                        @endforeach
                     </p>
                 @endif
                 @if($qualityCertificate->replacedByCertificate)
@@ -230,6 +242,24 @@
                                     <strong>Lý do hủy:</strong> {{ $qualityCertificate->replacesCertificate->revoked_reason }}
                                 </div>
                             @endif
+                        </div>
+                    @endif
+
+                    @if(($qualityCertificate->request?->reissueCertificates?->count() ?? 0) > 1)
+                        <div class="mb-3">
+                            <div class="text-muted small text-uppercase font-weight-bold">Phiếu hiện tại gom cấp lại cho</div>
+                            @foreach($qualityCertificate->request->reissueCertificates as $oldCertificate)
+                                <div class="mb-1">
+                                    <a class="font-weight-bold" href="{{ route('quality-certificates.show', $oldCertificate) }}">
+                                        {{ $oldCertificate->certificate_no }}
+                                    </a>
+                                    @if($oldCertificate->status === 'REVOKED')
+                                        <span class="badge badge-danger"><i class="fas fa-ban"></i> Đã hủy / thu hồi</span>
+                                    @else
+                                        <span class="badge badge-secondary">{{ $oldCertificate->status }}</span>
+                                    @endif
+                                </div>
+                            @endforeach
                         </div>
                     @endif
 

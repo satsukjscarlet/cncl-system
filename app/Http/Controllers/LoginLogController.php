@@ -42,8 +42,19 @@ class LoginLogController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $users = User::orderBy('name')->get();
+        $selectedUsers = $this->selectedUsersForFilter($request);
 
-        return view('login_logs.index', compact('logs', 'users'));
+        return view('login_logs.index', compact('logs', 'selectedUsers'));
+    }
+
+    private function selectedUsersForFilter(Request $request)
+    {
+        if (!$request->filled('user_id')) {
+            return collect();
+        }
+
+        return User::where('id', $request->user_id)
+            ->get()
+            ->keyBy('id');
     }
 }

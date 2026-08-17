@@ -217,6 +217,26 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:request.view|ptn.process')
         ->name('certificate-requests.check-invoice');
 
+    Route::get('certificate-requests/product-options', [CertificateRequestController::class, 'productOptions'])
+        ->middleware('permission:request.create|request.update|ptn.process')
+        ->name('certificate-requests.product-options');
+
+    Route::get('certificate-requests/customer-options', [CertificateRequestController::class, 'customerOptions'])
+        ->middleware('permission:request.create|request.update|ptn.process')
+        ->name('certificate-requests.customer-options');
+
+    Route::get('certificate-requests/products-template', [CertificateRequestController::class, 'productsTemplate'])
+        ->middleware('permission:request.create|request.update|ptn.process')
+        ->name('certificate-requests.products-template');
+
+    Route::post('certificate-requests/import-products', [CertificateRequestController::class, 'importProducts'])
+        ->middleware('permission:request.create|request.update|ptn.process')
+        ->name('certificate-requests.import-products');
+
+    Route::post('certificate-requests/paste-products', [CertificateRequestController::class, 'pasteProducts'])
+        ->middleware('permission:request.create|request.update|ptn.process')
+        ->name('certificate-requests.paste-products');
+
     Route::resource('certificate-requests', CertificateRequestController::class)
         ->only(['show'])
         ->middleware('permission:request.view');
@@ -283,6 +303,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('quality-certificates/bulk-smartca-status', [QualityCertificateController::class, 'bulkCheckSmartCaStatus'])
         ->middleware('permission:certificate.sign')
         ->name('quality-certificates.bulk-smartca-status');
+
+    Route::post('quality-certificates/bulk-request-reissue', [QualityCertificateController::class, 'bulkRequestReissue'])
+        ->middleware('permission:request.create')
+        ->name('quality-certificates.bulk-request-reissue');
 
     Route::get('quality-certificates/{qualityCertificate}', [QualityCertificateController::class, 'show'])
         ->middleware('permission:certificate.view')
@@ -371,6 +395,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('users/{user}/toggle-active', [UserController::class, 'toggleActive'])
         ->middleware('permission:user.toggle_active')
         ->name('users.toggle-active');
+
+    Route::get('users/options', [UserController::class, 'options'])
+        ->middleware('permission:user.view|log.view|certificate.print')
+        ->name('users.options');
 
     Route::resource('users', UserController::class)
         ->only(['index'])

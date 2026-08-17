@@ -91,6 +91,21 @@ class QualityCertificate extends Model
         return $this->belongsTo(self::class, 'replaced_by_certificate_id');
     }
 
+    public function replacementSourceCertificates()
+    {
+        return $this->hasMany(self::class, 'replaced_by_certificate_id');
+    }
+
+    public function reissueRequests()
+    {
+        return $this->belongsToMany(
+            CertificateRequest::class,
+            'certificate_request_reissue_certificates',
+            'quality_certificate_id',
+            'certificate_request_id'
+        )->withTimestamps();
+    }
+
     public function canRequestReissue(): bool
     {
         return $this->signed_at !== null

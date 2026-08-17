@@ -9,13 +9,25 @@
         <small class="text-muted">{{ $certificateRequest->request_no }}</small>
     </div>
 
-    <a href="{{ route('certificate-requests.index') }}" class="btn btn-default">
-        <i class="fas fa-arrow-left"></i> Quay lại
-    </a>
+    <div>
+        @if(in_array($certificateRequest->status, ['DRAFT', 'WAIT_DVKH']))
+            @can('request.update')
+                <a href="{{ route('certificate-requests.edit', $certificateRequest) }}" class="btn btn-warning mr-2">
+                    <i class="fas fa-edit"></i> Sửa yêu cầu
+                </a>
+            @endcan
+        @endif
+
+        <a href="{{ route('certificate-requests.index') }}" class="btn btn-default">
+            <i class="fas fa-arrow-left"></i> Quay lại
+        </a>
+    </div>
 </div>
 @stop
 
 @section('content')
+
+@include('quality_certificates.partials.workflow_steps', ['steps' => $requestWorkflowSteps])
 
 @if(($invoiceDuplicates ?? collect())->isNotEmpty())
     <div class="alert alert-warning">
@@ -80,6 +92,16 @@
                 </p>
                 @if($certificateRequest->request_type === 'REISSUE')
                     <p><strong>Phiếu cũ:</strong> {{ $certificateRequest->reissueOfCertificate->certificate_no ?? '—' }}</p>
+                    @if($certificateRequest->reissueCertificates->count() > 1)
+                        <p>
+                            <strong>Các phiếu cũ được gom:</strong><br>
+                            @foreach($certificateRequest->reissueCertificates as $oldCertificate)
+                                <a href="{{ route('quality-certificates.show', $oldCertificate) }}" target="_blank" class="badge badge-light">
+                                    {{ $oldCertificate->certificate_no }}
+                                </a>
+                            @endforeach
+                        </p>
+                    @endif
                     <p><strong>Lý do cấp lại:</strong> {{ $certificateRequest->reissue_reason ?: '—' }}</p>
                 @endif
                 <p><strong>Trạng thái:</strong> @include('certificate_requests.partials.status_badge', ['certificateRequest' => $certificateRequest])</p>

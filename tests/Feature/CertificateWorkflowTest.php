@@ -13,7 +13,12 @@ use App\Models\UserNotification;
 use Database\Seeders\DistributionCenterSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\UserSeeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Facades\Excel;
 use Tests\TestCase;
 
 class CertificateWorkflowTest extends TestCase
@@ -180,6 +185,272 @@ class CertificateWorkflowTest extends TestCase
             ->count());
     }
 
+    public function test_request_can_create_new_customer_with_manual_customer_code(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+
+        $this->actingAs($centerUser)
+            ->post(route('certificate-requests.store'), [
+                'customer_mode' => 'new',
+                'new_customer_code' => 'KH-MANUAL-001',
+                'new_customer_name' => 'Khach hang nhap moi',
+                'new_customer_address' => 'Dia chi khach hang nhap moi',
+                'new_project_name' => 'Cong trinh nhap moi',
+                'new_project_address' => 'Dia diem cong trinh nhap moi',
+                'delivery_date' => '2026-08-08',
+                'invoice_no' => 'INV-NEW-CUSTOMER-CODE',
+                'require_hard_copy' => '0',
+                'hard_copy_quantity' => 0,
+                'is_urgent' => '0',
+                'requester_name' => 'Nguoi tao NP',
+                'note' => 'Tao khach hang moi co ma khach hang',
+                'product_id' => [$this->product->id],
+                'quantity' => [12],
+            ])
+            ->assertRedirect(route('certificate-requests.index'));
+
+        $customer = Customer::where('customer_code', 'KH-MANUAL-001')->firstOrFail();
+        $this->assertSame('Khach hang nhap moi', $customer->customer_name);
+        $this->assertSame($centerUser->distribution_center_id, $customer->distribution_center_id);
+
+        $certificateRequest = CertificateRequest::where('invoice_no', 'INV-NEW-CUSTOMER-CODE')->firstOrFail();
+        $this->assertSame($customer->id, $certificateRequest->customer_id);
+    }
+
+    public function test_customer_options_are_scoped_by_distribution_center(): void
+    {
+        $npUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $tpUser = User::where('username', 'trungtam_tp')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
+
+        $npCustomer = $this->createCustomerForCenter($npUser, 'KH-AJAX-NP');
+        $tpCustomer = $this->createCustomerForCenter($tpUser, 'KH-AJAX-TP');
+
+        $this->actingAs($npUser)
+            ->getJson(route('certificate-requests.customer-options', ['q' => 'KH-AJAX']))
+            ->assertOk()
+            ->assertJsonPath('results.0.id', $npCustomer->id)
+            ->assertJsonMissing(['id' => $tpCustomer->id]);
+
+        $this->actingAs($admin)
+            ->getJson(route('certificate-requests.customer-options', [
+                'q' => 'KH-AJAX',
+                'distribution_center_id' => $tpUser->distribution_center_id,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('results.0.id', $tpCustomer->id)
+            ->assertJsonMissing(['id' => $npCustomer->id]);
+    }
+
+    public function test_request_product_excel_import_maps_product_codes_and_merges_quantities(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $secondProduct = $this->createProductVariant('PVC-DN90', 'Ong PVC-U DN90', 'DN90');
+        $fileName = 'tests/request-products-import.xlsx';
+
+        Excel::store(new class($this->product, $secondProduct) implements FromArray, WithHeadings {
+            public function __construct(private Product $firstProduct, private Product $secondProduct)
+            {
+            }
+
+            public function headings(): array
+            {
+                return ['ma_san_pham', 'so_luong'];
+            }
+
+            public function array(): array
+            {
+                return [
+                    [$this->firstProduct->product_code, 10],
+                    [$this->firstProduct->product_code, 7],
+                    [$this->secondProduct->product_code, 5],
+                ];
+            }
+        }, $fileName);
+
+        try {
+            $uploadedFile = new UploadedFile(
+                Storage::path($fileName),
+                'request-products-import.xlsx',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                null,
+                true
+            );
+
+            $response = $this->actingAs($centerUser)
+                ->postJson(route('certificate-requests.import-products'), [
+                    'file' => $uploadedFile,
+                ]);
+
+            $response
+                ->assertOk()
+                ->assertJsonPath('count', 2);
+
+            $items = collect($response->json('items'));
+            $this->assertEquals(17, (float) $items->firstWhere('product_id', $this->product->id)['quantity']);
+            $this->assertEquals(5, (float) $items->firstWhere('product_id', $secondProduct->id)['quantity']);
+        } finally {
+            Storage::delete($fileName);
+        }
+    }
+
+    public function test_request_product_paste_maps_product_codes_and_reports_clear_errors(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $secondProduct = $this->createProductVariant('PVC-DN75', 'Ong PVC-U DN75', 'DN75');
+
+        $this->actingAs($centerUser)
+            ->postJson(route('certificate-requests.paste-products'), [
+                'products_text' => "ma_san_pham\tso_luong\n{$this->product->product_code}\t10\n{$this->product->product_code}\t7\n{$secondProduct->product_code}\t5",
+            ])
+            ->assertOk()
+            ->assertJsonPath('count', 2)
+            ->assertJsonPath('items.0.quantity', 17);
+
+        $this->actingAs($centerUser)
+            ->postJson(route('certificate-requests.paste-products'), [
+                'products_text' => "ma_san_pham\tso_luong\nUNKNOWN-CODE\t3\n{$this->product->product_code}\t0\n\t5",
+            ])
+            ->assertStatus(422)
+            ->assertJsonFragment(['Dòng 2: Không tìm thấy mã sản phẩm "UNKNOWN-CODE".'])
+            ->assertJsonFragment(['Dòng 3: Số lượng phải là số lớn hơn 0.'])
+            ->assertJsonFragment(['Dòng 4: Chưa nhập mã sản phẩm.']);
+    }
+
+    public function test_single_reissue_request_can_be_edited_before_dvkh_revokes_old_certificate(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $ptn = User::where('username', 'ptn')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-E2E-REISSUE');
+        $oldCertificate = $this->createIssuedCertificate(
+            $centerUser,
+            $customer,
+            'INV-E2E-REISSUE-OLD',
+            [[$this->product, 10]]
+        );
+
+        $this->actingAs($centerUser)
+            ->post(route('quality-certificates.request-reissue', $oldCertificate), [
+                'reissue_reason' => 'Sai so luong san pham tren phieu cu.',
+            ])
+            ->assertRedirect();
+
+        $reissueRequest = CertificateRequest::with(['details', 'reissueCertificates'])
+            ->where('request_type', 'REISSUE')
+            ->where('reissue_of_certificate_id', $oldCertificate->id)
+            ->firstOrFail();
+
+        $this->assertSame('WAIT_DVKH', $reissueRequest->status);
+        $this->assertSame($oldCertificate->id, $reissueRequest->reissue_of_certificate_id);
+        $this->assertTrue($reissueRequest->reissueCertificates->contains($oldCertificate));
+        $this->assertSame('ISSUED', $oldCertificate->fresh()->status);
+
+        $this->actingAs($centerUser)
+            ->put(route('certificate-requests.update', $reissueRequest), [
+                'customer_mode' => 'existing',
+                'customer_id' => $customer->id,
+                'delivery_date' => '2026-08-10',
+                'invoice_no' => 'INV-E2E-REISSUE-NEW',
+                'require_hard_copy' => '0',
+                'hard_copy_quantity' => 0,
+                'is_urgent' => '0',
+                'requester_name' => 'Nguoi sua cap lai',
+                'note' => 'Da sua du lieu truoc khi DVKH xac nhan.',
+                'product_id' => [$this->product->id],
+                'quantity' => [15],
+            ])
+            ->assertRedirect(route('certificate-requests.index'));
+
+        $reissueRequest->refresh()->load('details');
+        $this->assertSame('INV-E2E-REISSUE-NEW', $reissueRequest->invoice_no);
+        $this->assertEquals(15, (float) $reissueRequest->details->first()->quantity);
+        $this->assertSame('ISSUED', $oldCertificate->fresh()->status);
+
+        $this->actingAs($dvkh)
+            ->post(route('dvkh.requests.approve', $reissueRequest))
+            ->assertRedirect(route('dvkh.requests.index'));
+
+        $this->assertSame('WAIT_PTN', $reissueRequest->fresh()->status);
+        $this->assertSame('REVOKED', $oldCertificate->fresh()->status);
+        $this->assertNotNull($oldCertificate->fresh()->revoked_at);
+
+        $this->actingAs($ptn)
+            ->post(route('ptn.requests.receive-and-create-certificate', $reissueRequest))
+            ->assertRedirect();
+
+        $newCertificate = QualityCertificate::where('certificate_request_id', $reissueRequest->id)->firstOrFail();
+        $this->assertSame($oldCertificate->id, $newCertificate->replaces_certificate_id);
+        $this->assertSame($newCertificate->id, $oldCertificate->fresh()->replaced_by_certificate_id);
+    }
+
+    public function test_bulk_reissue_merges_old_certificates_and_revokes_all_when_dvkh_approves(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $ptn = User::where('username', 'ptn')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-E2E-BULK-REISSUE');
+        $secondProduct = $this->createProductVariant('PVC-DN90', 'Ong PVC-U DN90', 'DN90');
+
+        $firstOldCertificate = $this->createIssuedCertificate(
+            $centerUser,
+            $customer,
+            'INV-E2E-BULK-001',
+            [
+                [$this->product, 10],
+                [$secondProduct, 5],
+            ]
+        );
+        $secondOldCertificate = $this->createIssuedCertificate(
+            $centerUser,
+            $customer,
+            'INV-E2E-BULK-002',
+            [
+                [$this->product, 7],
+            ]
+        );
+
+        $this->actingAs($centerUser)
+            ->post(route('quality-certificates.bulk-request-reissue'), [
+                'certificate_ids' => [$firstOldCertificate->id, $secondOldCertificate->id],
+                'reissue_reason' => 'Gom hai phieu cu thanh mot phieu moi.',
+            ])
+            ->assertRedirect();
+
+        $reissueRequest = CertificateRequest::with(['details', 'reissueCertificates'])
+            ->where('request_type', 'REISSUE')
+            ->latest('id')
+            ->firstOrFail();
+
+        $this->assertCount(2, $reissueRequest->reissueCertificates);
+        $this->assertTrue($reissueRequest->reissueCertificates->contains($firstOldCertificate));
+        $this->assertTrue($reissueRequest->reissueCertificates->contains($secondOldCertificate));
+        $this->assertSame($firstOldCertificate->id, $reissueRequest->reissue_of_certificate_id);
+        $this->assertSame('WAIT_DVKH', $reissueRequest->status);
+        $this->assertSame($centerUser->distribution_center_id, $reissueRequest->distribution_center_id);
+
+        $mergedQuantities = $reissueRequest->details->pluck('quantity', 'product_id');
+        $this->assertEquals(17, (float) $mergedQuantities[$this->product->id]);
+        $this->assertEquals(5, (float) $mergedQuantities[$secondProduct->id]);
+
+        $this->actingAs($dvkh)
+            ->post(route('dvkh.requests.approve', $reissueRequest))
+            ->assertRedirect(route('dvkh.requests.index'));
+
+        $this->assertSame('REVOKED', $firstOldCertificate->fresh()->status);
+        $this->assertSame('REVOKED', $secondOldCertificate->fresh()->status);
+        $this->assertSame('WAIT_PTN', $reissueRequest->fresh()->status);
+
+        $this->actingAs($ptn)
+            ->post(route('ptn.requests.receive-and-create-certificate', $reissueRequest))
+            ->assertRedirect();
+
+        $newCertificate = QualityCertificate::where('certificate_request_id', $reissueRequest->id)->firstOrFail();
+        $this->assertSame($firstOldCertificate->id, $newCertificate->replaces_certificate_id);
+        $this->assertSame($newCertificate->id, $firstOldCertificate->fresh()->replaced_by_certificate_id);
+        $this->assertSame($newCertificate->id, $secondOldCertificate->fresh()->replaced_by_certificate_id);
+    }
+
     private function createProduct(): Product
     {
         $group = ProductGroup::create([
@@ -206,6 +477,71 @@ class CertificateWorkflowTest extends TestCase
             'certificate_template' => 'default',
             'is_active' => true,
         ]);
+    }
+
+    private function createProductVariant(string $code, string $name, string $nominalSize): Product
+    {
+        return Product::create([
+            'product_group_id' => ProductGroup::firstOrFail()->id,
+            'quality_standard_id' => QualityStandard::firstOrFail()->id,
+            'product_code' => $code,
+            'product_name' => $name,
+            'unit' => 'm',
+            'nominal_size' => $nominalSize,
+            'technical_requirements' => 'PVC-U; kich thuoc danh nghia ' . $nominalSize . '.',
+            'certificate_type' => 'CNCL',
+            'certificate_template' => 'default',
+            'is_active' => true,
+        ]);
+    }
+
+    private function createIssuedCertificate(User $centerUser, Customer $customer, string $invoiceNo, array $productRows): QualityCertificate
+    {
+        $request = CertificateRequest::create([
+            'request_no' => 'YC-TEST-' . str_pad((string) (CertificateRequest::count() + 1), 4, '0', STR_PAD_LEFT),
+            'request_type' => 'NORMAL',
+            'distribution_center_id' => $centerUser->distribution_center_id,
+            'customer_id' => $customer->id,
+            'delivery_date' => '2026-08-08',
+            'invoice_no' => $invoiceNo,
+            'require_hard_copy' => false,
+            'hard_copy_quantity' => 0,
+            'is_urgent' => false,
+            'requester_name' => 'Nguoi tao phieu cu',
+            'note' => 'Phieu cu da ky so.',
+            'status' => 'COMPLETED',
+            'created_by' => $centerUser->id,
+        ]);
+
+        foreach ($productRows as [$product, $quantity]) {
+            $request->details()->create([
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+            ]);
+        }
+
+        $certificate = QualityCertificate::create([
+            'certificate_no' => 'CNCL-TEST-' . str_pad((string) (QualityCertificate::count() + 1), 4, '0', STR_PAD_LEFT),
+            'certificate_request_id' => $request->id,
+            'status' => 'ISSUED',
+            'created_by' => $centerUser->id,
+            'signed_at' => now(),
+            'signed_by' => 'Truong PTN',
+            'pdf_path' => 'quality-certificates/test-' . $request->id . '.pdf',
+            'print_count' => 0,
+        ]);
+
+        foreach ($productRows as [$product, $quantity]) {
+            $certificate->details()->create([
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'nominal_size' => $product->nominal_size,
+                'technical_requirements' => $product->technical_requirements,
+                'quality_standard' => $product->qualityStandard?->code,
+            ]);
+        }
+
+        return $certificate;
     }
 
     private function createCustomerForCenter(User $user, string $code = 'KH-E2E-NP'): Customer

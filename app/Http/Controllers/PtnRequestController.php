@@ -59,20 +59,13 @@ class PtnRequestController extends Controller
             ->orderBy('name')
             ->get();
 
-        $customers = Customer::where('is_active', true)
-            ->orderBy('customer_name')
-            ->get();
-
-        $products = Product::with(['group', 'qualityStandard'])
-            ->where('is_active', true)
-            ->orderBy('product_name')
-            ->get();
-
+        $selectedCustomers = $this->selectedCustomersForForm();
+        $selectedProducts = $this->selectedProductsForForm();
         $urgentReasons = UrgentReason::where('is_active', true)
             ->orderBy('name')
             ->get();
 
-        return view('ptn_requests.direct_create', compact('centers', 'customers', 'products', 'urgentReasons'));
+        return view('ptn_requests.direct_create', compact('centers', 'selectedCustomers', 'selectedProducts', 'urgentReasons'));
     }
 
     public function directStore(Request $request)
@@ -148,7 +141,9 @@ class PtnRequestController extends Controller
                 [
                     'request' => $certificateRequest->fresh()->load('details')->toArray(),
                     'certificate' => $certificate->load('details')->toArray(),
-                ]
+                ],
+                $certificate,
+                ['request_id' => $certificateRequest->id, 'request_no' => $certificateRequest->request_no]
             );
 
             DB::commit();
@@ -181,6 +176,7 @@ class PtnRequestController extends Controller
             'creator',
             'urgentReason',
             'reissueOfCertificate',
+            'reissueCertificates',
             'qualityCertificate',
         ]);
 
@@ -215,6 +211,7 @@ class PtnRequestController extends Controller
         $certificateRequest->load([
             'details.product.qualityStandard',
             'reissueOfCertificate',
+            'reissueCertificates',
         ]);
 
         DB::beginTransaction();
@@ -230,18 +227,16 @@ class PtnRequestController extends Controller
 
             $certificate = $this->createQualityCertificateFromRequest($certificateRequest->fresh());
 
-            if ($certificateRequest->request_type === 'REISSUE' && $certificateRequest->reissueOfCertificate) {
-                $certificateRequest->reissueOfCertificate->update([
-                    'replaced_by_certificate_id' => $certificate->id,
-                ]);
-            }
+            $this->markReissueCertificatesReplaced($certificateRequest, $certificate);
 
             ActivityLogger::log(
                 'PTN lập phiếu',
                 'create_certificate_from_request',
                 'PTN lập phiếu CNCL từ yêu cầu: ' . $certificateRequest->request_no,
                 $oldData,
-                $certificate->load('details')->toArray()
+                $certificate->load('details')->toArray(),
+                $certificate,
+                ['request_id' => $certificateRequest->id, 'request_no' => $certificateRequest->request_no]
             );
 
             DB::commit();
@@ -281,6 +276,7 @@ class PtnRequestController extends Controller
         $certificateRequest->load([
             'details.product.qualityStandard',
             'reissueOfCertificate',
+            'reissueCertificates',
         ]);
 
         DB::beginTransaction();
@@ -294,18 +290,16 @@ class PtnRequestController extends Controller
                 'status' => 'PTN_PROCESSING',
             ]);
 
-            if ($certificateRequest->request_type === 'REISSUE' && $certificateRequest->reissueOfCertificate) {
-                $certificateRequest->reissueOfCertificate->update([
-                    'replaced_by_certificate_id' => $certificate->id,
-                ]);
-            }
+            $this->markReissueCertificatesReplaced($certificateRequest, $certificate);
 
             ActivityLogger::log(
                 'PTN lập phiếu',
                 'create_certificate',
                 'Tạo phiếu CNCL từ yêu cầu: ' . $certificateRequest->request_no,
                 $oldData,
-                $certificate->load('details')->toArray()
+                $certificate->load('details')->toArray(),
+                $certificate,
+                ['request_id' => $certificateRequest->id, 'request_no' => $certificateRequest->request_no]
             );
 
             DB::commit();
@@ -340,6 +334,7 @@ class PtnRequestController extends Controller
         $certificateRequest->loadMissing([
             'details.product.qualityStandard',
             'reissueOfCertificate',
+            'reissueCertificates',
         ]);
 
         $certificate = QualityCertificate::create([
@@ -369,6 +364,25 @@ class PtnRequestController extends Controller
         }
 
         return $certificate;
+    }
+
+    private function markReissueCertificatesReplaced(CertificateRequest $certificateRequest, QualityCertificate $newCertificate): void
+    {
+        if ($certificateRequest->request_type !== 'REISSUE') {
+            return;
+        }
+
+        $oldCertificates = $certificateRequest->reissueCertificates;
+
+        if ($oldCertificates->isEmpty() && $certificateRequest->reissueOfCertificate) {
+            $oldCertificates = collect([$certificateRequest->reissueOfCertificate]);
+        }
+
+        foreach ($oldCertificates as $oldCertificate) {
+            $oldCertificate->update([
+                'replaced_by_certificate_id' => $newCertificate->id,
+            ]);
+        }
     }
 
     private function hasActiveQualityCertificate(CertificateRequest $certificateRequest): bool
@@ -423,7 +437,8 @@ class PtnRequestController extends Controller
             'create_from_ptn_direct',
             'Tạo khách hàng từ luồng PTN lập phiếu trực tiếp: ' . $customer->customer_name,
             null,
-            $customer->toArray()
+            $customer->toArray(),
+            $customer
         );
 
         return $customer->id;
@@ -466,5 +481,45 @@ class PtnRequestController extends Controller
             'duplicate_invoice_warning',
             'Cảnh báo số hóa đơn trùng khi PTN lập trực tiếp yêu cầu ' . $certificateRequest->request_no . ': ' . $certificateRequest->invoice_no . ' (' . $duplicateCount . ' bản ghi trùng)'
         );
+    }
+
+    private function selectedProductsForForm(): \Illuminate\Support\Collection
+    {
+        $productIds = collect(old('product_id', []))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($productIds->isEmpty()) {
+            return collect();
+        }
+
+        return Product::with('qualityStandard')
+            ->whereIn('id', $productIds)
+            ->get()
+            ->keyBy('id');
+    }
+
+    private function selectedCustomersForForm(): \Illuminate\Support\Collection
+    {
+        $customerIds = collect([old('customer_id')])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($customerIds->isEmpty()) {
+            return collect();
+        }
+
+        $centerId = old('distribution_center_id');
+
+        return Customer::whereIn('id', $customerIds)
+            ->when($centerId, function ($query) use ($centerId) {
+                $query->where('distribution_center_id', $centerId);
+            })
+            ->get()
+            ->keyBy('id');
     }
 }

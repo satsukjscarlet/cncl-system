@@ -87,6 +87,14 @@
         </h3>
 
         <div class="card-tools">
+            @can('request.create')
+                <button type="button"
+                        class="btn btn-sm btn-danger mr-2"
+                        data-toggle="modal"
+                        data-target="#bulkReissueModal">
+                    <i class="fas fa-object-group"></i> Gom cấp lại
+                </button>
+            @endcan
             <span class="badge badge-info">
                 Tổng số: {{ $certificates->total() }}
             </span>
@@ -97,6 +105,11 @@
         <table class="table table-hover table-bordered mb-0">
             <thead class="thead-light">
                 <tr>
+                    @can('request.create')
+                        <th style="width:38px" class="text-center">
+                            <input type="checkbox" id="selectAllReissueCertificates">
+                        </th>
+                    @endcan
                     <th style="width:60px">STT</th>
                     <th>Số phiếu</th>
                     <th>Số yêu cầu</th>
@@ -112,6 +125,19 @@
             <tbody>
                 @forelse($certificates as $certificate)
                     <tr>
+                        @can('request.create')
+                            <td class="text-center">
+                                @if($certificate->canRequestReissue())
+                                    <input type="checkbox"
+                                           class="bulk-reissue-checkbox"
+                                           name="certificate_ids[]"
+                                           value="{{ $certificate->id }}"
+                                           form="bulkReissueForm">
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
+                        @endcan
                         <td>{{ $certificates->firstItem() + $loop->index }}</td>
 
                         <td>
@@ -243,7 +269,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">
+                        <td colspan="@can('request.create') 10 @else 9 @endcan" class="text-center text-muted py-4">
                             <i class="fas fa-database fa-2x mb-2"></i>
                             <br>
                             Chưa có phiếu CNCL.
@@ -270,4 +296,62 @@
     </div>
 </div>
 
+@can('request.create')
+    <div class="modal fade" id="bulkReissueModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form id="bulkReissueForm"
+                  method="POST"
+                  action="{{ route('quality-certificates.bulk-request-reissue') }}"
+                  class="modal-content">
+                @csrf
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-object-group"></i> Gom nhiều phiếu cũ để cấp lại
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        Hệ thống sẽ tạo một yêu cầu cấp lại mới từ các phiếu đã chọn. Sau khi tạo, anh có thể sửa lại khách hàng, hóa đơn và danh sách sản phẩm trước khi DVKH xác nhận.
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label>Lý do cấp lại <span class="text-danger">*</span></label>
+                        <textarea name="reissue_reason"
+                                  class="form-control"
+                                  rows="4"
+                                  required></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Đóng</button>
+                    <button class="btn btn-danger">
+                        <i class="fas fa-paper-plane"></i> Tạo yêu cầu cấp lại
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endcan
+
+@stop
+
+@section('js')
+<script>
+    $(function () {
+        $('#selectAllReissueCertificates').on('change', function () {
+            $('.bulk-reissue-checkbox').prop('checked', this.checked);
+        });
+
+        $('#bulkReissueForm').on('submit', function (event) {
+            if ($('.bulk-reissue-checkbox:checked').length < 2) {
+                event.preventDefault();
+                alert('Vui lòng chọn ít nhất 2 phiếu đủ điều kiện để gom cấp lại.');
+            }
+        });
+    });
+</script>
 @stop

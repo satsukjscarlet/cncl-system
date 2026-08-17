@@ -36,6 +36,36 @@
                 options.dropdownParent = $modal;
             }
 
+            var ajaxUrl = $select.data('ajax-url');
+            if (ajaxUrl) {
+                options.minimumInputLength = Number($select.data('minimum-input-length') || 1);
+                options.ajax = {
+                    url: ajaxUrl,
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        var payload = {
+                            q: params.term || ''
+                        };
+
+                        if ($select.data('ajax-include-center')) {
+                            var centerValue = jQuery('[name="distribution_center_id"]').val();
+                            if (centerValue) {
+                                payload.distribution_center_id = centerValue;
+                            }
+                        }
+
+                        return payload;
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.results || []
+                        };
+                    },
+                    cache: true
+                };
+            }
+
             $select.select2(options);
         });
 

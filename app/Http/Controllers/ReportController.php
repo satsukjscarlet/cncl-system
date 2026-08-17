@@ -7,7 +7,6 @@ use App\Models\CertificateRequest;
 use App\Models\DistributionCenter;
 use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -71,32 +70,7 @@ class ReportController extends Controller
         $slaDvkh = SlaConfig::where('code', 'SLA_DVKH')->where('is_active', true)->first();
         $slaPtn = SlaConfig::where('code', 'SLA_PTN')->where('is_active', true)->first();
 
-        $warningCount = 0;
-        $overdueCount = 0;
-
-        foreach ((clone $query)->whereIn('status', ['WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING'])->get() as $item) {
-            $minutes = Carbon::parse($item->created_at)->diffInMinutes(now());
-
-            $sla = null;
-
-            if ($item->status === 'WAIT_DVKH') {
-                $sla = $slaDvkh;
-            }
-
-            if (in_array($item->status, ['WAIT_PTN', 'PTN_PROCESSING'])) {
-                $sla = $slaPtn;
-            }
-
-            if (!$sla) {
-                continue;
-            }
-
-            if ($minutes >= $sla->limit_minutes) {
-                $overdueCount++;
-            } elseif ($minutes >= $sla->warning_minutes) {
-                $warningCount++;
-            }
-        }
+        [$warningCount, $overdueCount] = $this->slaCounts($query, $slaDvkh, $slaPtn);
 
         $centers = DistributionCenter::where('is_active', true)
             ->orderBy('name')
@@ -143,5 +117,36 @@ class ReportController extends Controller
     private function canViewAllCenters($user): bool
     {
         return $user->hasAnyRole(['Admin', 'LanhDao']);
+    }
+
+    private function slaCounts($baseQuery, ?SlaConfig $slaDvkh, ?SlaConfig $slaPtn): array
+    {
+        $warningCount = 0;
+        $overdueCount = 0;
+
+        foreach ([
+            [['WAIT_DVKH'], $slaDvkh],
+            [['WAIT_PTN', 'PTN_PROCESSING'], $slaPtn],
+        ] as [$statuses, $sla]) {
+            if (!$sla) {
+                continue;
+            }
+
+            $limitAt = now()->subMinutes((int) $sla->limit_minutes);
+            $warningAt = now()->subMinutes((int) $sla->warning_minutes);
+
+            $overdueCount += (clone $baseQuery)
+                ->whereIn('status', $statuses)
+                ->where('created_at', '<=', $limitAt)
+                ->count();
+
+            $warningCount += (clone $baseQuery)
+                ->whereIn('status', $statuses)
+                ->where('created_at', '<=', $warningAt)
+                ->where('created_at', '>', $limitAt)
+                ->count();
+        }
+
+        return [$warningCount, $overdueCount];
     }
 }

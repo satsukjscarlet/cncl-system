@@ -230,12 +230,14 @@ class QualityCertificateController extends Controller
             'request.customer',
             'request.creator',
             'request.reissueOfCertificate',
+            'request.reissueCertificates',
             'details.product.group',
             'creator',
             'revokedBy',
             'rejectedBy',
             'replacesCertificate',
             'replacedByCertificate',
+            'replacementSourceCertificates',
             'printLogs.user',
         ]);
 
@@ -245,22 +247,58 @@ class QualityCertificateController extends Controller
             $qualityCertificate->replacesCertificate?->certificate_no,
             $qualityCertificate->replacedByCertificate?->certificate_no,
             $qualityCertificate->request?->reissueOfCertificate?->certificate_no,
+            ...$qualityCertificate->request?->reissueCertificates?->pluck('certificate_no')->all() ?? [],
+            ...$qualityCertificate->replacementSourceCertificates?->pluck('certificate_no')->all() ?? [],
+        ])->filter()->unique()->values();
+
+        $historyCertificateIds = collect([
+            $qualityCertificate->id,
+            $qualityCertificate->replaces_certificate_id,
+            $qualityCertificate->replaced_by_certificate_id,
+            $qualityCertificate->request?->reissue_of_certificate_id,
+            ...$qualityCertificate->request?->reissueCertificates?->pluck('id')->all() ?? [],
+            ...$qualityCertificate->replacementSourceCertificates?->pluck('id')->all() ?? [],
+        ])->filter()->unique()->values();
+
+        $historyRequestIds = collect([
+            $qualityCertificate->certificate_request_id,
+            $qualityCertificate->request?->id,
         ])->filter()->unique()->values();
 
         $certificateHistoryLogs = Activity::query()
             ->with('causer')
-            ->when($historyKeywords->isNotEmpty(), function ($query) use ($historyKeywords) {
-                $query->where(function ($logQuery) use ($historyKeywords) {
-                    foreach ($historyKeywords as $keyword) {
-                        $logQuery->orWhere('description', 'like', '%' . $keyword . '%');
-                    }
-                });
+            ->where(function ($query) use ($historyCertificateIds, $historyRequestIds, $historyKeywords) {
+                if ($historyCertificateIds->isNotEmpty()) {
+                    $query->orWhere(function ($subjectQuery) use ($historyCertificateIds) {
+                        $subjectQuery
+                            ->where('subject_type', QualityCertificate::class)
+                            ->whereIn('subject_id', $historyCertificateIds);
+                    });
+                }
+
+                if ($historyRequestIds->isNotEmpty()) {
+                    $query->orWhere(function ($subjectQuery) use ($historyRequestIds) {
+                        $subjectQuery
+                            ->where('subject_type', CertificateRequest::class)
+                            ->whereIn('subject_id', $historyRequestIds);
+                    });
+                }
+
+                if ($historyKeywords->isNotEmpty()) {
+                    $query->orWhere(function ($logQuery) use ($historyKeywords) {
+                        foreach ($historyKeywords as $keyword) {
+                            $logQuery->orWhere('description', 'like', '%' . $keyword . '%');
+                        }
+                    });
+                }
             })
             ->latest()
             ->limit(30)
             ->get();
 
-        return view('quality_certificates.show', compact('qualityCertificate', 'certificateHistoryLogs'));
+        $certificateWorkflowSteps = $this->certificateWorkflowSteps($qualityCertificate, $certificateHistoryLogs);
+
+        return view('quality_certificates.show', compact('qualityCertificate', 'certificateHistoryLogs', 'certificateWorkflowSteps'));
     }
 
     public function sign(
@@ -433,7 +471,8 @@ class QualityCertificateController extends Controller
                 $isResendAfterExpired ? 'smartca_request_resend' : 'smartca_request',
                 ($isResendAfterExpired ? 'Gửi lại yêu cầu ký VNPT SmartCA do giao dịch cũ hết hạn cho phiếu CNCL: ' : 'Gửi yêu cầu ký VNPT SmartCA cho phiếu CNCL: ') . $qualityCertificate->certificate_no,
                 $oldData,
-                $qualityCertificate->fresh()->toArray()
+                $qualityCertificate->fresh()->toArray(),
+                $qualityCertificate
             );
 
             return redirect()
@@ -612,14 +651,11 @@ class QualityCertificateController extends Controller
             'reissue_reason' => ['required', 'string', 'max:2000'],
         ]);
 
-        $existingReissue = CertificateRequest::where('request_type', 'REISSUE')
-            ->where('reissue_of_certificate_id', $qualityCertificate->id)
-            ->whereNotIn('status', ['CANCELLED', 'COMPLETED'])
-            ->first();
+        $existingReissue = $this->activeReissueRequestForCertificate($qualityCertificate);
 
         if ($existingReissue) {
             return redirect()
-                ->route('certificate-requests.show', $existingReissue)
+                ->route($existingReissue->status === 'WAIT_DVKH' ? 'certificate-requests.edit' : 'certificate-requests.show', $existingReissue)
                 ->with('error', 'Phiếu này đã có yêu cầu cấp lại đang xử lý.');
         }
 
@@ -655,6 +691,8 @@ class QualityCertificateController extends Controller
                 'created_by' => Auth::id(),
             ]);
 
+            $newRequest->reissueCertificates()->syncWithoutDetaching([$qualityCertificate->id]);
+
             foreach ($oldRequest->details as $detail) {
                 $newRequest->details()->create([
                     'product_id' => $detail->product_id,
@@ -667,20 +705,104 @@ class QualityCertificateController extends Controller
                 'request_reissue',
                 'Tạo yêu cầu cấp lại cho phiếu CNCL: ' . $qualityCertificate->certificate_no . '. Yêu cầu mới: ' . $newRequest->request_no,
                 $oldData,
-                $newRequest->load('details')->toArray()
+                $newRequest->load('details')->toArray(),
+                $qualityCertificate,
+                ['new_request_id' => $newRequest->id, 'new_request_no' => $newRequest->request_no]
             );
 
             DB::commit();
 
             return redirect()
-                ->route('certificate-requests.show', $newRequest)
-                ->with('success', 'Đã gửi yêu cầu cấp lại phiếu sang DVKH kiểm tra.');
+                ->route('certificate-requests.edit', $newRequest)
+                ->with('success', 'Đã tạo yêu cầu cấp lại từ phiếu cũ. Vui lòng kiểm tra, chỉnh sửa dữ liệu nếu cần rồi lưu để DVKH xác nhận.');
         } catch (\Throwable $e) {
             DB::rollBack();
 
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
                 ->with('error', 'Không thể tạo yêu cầu cấp lại: ' . $e->getMessage());
+        }
+    }
+
+    public function bulkRequestReissue(Request $request)
+    {
+        $data = $request->validate([
+            'certificate_ids' => ['required', 'array', 'min:2'],
+            'certificate_ids.*' => ['integer', 'distinct', 'exists:quality_certificates,id'],
+            'reissue_reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $certificates = QualityCertificate::with([
+            'request.customer',
+            'request.distributionCenter',
+            'request.details',
+            'details',
+        ])
+            ->whereIn('id', $data['certificate_ids'])
+            ->get();
+
+        if ($certificates->count() !== count($data['certificate_ids'])) {
+            return redirect()
+                ->route('quality-certificates.index')
+                ->with('error', 'Danh sách phiếu chọn không hợp lệ.');
+        }
+
+        foreach ($certificates as $certificate) {
+            $this->authorizeCenter($certificate);
+
+            if (!$certificate->canRequestReissue()) {
+                return redirect()
+                    ->route('quality-certificates.index')
+                    ->with('error', 'Chỉ phiếu đã ký/phát hành, chưa bị hủy và chưa có phiếu thay thế mới được gom cấp lại.');
+            }
+
+            if ($existingReissue = $this->activeReissueRequestForCertificate($certificate)) {
+                return redirect()
+                    ->route($existingReissue->status === 'WAIT_DVKH' ? 'certificate-requests.edit' : 'certificate-requests.show', $existingReissue)
+                    ->with('error', 'Phiếu ' . $certificate->certificate_no . ' đã có yêu cầu cấp lại đang xử lý.');
+            }
+        }
+
+        $centerIds = $certificates
+            ->map(fn ($certificate) => $certificate->request?->distribution_center_id)
+            ->filter()
+            ->unique();
+
+        if ($centerIds->count() !== 1) {
+            return redirect()
+                ->route('quality-certificates.index')
+                ->with('error', 'Chỉ được gom cấp lại các phiếu thuộc cùng một trung tâm phân phối.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $newRequest = $this->createReissueRequestFromCertificates($certificates, $data['reissue_reason']);
+
+            ActivityLogger::log(
+                'Phiếu CNCL',
+                'bulk_request_reissue',
+                'Tạo yêu cầu cấp lại gom nhiều phiếu CNCL: ' . $certificates->pluck('certificate_no')->implode(', ') . '. Yêu cầu mới: ' . $newRequest->request_no,
+                $certificates->map->toArray()->all(),
+                $newRequest->load(['details', 'reissueCertificates'])->toArray(),
+                $newRequest,
+                [
+                    'old_certificate_ids' => $certificates->pluck('id')->values()->all(),
+                    'old_certificate_nos' => $certificates->pluck('certificate_no')->values()->all(),
+                ]
+            );
+
+            DB::commit();
+
+            return redirect()
+                ->route('certificate-requests.edit', $newRequest)
+                ->with('success', 'Đã tạo yêu cầu cấp lại gom ' . $certificates->count() . ' phiếu cũ. Vui lòng kiểm tra và chỉnh sửa dữ liệu trước khi DVKH xác nhận.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->route('quality-certificates.index')
+                ->with('error', 'Không thể tạo yêu cầu cấp lại nhiều phiếu: ' . $e->getMessage());
         }
     }
 
@@ -753,7 +875,9 @@ class QualityCertificateController extends Controller
                 [
                     'certificate' => $qualityCertificate->fresh()->toArray(),
                     'request' => $qualityCertificate->request->fresh()->toArray(),
-                ]
+                ],
+                $qualityCertificate,
+                ['request_id' => $qualityCertificate->request->id ?? null, 'request_no' => $qualityCertificate->request->request_no ?? null]
             );
 
             DB::commit();
@@ -822,7 +946,8 @@ class QualityCertificateController extends Controller
             'print_hard_copy',
             'In phiếu ký tươi: ' . $qualityCertificate->certificate_no . '. Lý do: ' . $data['reason'],
             $oldData,
-            $qualityCertificate->fresh()->toArray()
+            $qualityCertificate->fresh()->toArray(),
+            $qualityCertificate
         );
 
         $pdf = Pdf::loadView('quality_certificates.pdf', [
@@ -927,6 +1052,111 @@ class QualityCertificateController extends Controller
         ];
     }
 
+    private function certificateWorkflowSteps(QualityCertificate $qualityCertificate, $logs): array
+    {
+        $request = $qualityCertificate->request;
+        $logTime = function (array $actions) use ($logs) {
+            $log = $logs->first(fn ($item) => in_array($item->properties['action'] ?? null, $actions, true));
+
+            return $log?->created_at;
+        };
+
+        $steps = [
+            [
+                'title' => 'Trung tâm tạo yêu cầu',
+                'status' => 'done',
+                'icon' => 'fas fa-file-alt',
+                'time' => $request?->created_at ?: $qualityCertificate->created_at,
+                'description' => $request ? 'Yêu cầu ' . $request->request_no . ' được khởi tạo.' : 'Phiếu được PTN lập trực tiếp.',
+            ],
+            [
+                'title' => 'DVKH kiểm tra',
+                'status' => 'pending',
+                'icon' => 'fas fa-user-check',
+                'time' => $logTime(['approve']),
+                'description' => 'Chờ DVKH xác nhận thông tin yêu cầu.',
+            ],
+            [
+                'title' => 'PTN lập phiếu',
+                'status' => 'pending',
+                'icon' => 'fas fa-vials',
+                'time' => $qualityCertificate->created_at,
+                'description' => 'Chờ PTN lập phiếu CNCL.',
+            ],
+            [
+                'title' => 'Trưởng PTN ký số',
+                'status' => 'pending',
+                'icon' => 'fas fa-file-signature',
+                'time' => $qualityCertificate->smartca_requested_at ?: $logTime(['smartca_request', 'smartca_request_resend']),
+                'description' => 'Chờ gửi yêu cầu ký VNPT SmartCA.',
+            ],
+            [
+                'title' => 'Phát hành / thu hồi',
+                'status' => 'pending',
+                'icon' => 'fas fa-paper-plane',
+                'time' => $qualityCertificate->signed_at ?: $qualityCertificate->revoked_at,
+                'description' => 'Chờ ký số thành công và phát hành phiếu.',
+            ],
+        ];
+
+        if (!$request) {
+            $steps[1]['status'] = 'skipped';
+            $steps[1]['description'] = 'Không qua bước DVKH do PTN lập trực tiếp.';
+        } elseif ($request->status === 'WAIT_DVKH') {
+            $steps[1]['status'] = 'current';
+        } elseif ($request->status === 'CANCELLED') {
+            $steps[1]['status'] = 'danger';
+            $steps[1]['description'] = 'Yêu cầu đã bị trả lại / hủy.';
+        } else {
+            $steps[1]['status'] = 'done';
+            $steps[1]['description'] = 'DVKH đã xác nhận và chuyển yêu cầu sang PTN.';
+        }
+
+        if ($qualityCertificate->status === 'REJECTED') {
+            $steps[2]['status'] = 'danger';
+            $steps[2]['description'] = 'Phiếu đã bị Trưởng PTN trả lại.';
+        } else {
+            $steps[2]['status'] = 'done';
+            $steps[2]['description'] = 'PTN đã lập phiếu ' . $qualityCertificate->certificate_no . '.';
+        }
+
+        if ($qualityCertificate->status === 'REVOKED') {
+            $steps[3]['status'] = 'done';
+            $steps[3]['description'] = 'Phiếu cũ đã được ký số trước khi bị thu hồi.';
+        } elseif ($qualityCertificate->status === 'REJECTED') {
+            $steps[3]['status'] = 'danger';
+            $steps[3]['time'] = $qualityCertificate->rejected_at;
+            $steps[3]['description'] = 'Trưởng PTN đã trả lại phiếu: ' . ($qualityCertificate->rejected_reason ?: '-');
+        } elseif ($qualityCertificate->signed_at) {
+            $steps[3]['status'] = 'done';
+            $steps[3]['time'] = $qualityCertificate->signed_at;
+            $steps[3]['description'] = 'Phiếu đã ký số thành công.';
+        } elseif ($qualityCertificate->smartcaStatusExpired()) {
+            $steps[3]['status'] = 'danger';
+            $steps[3]['description'] = 'Yêu cầu ký đã quá hạn, cần kiểm tra kết quả cũ hoặc gửi lại yêu cầu ký.';
+        } elseif ($qualityCertificate->smartca_status === 'PENDING') {
+            $steps[3]['status'] = 'current';
+            $steps[3]['description'] = 'Đang chờ Trưởng PTN xác nhận trên app VNPT SmartCA.';
+        } else {
+            $steps[3]['status'] = 'current';
+            $steps[3]['description'] = 'Chờ Trưởng PTN kiểm tra và gửi yêu cầu ký số.';
+        }
+
+        if ($qualityCertificate->status === 'REVOKED') {
+            $steps[4]['status'] = 'danger';
+            $steps[4]['description'] = 'Phiếu đã hủy / thu hồi. Lý do: ' . ($qualityCertificate->revoked_reason ?: '-');
+        } elseif ($qualityCertificate->signed_at || $qualityCertificate->status === 'ISSUED') {
+            $steps[4]['status'] = 'done';
+            $steps[4]['time'] = $qualityCertificate->signed_at;
+            $steps[4]['description'] = 'Phiếu đã phát hành. Hệ thống gửi email theo cấu hình hiện tại.';
+        } elseif ($qualityCertificate->status === 'REJECTED') {
+            $steps[4]['status'] = 'skipped';
+            $steps[4]['description'] = 'Chưa phát hành vì phiếu đã bị trả lại.';
+        }
+
+        return $steps;
+    }
+
     private function processSmartCaStatus(
         QualityCertificate $qualityCertificate,
         SmartCaService $smartCaService,
@@ -971,7 +1201,8 @@ class QualityCertificateController extends Controller
                         'smartca_request_expired',
                         'Yêu cầu ký VNPT SmartCA đã hết hạn cho phiếu CNCL: ' . $qualityCertificate->certificate_no,
                         $oldData,
-                        $qualityCertificate->fresh()->toArray()
+                        $qualityCertificate->fresh()->toArray(),
+                        $qualityCertificate
                     );
                 }
 
@@ -1093,7 +1324,8 @@ class QualityCertificateController extends Controller
                 'smartca_signed_without_email',
                 'Hoàn tất ký VNPT SmartCA phiếu CNCL không gửi email tự động: ' . $qualityCertificate->certificate_no,
                 $oldData,
-                $qualityCertificate->fresh()->load('request')->toArray()
+                $qualityCertificate->fresh()->load('request')->toArray(),
+                $qualityCertificate
             );
 
             return [
@@ -1123,7 +1355,8 @@ class QualityCertificateController extends Controller
                 'smartca_signed_and_send_email',
                 'Hoàn tất ký VNPT SmartCA và gửi email phiếu CNCL: ' . $qualityCertificate->certificate_no . ' tới ' . $recipients['to'] . ($recipients['cc'] ? '. CC: ' . implode(', ', $recipients['cc']) : ''),
                 $oldData,
-                $qualityCertificate->fresh()->load('request')->toArray()
+                $qualityCertificate->fresh()->load('request')->toArray(),
+                $qualityCertificate
             );
 
             return [
@@ -1222,7 +1455,8 @@ class QualityCertificateController extends Controller
             'smartca_request_expired',
             'Yêu cầu ký VNPT SmartCA đã hết hạn cho phiếu CNCL: ' . $qualityCertificate->certificate_no,
             $oldData,
-            $qualityCertificate->fresh()->toArray()
+            $qualityCertificate->fresh()->toArray(),
+            $qualityCertificate
         );
     }
 
@@ -1239,6 +1473,65 @@ class QualityCertificateController extends Controller
         }
 
         return $decoded;
+    }
+
+    private function activeReissueRequestForCertificate(QualityCertificate $qualityCertificate): ?CertificateRequest
+    {
+        return CertificateRequest::where('request_type', 'REISSUE')
+            ->whereNotIn('status', ['CANCELLED', 'COMPLETED'])
+            ->where(function ($query) use ($qualityCertificate) {
+                $query->where('reissue_of_certificate_id', $qualityCertificate->id)
+                    ->orWhereHas('reissueCertificates', function ($certificateQuery) use ($qualityCertificate) {
+                        $certificateQuery->where('quality_certificates.id', $qualityCertificate->id);
+                    });
+            })
+            ->first();
+    }
+
+    private function createReissueRequestFromCertificates($certificates, string $reason): CertificateRequest
+    {
+        $certificates = collect($certificates)->values();
+        $primaryCertificate = $certificates->first();
+        $oldRequest = $primaryCertificate->request;
+
+        $certificateNos = $certificates->pluck('certificate_no')->implode(', ');
+
+        $newRequest = CertificateRequest::create([
+            'request_no' => $this->generateRequestNo(),
+            'request_type' => 'REISSUE',
+            'reissue_of_certificate_id' => $primaryCertificate->id,
+            'reissue_reason' => $reason,
+            'distribution_center_id' => $oldRequest->distribution_center_id,
+            'customer_id' => $oldRequest->customer_id,
+            'delivery_date' => $oldRequest->delivery_date,
+            'invoice_no' => $oldRequest->invoice_no,
+            'require_hard_copy' => $oldRequest->require_hard_copy,
+            'hard_copy_quantity' => $oldRequest->hard_copy_quantity,
+            'is_urgent' => $oldRequest->is_urgent,
+            'urgent_reason_id' => $oldRequest->urgent_reason_id,
+            'requester_name' => $oldRequest->requester_name,
+            'note' => trim(($oldRequest->note ? $oldRequest->note . "\n" : '') . '[Yêu cầu cấp lại từ phiếu ' . $certificateNos . ']: ' . $reason),
+            'status' => 'WAIT_DVKH',
+            'created_by' => Auth::id(),
+        ]);
+
+        $newRequest->reissueCertificates()->syncWithoutDetaching($certificates->pluck('id')->all());
+
+        $mergedDetails = $certificates
+            ->flatMap(function ($certificate) {
+                return $certificate->request?->details ?: collect();
+            })
+            ->groupBy('product_id')
+            ->map(fn ($details, $productId) => [
+                'product_id' => $productId,
+                'quantity' => $details->sum('quantity'),
+            ]);
+
+        foreach ($mergedDetails as $detail) {
+            $newRequest->details()->create($detail);
+        }
+
+        return $newRequest;
     }
 
     private function generateRequestNo(): string

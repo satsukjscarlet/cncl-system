@@ -20,6 +20,7 @@ class DvkhRequestController extends Controller
             'creator',
             'urgentReason',
             'reissueOfCertificate',
+            'reissueCertificates',
             'qualityCertificate',
         ])->whereIn('status', [
             'WAIT_DVKH',
@@ -76,6 +77,7 @@ class DvkhRequestController extends Controller
             'creator',
             'urgentReason',
             'reissueOfCertificate',
+            'reissueCertificates',
             'qualityCertificate',
         ]);
 
@@ -97,13 +99,17 @@ class DvkhRequestController extends Controller
         DB::beginTransaction();
 
         try {
-            $certificateRequest->load('reissueOfCertificate');
+            $certificateRequest->load(['reissueOfCertificate', 'reissueCertificates']);
             $oldData = $certificateRequest->toArray();
 
             if ($certificateRequest->request_type === 'REISSUE') {
-                $oldCertificate = $certificateRequest->reissueOfCertificate;
+                $oldCertificates = $certificateRequest->reissueCertificates;
 
-                if (!$oldCertificate || !$oldCertificate->canRequestReissue()) {
+                if ($oldCertificates->isEmpty() && $certificateRequest->reissueOfCertificate) {
+                    $oldCertificates = collect([$certificateRequest->reissueOfCertificate]);
+                }
+
+                if ($oldCertificates->isEmpty() || $oldCertificates->contains(fn ($certificate) => !$certificate->canRequestReissue())) {
                     DB::rollBack();
 
                     return redirect()
@@ -111,12 +117,14 @@ class DvkhRequestController extends Controller
                         ->with('error', 'Phiếu cũ của yêu cầu cấp lại không còn ở trạng thái có thể hủy/cấp lại.');
                 }
 
-                $oldCertificate->update([
-                    'status' => 'REVOKED',
-                    'revoked_at' => now(),
-                    'revoked_by' => Auth::id(),
-                    'revoked_reason' => $certificateRequest->reissue_reason,
-                ]);
+                foreach ($oldCertificates as $oldCertificate) {
+                    $oldCertificate->update([
+                        'status' => 'REVOKED',
+                        'revoked_at' => now(),
+                        'revoked_by' => Auth::id(),
+                        'revoked_reason' => $certificateRequest->reissue_reason,
+                    ]);
+                }
             }
 
             $certificateRequest->update([
@@ -137,7 +145,8 @@ class DvkhRequestController extends Controller
             'approve',
             'DVKH xác nhận yêu cầu: ' . $certificateRequest->request_no,
             $oldData,
-            $certificateRequest->fresh()->toArray()
+            $certificateRequest->fresh()->toArray(),
+            $certificateRequest
         );
 
         app(NotificationService::class)->notifyRequestApproved(
@@ -175,7 +184,8 @@ class DvkhRequestController extends Controller
             'reject',
             'DVKH trả lại yêu cầu: ' . $certificateRequest->request_no . '. Lý do: ' . $data['reason'],
             $oldData,
-            $certificateRequest->fresh()->toArray()
+            $certificateRequest->fresh()->toArray(),
+            $certificateRequest
         );
 
         app(NotificationService::class)->notifyRequestRejected(

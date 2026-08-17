@@ -48,6 +48,35 @@ class UserController extends Controller
         return view('users.index', compact('users', 'roles', 'centers'));
     }
 
+    public function options(Request $request)
+    {
+        $term = trim((string) $request->input('q', ''));
+
+        $users = User::with('distributionCenter')
+            ->when(auth()->user()->hasRole('TrungTam'), function ($query) {
+                $query->where('distribution_center_id', auth()->user()->distribution_center_id);
+            })
+            ->when($term !== '', function ($query) use ($term) {
+                $query->where(function ($q) use ($term) {
+                    $q->where('name', 'like', '%' . $term . '%')
+                        ->orWhere('username', 'like', '%' . $term . '%')
+                        ->orWhere('email', 'like', '%' . $term . '%');
+                });
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'results' => $users
+                ->map(fn (User $user) => [
+                    'id' => $user->id,
+                    'text' => $this->userOptionText($user),
+                ])
+                ->values(),
+        ]);
+    }
+
     public function create()
     {
         $roles = Role::orderBy('name')->get();
@@ -166,5 +195,16 @@ class UserController extends Controller
         return redirect()
             ->route('users.index')
             ->with('success', 'Cập nhật trạng thái tài khoản thành công.');
+    }
+
+    private function userOptionText(User $user): string
+    {
+        return collect([
+            $user->name,
+            $user->username,
+            $user->distributionCenter?->code,
+        ])
+            ->filter()
+            ->implode(' - ');
     }
 }
