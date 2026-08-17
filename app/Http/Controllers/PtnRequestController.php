@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\DistributionCenter;
 use App\Models\Product;
 use App\Models\QualityCertificate;
+use App\Models\SlaConfig;
 use App\Models\UrgentReason;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class PtnRequestController extends Controller
 {
     public function index(Request $request)
     {
+        $slaPtn = SlaConfig::where('code', 'SLA_PTN')->where('is_active', true)->first();
         $query = CertificateRequest::with([
             'distributionCenter',
             'customer',
@@ -41,16 +43,40 @@ class PtnRequestController extends Controller
             });
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        if ($request->filled('distribution_center_id')) {
+            $query->where('distribution_center_id', $request->distribution_center_id);
+        }
+
+        $statusFilter = $request->has('status') ? $request->input('status') : 'WAIT_PTN';
+
+        if ($statusFilter !== null && $statusFilter !== '') {
+            $query->where('status', $statusFilter);
+        }
+
+        if ($request->filled('urgent')) {
+            $query->where('is_urgent', $request->urgent);
+        }
+
+        if ($request->filled('sla')) {
+            $this->applySlaFilter($query, $request->sla, $slaPtn);
         }
 
         $requests = $query
-            ->latest()
+            ->orderByRaw("CASE WHEN status = 'WAIT_PTN' THEN 0 ELSE 1 END")
+            ->orderByDesc('is_urgent')
+            ->orderBy('created_at')
             ->paginate(15)
             ->withQueryString();
 
-        return view('ptn_requests.index', compact('requests'));
+        $this->attachSlaMeta($requests->getCollection(), $slaPtn);
+
+        $centers = DistributionCenter::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $metrics = $this->metrics($request, $slaPtn);
+
+        return view('ptn_requests.index', compact('requests', 'centers', 'metrics', 'statusFilter'));
     }
 
     public function directCreate()
@@ -481,6 +507,98 @@ class PtnRequestController extends Controller
             'duplicate_invoice_warning',
             'Cảnh báo số hóa đơn trùng khi PTN lập trực tiếp yêu cầu ' . $certificateRequest->request_no . ': ' . $certificateRequest->invoice_no . ' (' . $duplicateCount . ' bản ghi trùng)'
         );
+    }
+
+    private function attachSlaMeta($requests, ?SlaConfig $sla): void
+    {
+        $requests->each(function (CertificateRequest $item) use ($sla) {
+            $item->setAttribute('sla_level', $this->slaLevel($item, $sla));
+            $item->setAttribute('sla_elapsed_minutes', $item->created_at ? $item->created_at->diffInMinutes(now()) : null);
+        });
+    }
+
+    private function metrics(Request $request, ?SlaConfig $sla): array
+    {
+        $base = CertificateRequest::query()
+            ->whereIn('status', ['WAIT_PTN', 'PTN_PROCESSING'])
+            ->when($request->filled('distribution_center_id'), function ($query) use ($request) {
+                $query->where('distribution_center_id', $request->distribution_center_id);
+            });
+
+        return [
+            'waiting' => (clone $base)->where('status', 'WAIT_PTN')->count(),
+            'urgent' => (clone $base)->where('status', 'WAIT_PTN')->where('is_urgent', true)->count(),
+            'warning' => $this->slaCount(clone $base, $sla, 'warning'),
+            'overdue' => $this->slaCount(clone $base, $sla, 'overdue'),
+            'created_today' => (clone $base)
+                ->where('status', 'PTN_PROCESSING')
+                ->whereDate('updated_at', now()->toDateString())
+                ->count(),
+            'processing' => (clone $base)->where('status', 'PTN_PROCESSING')->count(),
+        ];
+    }
+
+    private function slaCount($query, ?SlaConfig $sla, string $level): int
+    {
+        if (!$sla) {
+            return 0;
+        }
+
+        $query->where('status', 'WAIT_PTN');
+        $this->applySlaFilter($query, $level, $sla);
+
+        return $query->count();
+    }
+
+    private function applySlaFilter($query, string $mode, ?SlaConfig $sla): void
+    {
+        if (!$sla) {
+            return;
+        }
+
+        $limitAt = now()->subMinutes((int) $sla->limit_minutes);
+        $warningAt = now()->subMinutes((int) $sla->warning_minutes);
+
+        if ($mode === 'overdue') {
+            $query->where('status', 'WAIT_PTN')
+                ->where('created_at', '<=', $limitAt);
+
+            return;
+        }
+
+        if ($mode === 'warning') {
+            $query->where('status', 'WAIT_PTN')
+                ->where('created_at', '<=', $warningAt)
+                ->where('created_at', '>', $limitAt);
+
+            return;
+        }
+
+        if ($mode === 'normal') {
+            $query->where(function ($q) use ($warningAt) {
+                $q->where('status', '!=', 'WAIT_PTN')
+                    ->orWhere('created_at', '>', $warningAt);
+            });
+        }
+    }
+
+    private function slaLevel(CertificateRequest $item, ?SlaConfig $sla): ?string
+    {
+        if (!$sla || $item->status !== 'WAIT_PTN' || !$item->created_at) {
+            return null;
+        }
+
+        $minutes = $item->created_at->diffInMinutes(now());
+
+        if ($minutes >= $sla->limit_minutes) {
+            return 'overdue';
+        }
+
+        if ($minutes >= $sla->warning_minutes) {
+            return 'warning';
+        }
+
+        return 'normal';
     }
 
     private function selectedProductsForForm(): \Illuminate\Support\Collection
