@@ -10,6 +10,7 @@ use App\Models\QualityCertificate;
 use App\Models\QualityStandard;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Services\WorkQueueService;
 use Database\Seeders\DistributionCenterSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\UserSeeder;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 class CertificateWorkflowTest extends TestCase
@@ -183,6 +186,124 @@ class CertificateWorkflowTest extends TestCase
             ->where('type', 'certificate_returned')
             ->where('url', route('quality-certificates.show', $certificate))
             ->count());
+    }
+
+    public function test_notification_open_rebuilds_current_url_and_marks_as_read(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-NOTIFY-OPEN');
+        $certificate = $this->createIssuedCertificate($centerUser, $customer, 'INV-NOTIFY-OPEN', [[$this->product, 4]]);
+
+        $notification = UserNotification::create([
+            'user_id' => $centerUser->id,
+            'type' => 'certificate_signed',
+            'title' => 'Phiếu CNCL đã ký',
+            'message' => 'Test mở thông báo',
+            'url' => 'http://192.168.0.227:8000/quality-certificates/' . $certificate->id,
+            'data' => [
+                'certificate_id' => $certificate->id,
+                'certificate_no' => $certificate->certificate_no,
+                'request_id' => $certificate->certificate_request_id,
+                'distribution_center_id' => $centerUser->distribution_center_id,
+            ],
+        ]);
+
+        $this->actingAs($centerUser)
+            ->getJson(route('notifications.feed'))
+            ->assertOk()
+            ->assertJsonPath('browser_notification.id', $notification->id)
+            ->assertJsonPath('browser_notification.title', 'Phiếu CNCL đã ký')
+            ->assertJsonPath('browser_notification.url', route('notifications.open', $notification));
+
+        $this->actingAs($centerUser)
+            ->get(route('notifications.open', $notification))
+            ->assertRedirect(route('quality-certificates.show', $certificate));
+
+        $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public function test_notification_open_falls_back_to_request_when_user_cannot_view_certificate(): void
+    {
+        Role::findByName('TrungTam')->revokePermissionTo('certificate.view');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-NOTIFY-FALLBACK');
+        $certificate = $this->createIssuedCertificate($centerUser, $customer, 'INV-NOTIFY-FALLBACK', [[$this->product, 4]]);
+
+        $notification = UserNotification::create([
+            'user_id' => $centerUser->id,
+            'type' => 'certificate_signed',
+            'title' => 'Phiếu CNCL đã ký',
+            'message' => 'Test fallback thông báo',
+            'url' => 'http://192.168.0.227:8000/quality-certificates/' . $certificate->id,
+            'data' => [
+                'certificate_id' => $certificate->id,
+                'certificate_no' => $certificate->certificate_no,
+                'request_id' => $certificate->certificate_request_id,
+                'distribution_center_id' => $centerUser->distribution_center_id,
+            ],
+        ]);
+
+        $this->actingAs($centerUser)
+            ->get(route('notifications.open', $notification))
+            ->assertRedirect(route('certificate-requests.show', $certificate->request));
+
+        $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public function test_work_queue_items_use_matching_filter_urls(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-WORK-QUEUE');
+
+        $waitPtn = CertificateRequest::create([
+            'request_no' => 'YC-WORK-WAIT-PTN',
+            'request_type' => 'NORMAL',
+            'distribution_center_id' => $centerUser->distribution_center_id,
+            'customer_id' => $customer->id,
+            'delivery_date' => '2026-08-08',
+            'invoice_no' => 'INV-WORK-WAIT-PTN',
+            'require_hard_copy' => false,
+            'hard_copy_quantity' => 0,
+            'is_urgent' => false,
+            'requester_name' => 'Nguoi tao',
+            'status' => 'WAIT_PTN',
+            'created_by' => $centerUser->id,
+        ]);
+
+        CertificateRequest::create([
+            'request_no' => 'YC-WORK-PTN-PROCESSING',
+            'request_type' => 'NORMAL',
+            'distribution_center_id' => $centerUser->distribution_center_id,
+            'customer_id' => $customer->id,
+            'delivery_date' => '2026-08-08',
+            'invoice_no' => 'INV-WORK-PTN-PROCESSING',
+            'require_hard_copy' => false,
+            'hard_copy_quantity' => 0,
+            'is_urgent' => false,
+            'requester_name' => 'Nguoi tao',
+            'status' => 'PTN_PROCESSING',
+            'created_by' => $centerUser->id,
+        ]);
+
+        $centerItems = collect(app(WorkQueueService::class)->forUser($centerUser)['items']);
+
+        $this->assertSame(1, $centerItems->firstWhere('label', 'Đang chờ PTN lập phiếu')['count']);
+        $this->assertSame(route('certificate-requests.index', ['status' => 'WAIT_PTN']), $centerItems->firstWhere('label', 'Đang chờ PTN lập phiếu')['url']);
+        $this->assertSame(1, $centerItems->firstWhere('label', 'Phiếu đã lập - chờ ký')['count']);
+        $this->assertSame(route('certificate-requests.index', ['status' => 'PTN_PROCESSING']), $centerItems->firstWhere('label', 'Phiếu đã lập - chờ ký')['url']);
+
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $waitPtn->update([
+            'status' => 'WAIT_DVKH',
+            'is_urgent' => true,
+        ]);
+
+        $dvkhItems = collect(app(WorkQueueService::class)->forUser($dvkh)['items']);
+
+        $this->assertSame(1, $dvkhItems->firstWhere('label', 'Yêu cầu gấp cần kiểm tra')['count']);
+        $this->assertSame(route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'urgent' => '1']), $dvkhItems->firstWhere('label', 'Yêu cầu gấp cần kiểm tra')['url']);
     }
 
     public function test_request_can_create_new_customer_with_manual_customer_code(): void

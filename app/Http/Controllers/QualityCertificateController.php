@@ -203,7 +203,6 @@ class QualityCertificateController extends Controller
                 ->whereNotIn('status', ['ISSUED', 'REVOKED'])
                 ->where(function ($q) use ($expiredBefore) {
                     $q->where('status', 'DRAFT')
-                        ->orWhere('status', 'REJECTED')
                         ->orWhere('smartca_status', 'PENDING')
                         ->orWhere('smartca_status', 'EXPIRED')
                         ->orWhere(function ($pending) use ($expiredBefore) {
@@ -214,7 +213,18 @@ class QualityCertificateController extends Controller
         };
 
         $certificates = $query
-            ->latest()
+            ->orderByRaw(
+                "CASE
+                    WHEN smartca_status = 'EXPIRED' THEN 0
+                    WHEN smartca_status = 'PENDING' AND smartca_requested_at <= ? THEN 0
+                    WHEN smartca_status = 'PENDING' THEN 1
+                    WHEN status = 'DRAFT' THEN 2
+                    WHEN status = 'REJECTED' THEN 3
+                    ELSE 4
+                END",
+                [$expiredBefore->toDateTimeString()]
+            )
+            ->oldest('created_at')
             ->paginate(15)
             ->withQueryString();
 

@@ -549,6 +549,16 @@ return [
                 ],
             ],
         ],
+        'CnclBrowserNotifications' => [
+            'active' => true,
+            'files' => [
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'js/cncl-browser-notifications.js?v=20260817-1',
+                ],
+            ],
+        ],
         'Chartjs' => [
             'active' => false,
             'files' => [

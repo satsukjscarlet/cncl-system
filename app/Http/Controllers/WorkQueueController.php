@@ -13,14 +13,12 @@ class WorkQueueController extends Controller
         $user = $request->user();
         $cacheKey = 'work_queue:user:' . $user->id;
 
-        $workQueue = Cache::remember($cacheKey, now()->addSeconds(30), function () use ($workQueueService, $user) {
+        $workQueue = Cache::remember($cacheKey, now()->addSeconds(10), function () use ($workQueueService, $user) {
             return $workQueueService->forUser($user);
         });
 
         $total = $workQueue['total'];
-        $items = collect($workQueue['items'])
-            ->filter(fn ($item) => $item['count'] > 0)
-            ->values();
+        $items = collect($workQueue['items'])->values();
 
         return response()->json([
             'label' => $total > 0 ? ($total > 99 ? '99+' : $total) : '',

@@ -1,11 +1,16 @@
 @forelse($notifications as $notification)
     <a href="{{ route('notifications.open', $notification) }}"
-       class="dropdown-item {{ $notification->read_at ? '' : 'bg-light' }}">
+       class="dropdown-item {{ $notification->read_at ? '' : 'bg-light' }}"
+       data-loading-message="Đang mở thông báo...">
         <div class="d-flex align-items-start">
             <i class="fas {{ $notification->read_at ? 'fa-bell text-muted' : 'fa-bell text-warning' }} mr-2 mt-1"></i>
             <div class="flex-grow-1" style="min-width:0">
-                <div class="text-sm font-weight-bold text-truncate">{{ $notification->title }}</div>
-                <div class="text-xs text-muted text-truncate">{{ $notification->message }}</div>
+                <div class="text-sm font-weight-bold text-truncate" title="{{ $notification->title }}">
+                    {{ $notification->title }}
+                </div>
+                <div class="text-xs text-muted text-truncate" title="{{ $notification->message }}">
+                    {{ $notification->message }}
+                </div>
                 <div class="text-xs text-muted">{{ $notification->created_at->diffForHumans() }}</div>
             </div>
         </div>
