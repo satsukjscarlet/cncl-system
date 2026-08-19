@@ -346,11 +346,12 @@
                                     $selectedProductText = collect([
                                         $selectedProduct->product_code,
                                         $selectedProduct->product_name,
-                                        $selectedProduct->nominal_size,
-                                        $selectedProduct->qualityStandard?->code,
                                     ])->filter()->implode(' - ');
                                 @endphp
-                                <option value="{{ $selectedProduct->id }}" selected>{{ $selectedProductText }}</option>
+                                <option value="{{ $selectedProduct->id }}"
+                                        data-code="{{ $selectedProduct->product_code }}"
+                                        data-name="{{ $selectedProduct->product_name }}"
+                                        selected>{{ $selectedProductText }}</option>
                             @endif
                         </select>
                     </td>
@@ -714,6 +715,8 @@
                     const option = document.createElement('option');
                     option.value = item.product_id;
                     option.textContent = item.product_text || '';
+                    option.dataset.code = item.product_code || '';
+                    option.dataset.name = item.product_name || '';
                     option.selected = true;
                     select.appendChild(option);
                 }

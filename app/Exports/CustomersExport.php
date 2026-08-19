@@ -22,6 +22,7 @@ class CustomersExport implements FromCollection, WithHeadings
             ->get()
             ->map(function ($customer) {
                 return [
+                    'ma_trung_tam' => $customer->distributionCenter?->code,
                     'trung_tam' => $customer->distributionCenter
                         ? $customer->distributionCenter->code . ' - ' . $customer->distributionCenter->name
                         : '',
@@ -42,6 +43,7 @@ class CustomersExport implements FromCollection, WithHeadings
     public function headings(): array
     {
         return [
+            'ma_trung_tam',
             'trung_tam',
             'ma_khach_hang',
             'ten_khach_hang',

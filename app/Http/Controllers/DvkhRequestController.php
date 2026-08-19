@@ -99,8 +99,9 @@ class DvkhRequestController extends Controller
         ]);
 
         $invoiceDuplicates = $this->invoiceDuplicates($certificateRequest);
+        $requestWorkflowSteps = $this->requestWorkflowSteps($certificateRequest);
 
-        return view('dvkh_requests.show', compact('certificateRequest', 'invoiceDuplicates'));
+        return view('dvkh_requests.show', compact('certificateRequest', 'invoiceDuplicates', 'requestWorkflowSteps'));
     }
 
     public function approve(Request $request, CertificateRequest $certificateRequest)
@@ -382,7 +383,76 @@ class DvkhRequestController extends Controller
     private function authorizeDvkhRequest(CertificateRequest $certificateRequest): void
     {
         if (!in_array($certificateRequest->status, ['WAIT_DVKH', 'WAIT_PTN', 'CANCELLED'])) {
-            abort(403, 'Yeu cau nay khong thuoc man xu ly cua DVKH.');
+            abort(403, 'Yêu cầu này không thuộc màn xử lý của DVKH.');
         }
+    }
+
+    private function requestWorkflowSteps(CertificateRequest $certificateRequest): array
+    {
+        $certificate = $certificateRequest->qualityCertificate;
+
+        $steps = [
+            [
+                'title' => 'Trung tâm gửi yêu cầu',
+                'icon' => 'fas fa-paper-plane',
+                'status' => 'done',
+                'description' => 'Trung tâm đã tạo và gửi yêu cầu cấp phiếu.',
+                'time' => $certificateRequest->created_at,
+            ],
+            [
+                'title' => 'DVKH kiểm tra',
+                'icon' => 'fas fa-check-circle',
+                'status' => 'pending',
+                'description' => 'DVKH kiểm tra thông tin khách hàng, hóa đơn và danh sách sản phẩm.',
+                'time' => null,
+            ],
+            [
+                'title' => 'PTN lập phiếu',
+                'icon' => 'fas fa-vials',
+                'status' => 'pending',
+                'description' => 'PTN lập phiếu CNCL sau khi DVKH xác nhận.',
+                'time' => null,
+            ],
+            [
+                'title' => 'Trưởng PTN ký số',
+                'icon' => 'fas fa-pen-nib',
+                'status' => 'pending',
+                'description' => 'Trưởng PTN kiểm tra phiếu và gửi ký VNPT SmartCA.',
+                'time' => null,
+            ],
+        ];
+
+        if ($certificateRequest->status === 'WAIT_DVKH') {
+            $steps[1]['status'] = 'current';
+            $steps[1]['description'] = 'Đang chờ DVKH xác nhận hoặc trả lại yêu cầu.';
+        }
+
+        if ($certificateRequest->status === 'CANCELLED') {
+            $steps[1]['status'] = 'danger';
+            $steps[1]['description'] = 'DVKH đã trả lại/hủy yêu cầu. Xem ghi chú để biết lý do.';
+            $steps[1]['time'] = $certificateRequest->updated_at;
+        }
+
+        if (in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING', 'COMPLETED'], true) || $certificate) {
+            $steps[1]['status'] = 'done';
+            $steps[1]['description'] = 'DVKH đã xác nhận và chuyển yêu cầu sang PTN.';
+            $steps[1]['time'] = $certificateRequest->updated_at;
+
+            $steps[2]['status'] = $certificate ? 'done' : 'current';
+            $steps[2]['description'] = $certificate
+                ? 'PTN đã lập phiếu ' . $certificate->certificate_no . '.'
+                : 'Đang chờ PTN lập phiếu CNCL.';
+            $steps[2]['time'] = $certificate?->created_at;
+        }
+
+        if ($certificate) {
+            $steps[3]['status'] = $certificate->signed_at ? 'done' : 'current';
+            $steps[3]['description'] = $certificate->signed_at
+                ? 'Phiếu đã được ký số/phát hành.'
+                : 'Phiếu đã lập, đang chờ Trưởng PTN ký số.';
+            $steps[3]['time'] = $certificate->signed_at;
+        }
+
+        return $steps;
     }
 }

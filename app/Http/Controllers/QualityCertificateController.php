@@ -960,14 +960,13 @@ class QualityCertificateController extends Controller
             $qualityCertificate
         );
 
-        $pdf = Pdf::loadView('quality_certificates.pdf', [
+        $pdf = Pdf::loadView('quality_certificates.hard_copy_print', [
             'certificate' => $qualityCertificate->fresh()->load([
                 'request.distributionCenter',
                 'request.customer',
                 'details.product',
                 'creator',
             ]),
-            'hardCopy' => true,
         ])->setPaper('a4', 'portrait');
 
         return $pdf->stream($qualityCertificate->certificate_no . '_ky_tuoi_lan_' . $printNo . '.pdf');
@@ -1034,14 +1033,13 @@ class QualityCertificateController extends Controller
 
         $to = $this->requestingDistributionCenterUserEmail($qualityCertificate);
 
-        $configuredCc = collect(config('certificate_mail.quality_certificate.cc', []))
-            ->flatten()
+        $configuredCc = collect($this->configuredCertificateMailCc())
             ->map(fn ($email) => $this->normalizeEmail($email))
             ->filter();
 
         $customerCc = [];
 
-        if (config('certificate_mail.quality_certificate.cc_customer_email', true)) {
+        if (SystemSetting::getValue('certificate_mail_cc_customer_email', config('certificate_mail.quality_certificate.cc_customer_email', true))) {
             $customerEmail = $this->normalizeEmail($qualityCertificate->request?->customer?->email);
 
             if ($customerEmail) {
@@ -1060,6 +1058,36 @@ class QualityCertificateController extends Controller
             'to' => $to,
             'cc' => $cc,
         ];
+    }
+
+    private function configuredCertificateMailCc(): array
+    {
+        $keys = [
+            'certificate_mail_cc_dvkh',
+            'certificate_mail_cc_ptn',
+            'certificate_mail_cc_extra',
+        ];
+
+        $hasDatabaseSettings = SystemSetting::whereIn('key', $keys)->exists();
+
+        $settings = collect($keys)
+            ->map(fn ($key) => SystemSetting::getValue($key, ''))
+            ->all();
+
+        $configured = collect($settings)
+            ->flatMap(fn ($value) => preg_split('/[\s,;]+/', (string) $value, -1, PREG_SPLIT_NO_EMPTY))
+            ->filter()
+            ->values();
+
+        if ($hasDatabaseSettings) {
+            return $configured->all();
+        }
+
+        return collect(config('certificate_mail.quality_certificate.cc', []))
+            ->flatten()
+            ->filter()
+            ->values()
+            ->all();
     }
 
     private function certificateWorkflowSteps(QualityCertificate $qualityCertificate, $logs): array

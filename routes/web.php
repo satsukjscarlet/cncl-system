@@ -388,6 +388,14 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:setting.update')
         ->name('system-settings.update');
 
+    Route::post('system-settings/test-data/seed', [SystemSettingController::class, 'seedTestData'])
+        ->middleware('permission:setting.update')
+        ->name('system-settings.test-data.seed');
+
+    Route::post('system-settings/test-data/clear', [SystemSettingController::class, 'clearTestData'])
+        ->middleware('permission:setting.update')
+        ->name('system-settings.test-data.clear');
+
     Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])
         ->middleware('permission:user.reset_password')
         ->name('users.reset-password');

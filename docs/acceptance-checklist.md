@@ -1,340 +1,568 @@
 # Checklist nghiệm thu hệ thống CNCL
 
-Tài liệu này dùng để kiểm thử thủ công theo từng vai trò tài khoản và theo luồng nghiệp vụ thật của hệ thống cấp Phiếu Chứng nhận Chất lượng.
+Phiên bản checklist: 2.0  
+Ngày cập nhật: 18/08/2026  
+Tài liệu liên quan: `docs/HUONG_DAN_SU_DUNG_CNCL.md`, `docs/test-accounts.md`
 
-Quy ước kết quả:
+Tài liệu này dùng để kiểm thử thủ công hệ thống cấp Phiếu Chứng nhận Chất lượng theo phiên bản mới nhất, gồm phân quyền theo vai trò, yêu cầu cấp phiếu, DVKH, PTN, Trưởng PTN, ký số VNPT SmartCA, cấp lại phiếu, import Excel, thông báo, dashboard việc cần làm, email, PDF và báo cáo.
+
+## Quy ước kết quả
 
 - `[ ]` Chưa kiểm tra
 - `[x]` Đạt
 - `[!]` Có lỗi cần sửa
 - `[?]` Cần xác nhận nghiệp vụ
 
-## 1. Phạm vi nghiệm thu
+Khi ghi lỗi cần kèm: tài khoản, vai trò, URL màn hình, mã yêu cầu/phiếu, thao tác, kết quả mong muốn, kết quả thực tế và ảnh chụp nếu có.
 
-- Đăng nhập, đăng xuất, tài khoản không cần email để đăng nhập.
-- Dashboard và sidebar theo đúng vai trò.
-- Quyền xem, thêm, sửa, xóa, import, export theo từng vai trò.
-- Dữ liệu Trung tâm phân phối được giới hạn đúng phạm vi.
-- Luồng yêu cầu cấp phiếu từ Trung tâm -> DVKH -> PTN -> Trưởng PTN -> ký số -> gửi mail.
-- Luồng PTN cấp phiếu trực tiếp.
-- Luồng cấp lại, hủy phiếu cũ, trả lại phiếu.
-- Cảnh báo trùng số hóa đơn.
-- Yêu cầu gấp và danh mục lý do gấp.
-- Ký số VNPT SmartCA, kiểm tra kết quả ký đơn lẻ/hàng loạt, quá hạn 5 phút.
-- PDF phiếu CNCL, link tra cứu, gửi mail.
-- Log thao tác, log đăng nhập, báo cáo tổng hợp.
+## 1. Chuẩn bị nghiệm thu
 
-## 2. Vai trò Admin
+- [ ] Đã chạy migration mới nhất.
+- [ ] Đã chạy seeder phân quyền.
+- [ ] Đã có trung tâm: Nam Phương `NP`, Tam Phước `TP`, Hồng Phước `HP`, Hà Dung `HD`, Thái Hoà `TH`.
+- [ ] Đã có tài khoản test theo `docs/test-accounts.md`.
+- [ ] Đã có danh mục nhóm sản phẩm.
+- [ ] Đã có danh mục sản phẩm đủ lớn để test import và phiếu nhiều dòng.
+- [ ] Đã có danh mục tiêu chuẩn chất lượng.
+- [ ] Đã có danh mục lý do yêu cầu gấp.
+- [ ] Đã có dữ liệu test workflow/báo cáo ở nhiều trạng thái.
+- [ ] Đã cấu hình mail test.
+- [ ] Đã cấu hình VNPT SmartCA demo nếu test ký số thật.
+- [ ] Đã kiểm tra `APP_URL` đúng URL đang test.
+- [ ] Đã bật queue/job nếu môi trường test dùng queue thật.
 
-### 2.1 Đăng nhập và dashboard
+## 2. Đăng nhập, đăng xuất, tài khoản
 
-- [ ] Admin đăng nhập bằng username, không cần email.
-- [ ] Sau đăng nhập vào được dashboard.
-- [ ] Dashboard hiển thị tổng quan toàn hệ thống.
-- [ ] Sidebar hiển thị đầy đủ nhóm: Danh mục, Nghiệp vụ, Phiếu CNCL, Báo cáo, Hệ thống.
+- [ ] Đăng nhập bằng `username`, không cần nhập email.
+- [ ] Đăng nhập đúng tài khoản chuyển vào Dashboard.
+- [ ] Đăng nhập sai mật khẩu hiển thị lỗi rõ ràng.
+- [ ] Tài khoản bị khóa không đăng nhập được.
+- [ ] Đăng xuất thành công.
+- [ ] Sau đăng xuất không truy cập được màn hình nội bộ.
+- [ ] Email user có thể trùng trong giai đoạn test.
+- [ ] Username không được trùng.
+- [ ] Mật khẩu reset từ Admin đăng nhập được.
+- [ ] Màn hồ sơ cá nhân mở được.
 
-### 2.2 Quản trị danh mục
+## 3. Phân quyền và sidebar
 
-- [ ] Xem được Trung tâm phân phối.
-- [ ] Thêm/sửa/xóa được Trung tâm phân phối.
-- [ ] Xem được Nhóm sản phẩm.
-- [ ] Import/export được Nhóm sản phẩm.
-- [ ] Xem được Sản phẩm.
-- [ ] Import/export được Sản phẩm số lượng lớn.
-- [ ] Xem được Khách hàng - Công trình toàn hệ thống.
-- [ ] Import/export được Khách hàng.
-- [ ] Xem được Tiêu chuẩn chất lượng.
-- [ ] Import/export được Tiêu chuẩn chất lượng.
-- [ ] Xem được Danh mục lý do yêu cầu gấp.
-- [ ] Thêm/sửa/xóa được lý do yêu cầu gấp.
+### 3.1 Admin
 
-### 2.3 Quản trị người dùng và phân quyền
+- [ ] Admin thấy đầy đủ nhóm menu: Dashboard, Danh mục, Nghiệp vụ, Phiếu CNCL, Báo cáo, Hệ thống.
+- [ ] Admin thấy màn Trung tâm phân phối.
+- [ ] Admin thấy màn Nhóm sản phẩm.
+- [ ] Admin thấy màn Sản phẩm.
+- [ ] Admin thấy màn Khách hàng - Công trình.
+- [ ] Admin thấy màn Tiêu chuẩn chất lượng.
+- [ ] Admin thấy màn Lý do yêu cầu gấp.
+- [ ] Admin thấy màn Yêu cầu cấp phiếu.
+- [ ] Admin thấy màn DVKH kiểm tra.
+- [ ] Admin thấy màn PTN lập phiếu.
+- [ ] Admin thấy màn Trưởng PTN duyệt ký.
+- [ ] Admin thấy màn Danh sách phiếu.
+- [ ] Admin thấy màn Lịch sử in ký tươi.
+- [ ] Admin thấy màn Báo cáo tổng hợp.
+- [ ] Admin thấy màn Cấu hình SLA.
+- [ ] Admin thấy màn Cấu hình hệ thống.
+- [ ] Admin thấy màn Người dùng.
+- [ ] Admin thấy màn Phân quyền.
+- [ ] Admin thấy màn Log thao tác.
+- [ ] Admin thấy màn Log đăng nhập.
+- [ ] Admin thấy khối dữ liệu API VNPT SmartCA trong chi tiết phiếu.
 
-- [ ] Xem được danh sách người dùng.
-- [ ] Tạo được tài khoản mới cho từng vai trò.
-- [ ] Gán được Trung tâm phân phối cho tài khoản TrungTam.
-- [ ] Sửa được thông tin tài khoản.
-- [ ] Reset được mật khẩu.
-- [ ] Bật/tắt trạng thái tài khoản.
-- [ ] Vào được màn Phân quyền.
-- [ ] Cập nhật quyền cho vai trò không phải Admin.
-- [ ] Không thể làm mất toàn bộ quyền quản trị của Admin.
+### 3.2 Trung tâm phân phối
 
-### 2.4 Cấu hình và nhật ký
+- [ ] Trung tâm chỉ thấy menu cần cho trung tâm.
+- [ ] Trung tâm không thấy màn cấu hình hệ thống.
+- [ ] Trung tâm không thấy màn phân quyền.
+- [ ] Trung tâm không thấy dữ liệu API VNPT SmartCA.
+- [ ] Trung tâm chỉ xem được dữ liệu thuộc trung tâm của mình.
+- [ ] Trung tâm không truy cập được dữ liệu trung tâm khác bằng URL trực tiếp.
+- [ ] Trung tâm tạo yêu cầu cấp phiếu được.
+- [ ] Trung tâm tạo/import khách hàng thuộc trung tâm mình được.
+- [ ] Trung tâm không ký số được.
 
-- [ ] Xem/sửa được cấu hình hệ thống.
-- [ ] Xem/sửa được cấu hình SLA.
-- [ ] Import/export được SLA nếu có quyền.
-- [ ] Xem được nhật ký hệ thống.
-- [ ] Xem được chi tiết log thao tác.
-- [ ] Xem được nhật ký đăng nhập.
-- [ ] Thấy dữ liệu API VNPT SmartCA ở chi tiết phiếu.
+### 3.3 DVKH
 
-### 2.5 Báo cáo
+- [ ] DVKH thấy màn DVKH kiểm tra.
+- [ ] DVKH thấy yêu cầu chờ DVKH.
+- [ ] DVKH xác nhận chuyển PTN được.
+- [ ] DVKH trả lại yêu cầu được.
+- [ ] DVKH xác nhận hủy/thu hồi phiếu cũ trong luồng cấp lại được.
+- [ ] DVKH không gửi ký số được.
+- [ ] DVKH không sửa phân quyền được.
 
-- [ ] Xem được báo cáo tổng hợp toàn hệ thống.
-- [ ] Lọc được báo cáo theo ngày, trạng thái, Trung tâm.
-- [ ] Export được báo cáo tổng hợp Excel.
+### 3.4 PTN
 
-## 3. Vai trò Lãnh đạo
+- [ ] PTN thấy màn PTN lập phiếu.
+- [ ] PTN lập phiếu từ yêu cầu đã được DVKH xác nhận được.
+- [ ] PTN lập phiếu trực tiếp được.
+- [ ] PTN không thấy nút gửi ký số.
+- [ ] PTN không thấy nút kiểm tra kết quả ký.
+- [ ] PTN không thấy dữ liệu API VNPT SmartCA.
 
-### 3.1 Dashboard và báo cáo
+### 3.5 Trưởng PTN
 
-- [ ] Lãnh đạo đăng nhập thành công.
-- [ ] Dashboard hiển thị số liệu tổng quan toàn hệ thống.
-- [ ] Xem được danh sách yêu cầu.
-- [ ] Xem được danh sách phiếu CNCL.
-- [ ] Xem được báo cáo tổng hợp.
-- [ ] Export được báo cáo tổng hợp.
-- [ ] Xem được nhật ký hệ thống.
+- [ ] Trưởng PTN thấy màn Trưởng PTN duyệt ký.
+- [ ] Trưởng PTN thấy danh sách phiếu chờ ký.
+- [ ] Trưởng PTN gửi ký VNPT SmartCA được.
+- [ ] Trưởng PTN kiểm tra kết quả ký được.
+- [ ] Trưởng PTN kiểm tra kết quả ký hàng loạt được nếu có quyền.
+- [ ] Trưởng PTN trả lại phiếu được.
+- [ ] Trưởng PTN không sửa phân quyền được.
 
-### 3.2 Giới hạn thao tác
+### 3.6 Lãnh đạo/Viewer
 
-- [ ] Không thấy nút thêm/sửa/xóa danh mục nếu không có quyền.
-- [ ] Không thấy nút ký số SmartCA.
-- [ ] Không thấy nút xử lý DVKH/PTN nếu không được cấp quyền.
-- [ ] Không thấy màn quản lý người dùng/phân quyền nếu không có quyền.
+- [ ] Lãnh đạo xem được dashboard/báo cáo theo quyền.
+- [ ] Viewer chỉ xem, không thấy nút thêm/sửa/xóa/import/export nếu không có quyền.
+- [ ] Viewer truy cập URL thao tác trực tiếp bị chặn.
 
-## 4. Vai trò Trung tâm phân phối
+## 4. Dashboard, việc cần làm và thông báo
 
-### 4.1 Đăng nhập và dashboard
+- [ ] Dashboard hiển thị không lỗi giao diện.
+- [ ] Số liệu dashboard đúng theo dữ liệu hiện có.
+- [ ] Widget việc cần làm hiển thị theo đúng vai trò đăng nhập.
+- [ ] Trung tâm thấy công việc liên quan yêu cầu/phiếu của trung tâm mình.
+- [ ] DVKH thấy số yêu cầu chờ kiểm tra.
+- [ ] DVKH thấy số yêu cầu gấp.
+- [ ] DVKH thấy số yêu cầu trùng hóa đơn.
+- [ ] DVKH thấy số yêu cầu cảnh báo/quá hạn SLA.
+- [ ] PTN thấy số yêu cầu chờ lập phiếu.
+- [ ] PTN thấy số yêu cầu gấp/cảnh báo SLA.
+- [ ] Trưởng PTN thấy số phiếu chờ ký.
+- [ ] Trưởng PTN thấy số phiếu đang chờ kết quả SmartCA.
+- [ ] Bấm vào từng mục việc cần làm mở đúng danh sách đã lọc.
+- [ ] Không còn hiển thị trùng dòng "mở dashboard công việc".
+- [ ] Dropdown thông báo hiển thị số chưa đọc.
+- [ ] Bấm thông báo mở đúng màn hình liên quan.
+- [ ] Bấm thông báo không còn quyền/dữ liệu đã đổi thì báo lỗi dễ hiểu.
+- [ ] Đánh dấu một thông báo đã đọc được.
+- [ ] Đánh dấu tất cả đã đọc được.
+- [ ] Browser notification hiện khi có thông báo mới nếu trình duyệt đã cấp quyền.
+- [ ] Browser notification không làm chậm màn hình chính.
+- [ ] Feed thông báo và feed việc cần làm không gọi quá nặng khi refresh nhiều lần.
 
-- [ ] Trung tâm đăng nhập thành công.
-- [ ] Dashboard chỉ ưu tiên việc của Trung tâm đó.
-- [ ] Sidebar không hiển thị nhóm Hệ thống.
-- [ ] Sidebar không hiển thị Báo cáo tổng hợp.
-- [ ] Sidebar không hiển thị DVKH kiểm tra.
-- [ ] Sidebar không hiển thị PTN lập phiếu.
-- [ ] Sidebar không hiển thị Trưởng PTN duyệt ký.
+## 5. Giao diện chung và loading
 
-### 4.2 Phạm vi dữ liệu
-
-- [ ] Trung tâm chỉ thấy yêu cầu do Trung tâm mình tạo.
-- [ ] Trung tâm không thấy yêu cầu của Trung tâm khác bằng danh sách.
-- [ ] Trung tâm không mở được URL chi tiết yêu cầu của Trung tâm khác.
-- [ ] Trung tâm chỉ thấy khách hàng thuộc Trung tâm mình.
-- [ ] Trung tâm không thấy khách hàng do Trung tâm khác tạo.
-- [ ] Trung tâm chỉ thấy phiếu CNCL thuộc Trung tâm mình.
-- [ ] Trung tâm không mở được URL phiếu của Trung tâm khác.
-
-### 4.3 Khách hàng - Công trình
-
-- [ ] Trung tâm tạo được khách hàng/công trình.
-- [ ] Khách hàng mới tự gắn với Trung tâm đang đăng nhập.
-- [ ] Trung tâm sửa được khách hàng của mình.
-- [ ] Trung tâm xóa được khách hàng của mình nếu được cấp quyền.
-- [ ] Trung tâm không chọn được khách hàng của Trung tâm khác khi tạo yêu cầu.
-
-### 4.4 Yêu cầu cấp phiếu
-
-- [ ] Trung tâm tạo được yêu cầu cấp phiếu.
-- [ ] Trung tâm chọn được khách hàng có sẵn.
-- [ ] Trung tâm nhập được khách hàng mới ngay trên form yêu cầu.
-- [ ] Trung tâm chọn được sản phẩm và nhập số lượng.
-- [ ] Trung tâm bật được yêu cầu gấp.
-- [ ] Khi bật yêu cầu gấp mới bắt buộc chọn lý do gấp.
-- [ ] Nhập được tên người tạo yêu cầu.
-- [ ] Nhập số hóa đơn bị trùng thì hệ thống cảnh báo.
-- [ ] Lưu yêu cầu thành công và trạng thái là Chờ DVKH.
-- [ ] Trung tâm sửa được yêu cầu khi còn ở trạng thái cho phép.
-- [ ] Trung tâm xóa được yêu cầu khi còn ở trạng thái cho phép.
-- [ ] Trung tâm không sửa/xóa được yêu cầu đã qua bước không cho phép.
-
-### 4.5 Phiếu đã cấp và cấp lại
-
-- [ ] Trung tâm xem được phiếu đã ký/phát hành.
-- [ ] Trung tâm tải được PDF phiếu.
-- [ ] Trung tâm dùng được link tra cứu trong email.
-- [ ] Trung tâm chỉ thấy nút yêu cầu cấp lại với phiếu đã ký thành công.
-- [ ] Gửi yêu cầu cấp lại thành công và chuyển về DVKH.
-
-## 5. Vai trò DVKH
-
-### 5.1 Dashboard và sidebar
-
-- [ ] DVKH đăng nhập thành công.
-- [ ] Dashboard hiển thị các việc DVKH cần xử lý.
-- [ ] Sidebar có màn DVKH kiểm tra.
-- [ ] Sidebar không có màn PTN lập phiếu nếu không có quyền.
-- [ ] Sidebar không có màn Trưởng PTN duyệt ký.
-- [ ] Sidebar không có Báo cáo tổng hợp.
-- [ ] Sidebar không có Hệ thống.
-
-### 5.2 Màn DVKH kiểm tra
-
-- [ ] Xem được danh sách yêu cầu chờ DVKH.
-- [ ] Lọc được theo từ khóa, Trung tâm, trạng thái.
-- [ ] Lọc được yêu cầu trùng số hóa đơn.
-- [ ] Yêu cầu gấp có dấu hiệu dễ nhận biết.
-- [ ] Mở được chi tiết yêu cầu chờ DVKH.
-- [ ] Không mở được URL yêu cầu không thuộc phạm vi màn DVKH.
-
-### 5.3 Xử lý yêu cầu
-
-- [ ] DVKH thấy cảnh báo trùng số hóa đơn trên màn chi tiết.
-- [ ] DVKH duyệt yêu cầu hợp lệ sang PTN.
-- [ ] Sau duyệt, trạng thái chuyển sang Chờ PTN.
-- [ ] DVKH trả lại yêu cầu kèm lý do.
-- [ ] Sau trả lại, Trung tâm nhìn thấy trạng thái bị trả lại.
-- [ ] DVKH xử lý được yêu cầu cấp lại phiếu.
-- [ ] Khi duyệt cấp lại, phiếu cũ được hủy/thu hồi đúng quy trình.
-
-## 6. Vai trò PTN
-
-### 6.1 Dashboard và sidebar
-
-- [ ] PTN đăng nhập thành công.
-- [ ] Dashboard hiển thị việc PTN cần xử lý.
-- [ ] Sidebar có màn PTN lập phiếu.
-- [ ] Sidebar không có Trưởng PTN duyệt ký.
-- [ ] Sidebar không có Báo cáo tổng hợp.
-- [ ] Sidebar không có Hệ thống.
-
-### 6.2 Màn PTN lập phiếu từ yêu cầu
-
-- [ ] Xem được danh sách yêu cầu Chờ PTN/PTN xử lý.
-- [ ] Mở được chi tiết yêu cầu thuộc hàng đợi PTN.
-- [ ] Không mở được URL yêu cầu không thuộc hàng đợi PTN.
-- [ ] Tiếp nhận được yêu cầu Chờ PTN.
-- [ ] Lập được phiếu CNCL từ yêu cầu.
-- [ ] Phiếu sinh ra có đúng khách hàng, công trình, sản phẩm, số lượng.
-- [ ] PTN không thấy nút gửi ký SmartCA.
-- [ ] PTN không tự ký số được bằng URL.
-
-### 6.3 PTN cấp phiếu trực tiếp
-
-- [ ] PTN mở được màn cấp phiếu trực tiếp.
-- [ ] Chọn được Trung tâm.
-- [ ] Chọn được khách hàng có sẵn hoặc nhập khách hàng mới.
-- [ ] Chọn được sản phẩm và số lượng.
-- [ ] Nhập số hóa đơn trùng thì có cảnh báo.
-- [ ] Tạo phiếu trực tiếp thành công.
-- [ ] Phiếu chuyển sang trạng thái chờ Trưởng PTN ký.
-
-## 7. Vai trò Trưởng PTN
-
-### 7.1 Dashboard và sidebar
-
-- [ ] Trưởng PTN đăng nhập thành công.
-- [ ] Dashboard hiển thị phiếu sẵn sàng ký, đang chờ app, quá hạn ký.
-- [ ] Sidebar có màn Trưởng PTN duyệt ký.
-- [ ] Sidebar không có Báo cáo tổng hợp.
-- [ ] Sidebar không có Hệ thống.
-- [ ] Có quyền xem lịch sử in ký tươi nếu cần.
-
-### 7.2 Màn duyệt ký
-
-- [ ] Xem được danh sách phiếu cần ký.
-- [ ] Tab Sẵn sàng ký hiển thị phiếu DRAFT chưa ký.
-- [ ] Tab Đang chờ app hiển thị giao dịch SmartCA còn hạn.
-- [ ] Tab Quá hạn hiển thị giao dịch SmartCA quá 5 phút.
-- [ ] Nút kiểm tra giao dịch SmartCA hàng loạt hoạt động.
-- [ ] Không thấy dữ liệu API VNPT SmartCA nếu không phải Admin.
-
-### 7.3 Ký số SmartCA
-
-- [ ] Trưởng PTN gửi yêu cầu ký SmartCA thành công.
-- [ ] App VNPT SmartCA nhận được yêu cầu ký.
-- [ ] Kiểm tra kết quả khi chưa xác nhận app trả về trạng thái còn chờ.
-- [ ] Kiểm tra kết quả sau khi xác nhận app thì phiếu chuyển Đã ký.
-- [ ] PDF đã ký được lưu lại.
-- [ ] Mail được gửi cho email tài khoản Trung tâm tạo yêu cầu.
-- [ ] Mail CC cho DVKH/PTN/config và khách hàng nếu có email.
-- [ ] Mail có đường link tra cứu.
-- [ ] Quá 5 phút chưa ký thì hệ thống đánh dấu hết hạn.
-- [ ] Có thể gửi lại yêu cầu ký khi giao dịch cũ hết hạn.
-
-### 7.4 Trả lại phiếu
-
-- [ ] Trưởng PTN trả lại phiếu về PTN kèm lý do.
-- [ ] Trưởng PTN trả lại phiếu về DVKH kèm lý do.
-- [ ] Phiếu bị trả lại không còn ở hàng đợi ký.
-- [ ] Yêu cầu gốc quay về đúng bước xử lý.
-- [ ] Log thao tác trả lại được ghi nhận.
-
-## 8. Vai trò Viewer
-
-### 8.1 Phạm vi xem
-
-- [ ] Viewer đăng nhập thành công.
-- [ ] Viewer xem được dashboard dạng chỉ đọc.
-- [ ] Viewer xem được danh sách yêu cầu nếu có quyền.
-- [ ] Viewer xem được danh sách phiếu nếu có quyền.
-- [ ] Viewer không thấy nút thêm/sửa/xóa/import/export.
-- [ ] Viewer không thấy màn DVKH/PTN/Trưởng PTN.
-- [ ] Viewer không thấy báo cáo tổng hợp.
-- [ ] Viewer không thấy log hệ thống.
-
-## 9. Kiểm tra route lách quyền
-
-- [ ] Trung tâm truy cập URL DVKH bị chặn.
-- [ ] Trung tâm truy cập URL PTN bị chặn.
-- [ ] Trung tâm truy cập URL Trưởng PTN bị chặn.
-- [ ] Trung tâm truy cập URL báo cáo bị chặn nếu không có quyền.
-- [ ] DVKH truy cập URL PTN bị chặn.
-- [ ] DVKH truy cập URL ký số bị chặn.
-- [ ] PTN truy cập URL ký số bị chặn.
-- [ ] Trưởng PTN truy cập URL quản trị người dùng bị chặn.
-- [ ] Viewer truy cập URL thao tác POST bị chặn.
-
-## 10. Kiểm tra UI chung
-
-- [ ] Select2 hiển thị đều chiều cao ở các màn create/edit.
-- [ ] Bộ lọc danh sách không bị lệch layout desktop.
-- [ ] Bộ lọc danh sách không bị vỡ layout mobile/tablet.
+- [ ] Sidebar không che nội dung.
+- [ ] Header không lệch.
+- [ ] Card bộ lọc ở các màn danh sách cân đối.
+- [ ] Bảng dữ liệu không phá khung ở màn desktop.
+- [ ] Select2 cùng chiều cao với input thường.
+- [ ] Select2 trong màn create/update không bị nhỏ hơn các ô khác.
 - [ ] Nút Thêm/Sửa/Xóa/Import/Export tự ẩn theo quyền.
-- [ ] Bảng dữ liệu có trạng thái rỗng rõ ràng.
-- [ ] Badge trạng thái dễ hiểu.
-- [ ] Cảnh báo lỗi tiếng Việt không bị lỗi font.
+- [ ] Các nút thao tác có loading khi gửi form lâu.
+- [ ] Bấm Cancel trên hộp confirm không bật loading.
+- [ ] Loading hiển thị tiếng Việt có dấu.
+- [ ] Khi đang kiểm tra ký/gửi mail, màn hình khóa thao tác để tránh bấm lặp.
+- [ ] Các màn danh sách load ở mức chấp nhận được với dữ liệu test lớn.
+- [ ] Bộ lọc không bị lệch ở màn `Yêu cầu cấp phiếu`.
+- [ ] Bộ lọc không bị lệch ở màn `DVKH kiểm tra`.
+- [ ] Bộ lọc không bị lệch ở màn `PTN lập phiếu`.
+- [ ] Bộ lọc không bị lệch ở màn `Danh sách phiếu`.
+- [ ] Trạng thái rỗng hiển thị dễ hiểu.
 
-## 11. Kiểm tra dữ liệu và hiệu năng
+## 6. Danh mục hệ thống
 
-- [ ] Dashboard tải nhanh với dữ liệu thật.
-- [ ] Danh sách yêu cầu tải nhanh.
-- [ ] Danh sách phiếu tải nhanh.
-- [ ] Báo cáo tổng hợp tải nhanh.
-- [ ] Import sản phẩm số lượng lớn không timeout.
-- [ ] Các màn không phát sinh lỗi N+1 rõ rệt.
-- [ ] Các cột lọc chính đã có index phù hợp.
+### 6.1 Trung tâm phân phối
 
-## 12. Kết luận nghiệm thu
+- [ ] Xem danh sách trung tâm.
+- [ ] Thêm trung tâm mới.
+- [ ] Sửa thông tin trung tâm.
+- [ ] Xóa trung tâm khi chưa phát sinh dữ liệu.
+- [ ] Không xóa được trung tâm đã phát sinh dữ liệu quan trọng.
+- [ ] Mã trung tâm không trùng.
+- [ ] Email trung tâm hợp lệ nếu nhập.
 
-- [ ] Đạt nghiệm thu phân quyền theo vai trò.
-- [ ] Đạt nghiệm thu phạm vi dữ liệu theo Trung tâm.
-- [ ] Đạt nghiệm thu luồng cấp phiếu chuẩn.
-- [ ] Đạt nghiệm thu luồng PTN cấp trực tiếp.
-- [ ] Đạt nghiệm thu luồng cấp lại/hủy phiếu.
-- [ ] Đạt nghiệm thu ký số VNPT SmartCA.
-- [ ] Đạt nghiệm thu gửi mail và link tra cứu.
-- [ ] Đạt nghiệm thu PDF mẫu phiếu.
-- [ ] Đạt nghiệm thu import/export.
-- [ ] Đạt nghiệm thu log và báo cáo.
+### 6.2 Nhóm sản phẩm
 
-## 13. Kết quả kiểm thử tự động
+- [ ] Xem danh sách nhóm sản phẩm.
+- [ ] Import nhóm sản phẩm từ Excel.
+- [ ] Export nhóm sản phẩm.
+- [ ] Tải file mẫu nhóm sản phẩm.
+- [ ] Mã nhóm sản phẩm tự sinh/đúng định dạng theo seeder.
+- [ ] Cảnh báo lỗi import rõ ràng.
 
-### 13.1 Phần 3 - Đăng nhập, dashboard và route theo vai trò
+### 6.3 Sản phẩm
 
-- [x] Đã tạo test `tests/Feature/RoleWorkspaceAccessTest.php`.
-- [x] Kiểm tra 11 tài khoản test đăng nhập được và mở dashboard thành công.
-- [x] Kiểm tra ma trận route theo vai trò: Admin, LanhDao, TrungTam, DVKH, PTN, TruongPTN, Viewer.
-- [x] Kiểm tra Trung tâm NP không mở được yêu cầu của Trung tâm TP.
-- [x] Kiểm tra Trung tâm NP không mở được phiếu CNCL của Trung tâm TP.
-- [x] Đã sửa dashboard để biểu đồ theo tháng chạy được trên SQLite test và MySQL.
-- [x] `php artisan test tests/Feature/RoleWorkspaceAccessTest.php`: 3 test pass, 159 assertions.
-- [x] `php artisan test`: 28 test pass, 221 assertions.
+- [ ] Xem danh sách sản phẩm.
+- [ ] Thêm sản phẩm.
+- [ ] Sửa sản phẩm.
+- [ ] Xóa sản phẩm khi chưa phát sinh dữ liệu.
+- [ ] Import số lượng lớn sản phẩm không timeout.
+- [ ] Export sản phẩm.
+- [ ] Tải file mẫu sản phẩm.
+- [ ] Mã sản phẩm không trùng.
+- [ ] Sản phẩm liên kết đúng nhóm sản phẩm.
+- [ ] Số lượng trong dữ liệu test là số nguyên.
 
-### 13.2 Phần 4 - Luồng nghiệp vụ cấp phiếu chuẩn
+### 6.4 Tiêu chuẩn chất lượng
 
-- [x] Đã tạo test `tests/Feature/CertificateWorkflowTest.php`.
-- [x] Kiểm tra Trung tâm tạo yêu cầu cấp phiếu thành công.
-- [x] Kiểm tra yêu cầu mới chuyển trạng thái `WAIT_DVKH`.
-- [x] Kiểm tra DVKH duyệt yêu cầu sang `WAIT_PTN`.
-- [x] Kiểm tra PTN tiếp nhận và lập phiếu CNCL.
-- [x] Kiểm tra phiếu sinh ra ở trạng thái `DRAFT`, chưa ký.
-- [x] Kiểm tra dữ liệu chi tiết phiếu lấy đúng kích thước danh nghĩa và tiêu chuẩn sản phẩm từ danh mục.
-- [x] Kiểm tra Trưởng PTN thấy phiếu trong hàng đợi ký.
-- [x] Kiểm tra Trưởng PTN trả lại phiếu về DVKH kèm lý do.
-- [x] Kiểm tra phiếu bị trả lại chuyển trạng thái `REJECTED`.
-- [x] Kiểm tra yêu cầu gốc quay về trạng thái `WAIT_DVKH`.
-- [x] `php artisan test tests/Feature/CertificateWorkflowTest.php`: 2 test pass, 24 assertions.
-- [x] `php artisan test`: 30 test pass, 245 assertions.
+- [ ] Xem danh sách tiêu chuẩn.
+- [ ] Thêm/sửa/xóa tiêu chuẩn theo quyền.
+- [ ] Import/export tiêu chuẩn.
+- [ ] Tải mẫu import.
+- [ ] Tiêu chuẩn đang hoạt động hiển thị trong chọn sản phẩm/phiếu.
+
+### 6.5 Lý do yêu cầu gấp
+
+- [ ] Xem danh mục lý do gấp.
+- [ ] Thêm lý do gấp.
+- [ ] Sửa lý do gấp.
+- [ ] Khóa/ngừng sử dụng lý do gấp.
+- [ ] Lý do không hoạt động không hiển thị khi tạo yêu cầu mới.
+- [ ] Bật yêu cầu gấp mới bắt buộc chọn lý do.
+- [ ] Không bật yêu cầu gấp thì không bắt chọn lý do.
+
+## 7. Khách hàng - Công trình
+
+- [ ] Admin xem được khách hàng toàn hệ thống.
+- [ ] Trung tâm chỉ xem được khách hàng do trung tâm mình quản lý/tạo.
+- [ ] Trung tâm tạo khách hàng mới được.
+- [ ] Trung tâm không tạo khách hàng cho trung tâm khác.
+- [ ] Mã khách hàng bắt buộc khi tạo mới tại màn yêu cầu cấp phiếu.
+- [ ] Trùng `mã khách hàng + trung tâm` bị cảnh báo.
+- [ ] Cùng mã khách hàng ở trung tâm khác được phép nếu nghiệp vụ cho phép.
+- [ ] Import khách hàng bằng file mẫu thành công.
+- [ ] Admin import được nhiều trung tâm bằng cột `ma_trung_tam`.
+- [ ] Trung tâm import tự gán vào trung tâm của tài khoản.
+- [ ] Import thiếu mã khách hàng báo lỗi.
+- [ ] Import thiếu tên khách hàng báo lỗi.
+- [ ] Import sai mã trung tâm báo lỗi.
+- [ ] Import email sai định dạng báo lỗi.
+- [ ] Import trùng mã khách hàng trong cùng file báo lỗi/cảnh báo đúng dòng.
+- [ ] Import trùng `mã khách hàng + trung tâm` với dữ liệu cũ hiển thị cảnh báo trước khi cập nhật.
+- [ ] Người dùng có thể hủy import ở bước cảnh báo.
+- [ ] Người dùng xác nhận cập nhật thì dữ liệu được cập nhật đúng.
+- [ ] Export khách hàng có đủ thông tin cần thiết.
+
+## 8. Tạo yêu cầu cấp phiếu từ Trung tâm
+
+- [ ] Mở được màn `Tạo yêu cầu cấp phiếu`.
+- [ ] Select2 khách hàng/công trình hiển thị đúng kích thước.
+- [ ] Select2 sản phẩm hiển thị đúng kích thước trong từng dòng.
+- [ ] Chọn trung tâm theo tài khoản hiện tại đúng.
+- [ ] Chọn khách hàng có sẵn được.
+- [ ] Tạo khách hàng mới ngay trên màn yêu cầu được.
+- [ ] Trường mã khách hàng bắt buộc khi tạo khách hàng mới.
+- [ ] Nhập ngày xuất hàng.
+- [ ] Nhập số hóa đơn.
+- [ ] Nhập tên người tạo yêu cầu.
+- [ ] Nhập ghi chú.
+- [ ] Bật/tắt yêu cầu ký tươi.
+- [ ] Bật/tắt yêu cầu cung cấp gấp.
+- [ ] Bật yêu cầu gấp thì hiện chọn lý do.
+- [ ] Tắt yêu cầu gấp thì ẩn/không bắt lý do.
+- [ ] Thêm một dòng sản phẩm.
+- [ ] Xóa một dòng sản phẩm.
+- [ ] Không cho gửi nếu chưa có sản phẩm.
+- [ ] Không cho gửi nếu số lượng không hợp lệ.
+- [ ] Sản phẩm đã chọn hiển thị đủ mã, tên, kích thước, tiêu chuẩn.
+- [ ] Lưu và gửi DVKH thành công.
+- [ ] Sau khi gửi trạng thái là `Chờ DVKH kiểm tra`.
+- [ ] Timeline yêu cầu có bước Trung tâm tạo yêu cầu.
+- [ ] Log thao tác ghi nhận tạo yêu cầu.
+- [ ] Thông báo gửi đến DVKH.
+
+## 9. Import/copy sản phẩm trong yêu cầu
+
+- [ ] Bấm `Tải mẫu` tải file Excel và modal loading tự tắt.
+- [ ] Import trực tiếp file mẫu rỗng không gây lỗi JavaScript.
+- [ ] Import file có mã sản phẩm và số lượng hợp lệ thành công.
+- [ ] Import số lượng sản phẩm lớn không timeout.
+- [ ] Import mã sản phẩm không tồn tại báo lỗi rõ dòng.
+- [ ] Import thiếu mã sản phẩm báo lỗi rõ dòng.
+- [ ] Import thiếu số lượng báo lỗi rõ dòng.
+- [ ] Import số lượng không phải số báo lỗi rõ dòng.
+- [ ] Import số lượng <= 0 báo lỗi rõ dòng.
+- [ ] Copy dữ liệu từ Excel và dán vào modal thành công.
+- [ ] Dữ liệu copy có tab/xuống dòng được phân tích đúng.
+- [ ] Copy mã sản phẩm trùng trong cùng dữ liệu được cộng dồn hoặc cảnh báo theo thiết kế.
+- [ ] Sau import/copy, người dùng vẫn sửa được số lượng từng dòng.
+- [ ] Các lỗi hiển thị bằng tiếng Việt dễ hiểu.
+
+## 10. Cảnh báo trùng số hóa đơn
+
+- [ ] Khi nhập số hóa đơn đã tồn tại cùng trung tâm, màn tạo yêu cầu cảnh báo.
+- [ ] Khi nhập số hóa đơn chưa tồn tại, không cảnh báo.
+- [ ] Số hóa đơn trùng ở trung tâm khác không bị tính là trùng cùng trung tâm nếu nghiệp vụ đang cho phép.
+- [ ] DVKH thấy cảnh báo trùng số hóa đơn ở danh sách.
+- [ ] DVKH thấy cảnh báo trùng số hóa đơn ở chi tiết.
+- [ ] DVKH bấm xác nhận yêu cầu trùng hóa đơn thì có confirm riêng.
+- [ ] DVKH có thể trả lại yêu cầu vì trùng hóa đơn.
+- [ ] Log thao tác ghi nhận cảnh báo/trả lại nếu có.
+- [ ] Báo cáo/filter trùng hóa đơn hoạt động đúng.
+
+## 11. DVKH kiểm tra yêu cầu
+
+- [ ] Màn DVKH mặc định chỉ hiển thị yêu cầu `Chờ DVKH`.
+- [ ] Bộ lọc từ khóa hoạt động.
+- [ ] Bộ lọc trung tâm hoạt động.
+- [ ] Bộ lọc trạng thái hoạt động.
+- [ ] Bộ lọc yêu cầu gấp hoạt động.
+- [ ] Bộ lọc trùng hóa đơn hoạt động.
+- [ ] Bộ lọc SLA cảnh báo/quá hạn hoạt động.
+- [ ] Metric đầu màn mở đúng danh sách đã lọc.
+- [ ] Mở chi tiết yêu cầu được.
+- [ ] Chi tiết hiển thị khách hàng/công trình.
+- [ ] Chi tiết hiển thị số hóa đơn/ngày xuất hàng.
+- [ ] Chi tiết hiển thị danh sách sản phẩm.
+- [ ] Chi tiết hiển thị timeline.
+- [ ] DVKH xác nhận chuyển PTN thành công.
+- [ ] Sau xác nhận trạng thái là `Chờ PTN lập phiếu`.
+- [ ] Thông báo gửi đến PTN.
+- [ ] DVKH trả lại yêu cầu thành công.
+- [ ] Khi trả lại bắt buộc nhập lý do.
+- [ ] Trung tâm nhận thông báo yêu cầu bị trả lại.
+- [ ] Trung tâm sửa lại yêu cầu bị trả và gửi lại được nếu trạng thái cho phép.
+
+## 12. PTN lập phiếu
+
+- [ ] Màn PTN mặc định hiển thị yêu cầu `Chờ PTN lập phiếu`.
+- [ ] Bộ lọc từ khóa/trung tâm/trạng thái hoạt động.
+- [ ] Metric chờ PTN/gấp/SLA hoạt động.
+- [ ] Mở chi tiết yêu cầu PTN được.
+- [ ] PTN lập phiếu từ yêu cầu được.
+- [ ] Không tạo trùng phiếu cho cùng yêu cầu đang có phiếu hợp lệ.
+- [ ] Sau lập phiếu, yêu cầu chuyển `Đã lập phiếu - Chờ Trưởng PTN ký`.
+- [ ] Phiếu mới xuất hiện ở `Danh sách phiếu`.
+- [ ] Phiếu mới xuất hiện ở hàng đợi Trưởng PTN ký.
+- [ ] Timeline yêu cầu ghi nhận PTN lập phiếu.
+- [ ] Log thao tác ghi nhận PTN lập phiếu.
+- [ ] PTN lập phiếu trực tiếp được.
+- [ ] Phiếu trực tiếp có badge/nhãn `PTN lập trực tiếp`.
+- [ ] Phiếu trực tiếp không qua bước DVKH.
+
+## 13. Danh sách phiếu CNCL
+
+- [ ] Xem danh sách phiếu.
+- [ ] Lọc theo từ khóa.
+- [ ] Lọc theo trạng thái ký.
+- [ ] Lọc theo trung tâm nếu có quyền.
+- [ ] Mở chi tiết phiếu.
+- [ ] Xem PDF phiếu.
+- [ ] Tải PDF.
+- [ ] Phiếu hiển thị khách hàng/công trình/số yêu cầu/trung tâm/người lập/ngày ký.
+- [ ] Phiếu chưa ký hiển thị trạng thái chờ ký.
+- [ ] Phiếu đang chờ SmartCA hiển thị trạng thái đang chờ ký.
+- [ ] Phiếu đã ký hiển thị trạng thái đã phát hành/ký thành công.
+- [ ] Phiếu bị trả lại hiển thị lý do.
+- [ ] Phiếu hủy/thu hồi hiển thị rõ trạng thái.
+- [ ] Timeline phiếu hiển thị lịch sử xử lý.
+- [ ] Quan hệ phiếu cấp lại/cũ mới hiển thị được.
+
+## 14. Trưởng PTN duyệt ký và SmartCA
+
+- [ ] Màn Trưởng PTN hiển thị phiếu chờ ký.
+- [ ] Mở chi tiết phiếu chờ ký.
+- [ ] Xem PDF trước khi ký.
+- [ ] Gửi yêu cầu ký VNPT SmartCA thành công.
+- [ ] Sau gửi ký, trạng thái chuyển sang chờ SmartCA.
+- [ ] Hiển thị dữ liệu gửi/nhận API SmartCA chỉ với Admin.
+- [ ] Trưởng PTN không thấy khối dữ liệu API nếu không phải Admin.
+- [ ] App SmartCA nhận yêu cầu ký.
+- [ ] Xác nhận ký trên app trong 5 phút.
+- [ ] Bấm kiểm tra kết quả ký có loading khóa màn hình.
+- [ ] Kiểm tra kết quả ký thành công cập nhật phiếu đã ký.
+- [ ] Kiểm tra kết quả ký gửi email nếu cấu hình tự gửi đang bật.
+- [ ] Nếu quá 5 phút, bấm kiểm tra kết quả trước khi gửi lại.
+- [ ] Nếu SmartCA đã ký nhưng hệ thống chưa cập nhật, kiểm tra kết quả lấy lại được trạng thái.
+- [ ] Nếu SmartCA chưa ký/quá hạn, hệ thống cho gửi lại yêu cầu ký.
+- [ ] Nút kiểm tra kết quả ký đơn lẻ có loading.
+- [ ] Nút kiểm tra kết quả ký hàng loạt có loading.
+- [ ] Ký hàng loạt/kiểm tra hàng loạt không làm treo màn hình.
+- [ ] Trưởng PTN trả lại phiếu được.
+- [ ] Khi trả lại bắt buộc nhập lý do.
+- [ ] PTN nhận thông báo phiếu bị trả lại.
+
+## 15. PDF phiếu CNCL
+
+- [ ] PDF là khổ A4.
+- [ ] Font chính là Times New Roman hoặc tương đương khi render PDF.
+- [ ] Logo hiển thị đúng kích thước.
+- [ ] Tên công ty không bị xuống dòng sai.
+- [ ] PCN hiển thị cùng dòng, không bị vỡ dòng.
+- [ ] Header cân đối.
+- [ ] Nội dung giữa phiếu giữ đúng mẫu nghiệp vụ hiện tại.
+- [ ] Bảng sản phẩm căn giữa cột `TT`.
+- [ ] Bảng sản phẩm căn giữa cột `Kích thước danh nghĩa`.
+- [ ] Bảng sản phẩm căn giữa cột `Yêu cầu kỹ thuật`.
+- [ ] Phiếu ít sản phẩm không bị trống/lệch footer.
+- [ ] Phiếu nhiều sản phẩm tự sang trang, không bị footer xanh che bảng.
+- [ ] Footer xanh sát đáy trang.
+- [ ] Website nằm phía trên khung xanh theo mẫu mới.
+- [ ] Chữ trong footer xanh đủ lớn và không bị cắt.
+- [ ] Địa chỉ tiếng Việt không bị xuống dòng sai.
+- [ ] Địa chỉ tiếng Anh không bị xuống dòng sai.
+- [ ] Phiếu ký điện tử không còn cần vùng Trưởng phòng thử nghiệm/Tổng giám đốc như mẫu ký tay.
+- [ ] Chữ ký điện tử hiển thị ở trang cuối, phía trên footer xanh.
+- [ ] Nếu phiếu chỉ có 1 trang, chữ ký hiển thị ở trang 1.
+- [ ] Các trang không phải trang cuối có dòng/watermark tra cứu điện tử nếu thiết kế đang bật.
+- [ ] PDF mở được sau khi tải từ email/link tra cứu.
+
+## 16. Email sau khi ký
+
+- [ ] Sau ký thành công hệ thống gửi email tự động nếu cấu hình bật.
+- [ ] Email gửi đến email tài khoản Trung tâm phân phối tạo yêu cầu.
+- [ ] Email không lấy email khách hàng làm người nhận chính.
+- [ ] Email cc DVKH theo cấu hình.
+- [ ] Email cc PTN theo cấu hình.
+- [ ] Email cc khách hàng nếu khách hàng có email.
+- [ ] Email cc thêm theo file config hoạt động.
+- [ ] Email có mã phiếu.
+- [ ] Email có thông tin khách hàng/công trình.
+- [ ] Email có link tra cứu/tải phiếu.
+- [ ] Link trong email mở được khi người dùng có quyền/đúng link public nếu thiết kế cho phép.
+- [ ] File PDF đính kèm hoặc link tải đúng file đã ký.
+- [ ] Bấm gửi lại email từ chi tiết phiếu hoạt động theo quyền.
+
+## 17. Cấp lại, hủy/thu hồi phiếu
+
+- [ ] Chỉ phiếu đã ký/phát hành thành công mới có nút yêu cầu cấp lại.
+- [ ] Phiếu chưa ký không có nút yêu cầu cấp lại.
+- [ ] Trung tâm gửi yêu cầu cấp lại từ chi tiết phiếu được.
+- [ ] Yêu cầu cấp lại tạo từ dữ liệu phiếu cũ.
+- [ ] Người dùng sửa được khách hàng/công trình/ngày xuất hàng/số hóa đơn/sản phẩm trước khi DVKH xác nhận.
+- [ ] Phiếu cũ chưa bị hủy ngay khi mới gửi yêu cầu cấp lại.
+- [ ] DVKH thấy yêu cầu cấp lại ở danh sách.
+- [ ] DVKH xác nhận hủy/thu hồi phiếu cũ được.
+- [ ] Sau DVKH xác nhận, yêu cầu cấp lại chuyển PTN.
+- [ ] PTN lập phiếu mới từ yêu cầu cấp lại.
+- [ ] Phiếu mới liên kết với phiếu cũ.
+- [ ] Phiếu cũ hiển thị đã được thay thế/hủy/thu hồi theo thiết kế.
+- [ ] Chi tiết phiếu cũ có link sang phiếu mới.
+- [ ] Chi tiết phiếu mới có link sang phiếu cũ.
+- [ ] Timeline yêu cầu/phiếu ghi nhận thao tác cấp lại.
+- [ ] Chọn nhiều phiếu để tạo một yêu cầu cấp lại/gộp phiếu hoạt động.
+- [ ] Không cho gộp phiếu khác trung tâm nếu nghiệp vụ không cho phép.
+- [ ] Không cho tạo trùng yêu cầu cấp lại đang hoạt động cho cùng phiếu.
+- [ ] Không bị lỗi memory khi mở request reissue/edit với nhiều sản phẩm.
+
+## 18. Báo cáo, SLA và log
+
+- [ ] Báo cáo tổng hợp mở được.
+- [ ] Lọc báo cáo theo khoảng ngày.
+- [ ] Lọc báo cáo theo trung tâm.
+- [ ] Lọc báo cáo theo trạng thái.
+- [ ] Số lượng yêu cầu/phiếu trong báo cáo khớp dữ liệu.
+- [ ] Export báo cáo Excel được.
+- [ ] SLA DVKH hiển thị cảnh báo/quá hạn đúng.
+- [ ] SLA PTN hiển thị cảnh báo/quá hạn đúng.
+- [ ] Cấu hình SLA thêm/sửa/import/export được theo quyền.
+- [ ] Log thao tác ghi nhận tạo yêu cầu.
+- [ ] Log thao tác ghi nhận DVKH xác nhận/trả lại.
+- [ ] Log thao tác ghi nhận PTN lập phiếu.
+- [ ] Log thao tác ghi nhận gửi ký/kiểm tra ký.
+- [ ] Log thao tác ghi nhận cấp lại/hủy phiếu.
+- [ ] Log đăng nhập ghi nhận thành công/thất bại/đăng xuất.
+- [ ] Trung tâm không xem được log toàn hệ thống nếu không có quyền.
+
+## 19. Bảo mật dữ liệu và truy cập trực tiếp URL
+
+- [ ] Trung tâm NP không mở được yêu cầu của TP bằng URL trực tiếp.
+- [ ] Trung tâm TP không mở được phiếu của HP bằng URL trực tiếp.
+- [ ] PTN/DVKH chỉ thao tác được đúng màn và đúng trạng thái.
+- [ ] Người không có quyền import không gọi được route import.
+- [ ] Người không có quyền export không gọi được route export.
+- [ ] Người không có quyền xóa không gọi được route xóa.
+- [ ] Người không có quyền ký không gọi được route ký.
+- [ ] Dữ liệu API SmartCA chỉ Admin xem được.
+- [ ] File PDF đã ký không bị lộ qua link nội bộ không kiểm soát nếu hệ thống yêu cầu đăng nhập.
+- [ ] CSRF hoạt động với các form POST/PUT/DELETE.
+
+## 20. Hiệu năng và dữ liệu lớn
+
+- [ ] Danh sách yêu cầu load nhanh với dữ liệu test nhiều trung tâm.
+- [ ] Danh sách DVKH load nhanh.
+- [ ] Danh sách PTN load nhanh.
+- [ ] Danh sách phiếu load nhanh.
+- [ ] Import sản phẩm lớn không timeout.
+- [ ] Import khách hàng lớn không timeout hoặc có thông báo xử lý phù hợp.
+- [ ] Tạo yêu cầu với 20-100 sản phẩm hoạt động.
+- [ ] PDF với nhiều sản phẩm render được.
+- [ ] Không bị lỗi memory khi chỉnh sửa yêu cầu cấp lại nhiều sản phẩm.
+- [ ] Feed thông báo không làm chậm trang.
+- [ ] Feed việc cần làm có cache/ngắn hạn, không query quá nặng.
+- [ ] Các thao tác lâu có loading để người dùng không bấm lặp.
+
+## 21. Checklist nghiệm thu nhanh theo luồng end-to-end
+
+### Luồng chuẩn Trung tâm -> DVKH -> PTN -> Trưởng PTN -> Email
+
+- [ ] Trung tâm tạo khách hàng mới.
+- [ ] Trung tâm tạo yêu cầu mới có sản phẩm.
+- [ ] DVKH nhận thông báo.
+- [ ] DVKH xác nhận chuyển PTN.
+- [ ] PTN nhận thông báo.
+- [ ] PTN lập phiếu.
+- [ ] Trưởng PTN nhận thông báo/hàng đợi ký.
+- [ ] Trưởng PTN gửi ký SmartCA.
+- [ ] Trưởng PTN kiểm tra kết quả ký.
+- [ ] Phiếu chuyển đã ký/phát hành.
+- [ ] Email gửi đến tài khoản Trung tâm.
+- [ ] Link email mở được.
+- [ ] PDF đã ký tải được.
+
+### Luồng trả lại yêu cầu
+
+- [ ] Trung tâm tạo yêu cầu thiếu/sai thông tin.
+- [ ] DVKH trả lại và nhập lý do.
+- [ ] Trung tâm nhận thông báo.
+- [ ] Trung tâm sửa yêu cầu.
+- [ ] Trung tâm gửi lại DVKH.
+- [ ] DVKH xác nhận chuyển PTN.
+
+### Luồng Trưởng PTN trả lại phiếu
+
+- [ ] PTN lập phiếu.
+- [ ] Trưởng PTN mở phiếu.
+- [ ] Trưởng PTN trả lại và nhập lý do.
+- [ ] PTN nhận thông báo.
+- [ ] Phiếu hiển thị trạng thái trả lại.
+- [ ] Timeline ghi nhận lý do trả lại.
+
+### Luồng cấp lại phiếu
+
+- [ ] Có phiếu đã ký thành công.
+- [ ] Trung tâm bấm yêu cầu cấp lại.
+- [ ] Trung tâm sửa dữ liệu yêu cầu cấp lại.
+- [ ] DVKH xác nhận hủy/thu hồi phiếu cũ.
+- [ ] PTN lập phiếu mới.
+- [ ] Trưởng PTN ký phiếu mới.
+- [ ] Phiếu cũ và phiếu mới liên kết với nhau.
+
+### Luồng PTN lập phiếu trực tiếp
+
+- [ ] PTN mở màn lập phiếu trực tiếp.
+- [ ] PTN nhập/chọn khách hàng.
+- [ ] PTN nhập sản phẩm.
+- [ ] PTN tạo phiếu.
+- [ ] Phiếu đi thẳng sang trạng thái chờ Trưởng PTN ký.
+- [ ] Trưởng PTN ký được phiếu trực tiếp.
+
+## 22. Kết luận nghiệm thu
+
+Điền sau khi hoàn tất kiểm thử:
+
+```text
+Người kiểm thử:
+Ngày kiểm thử:
+Môi trường:
+Phiên bản source/database:
+
+Tổng số mục kiểm tra:
+Số mục đạt:
+Số mục lỗi:
+Số mục cần xác nhận nghiệp vụ:
+
+Kết luận:
+Đủ điều kiện dùng thử / Chưa đủ điều kiện dùng thử
+
+Các lỗi bắt buộc sửa trước khi dùng thử:
+1.
+2.
+3.
+
+Ghi chú thêm:
+```
+

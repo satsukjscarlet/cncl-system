@@ -10,7 +10,7 @@
 
 <div class="card card-primary card-outline">
     <div class="card-header bg-white">
-        <h3 class="card-title"><i class="fas fa-route"></i> Tiến trình xử lý phiếu</h3>
+        <h3 class="card-title"><i class="fas fa-route"></i> Tiến trình xử lý</h3>
     </div>
 
     <div class="card-body">
@@ -26,13 +26,13 @@
                             <span class="btn btn-sm btn-{{ $meta['class'] }} mr-2" style="width:34px;height:34px;pointer-events:none">
                                 <i class="{{ $step['icon'] }}"></i>
                             </span>
-                            <div>
-                                <div class="font-weight-bold">{{ $step['title'] }}</div>
+                            <div class="min-w-0">
+                                <div class="font-weight-bold" style="overflow-wrap:anywhere">{{ $step['title'] }}</div>
                                 <span class="badge badge-{{ $meta['class'] }}">{{ $meta['text'] }}</span>
                             </div>
                         </div>
 
-                        <div class="small text-muted mt-2">
+                        <div class="small text-muted mt-2" style="overflow-wrap:anywhere">
                             {{ $step['description'] }}
                         </div>
 
@@ -46,3 +46,4 @@
         </div>
     </div>
 </div>
+

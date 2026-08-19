@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Exports\CertificateSummaryExport;
 use App\Models\CertificateRequest;
 use App\Models\DistributionCenter;
-use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -59,13 +58,11 @@ class ReportController extends Controller
         $completedRequests = (clone $query)->where('status', 'COMPLETED')->count();
         $cancelledRequests = (clone $query)->where('status', 'CANCELLED')->count();
 
-        $certificateQuery = QualityCertificate::whereHas('request', function ($q) use ($user) {
-            if (!$this->canViewAllCenters($user)) {
-                $q->where('distribution_center_id', $user->distribution_center_id);
-            }
-        });
-
-        $certificateCount = $certificateQuery->count();
+        $certificateCount = (clone $query)
+            ->whereHas('qualityCertificate', function ($certificateQuery) {
+                $certificateQuery->where('status', 'ISSUED');
+            })
+            ->count();
 
         $slaDvkh = SlaConfig::where('code', 'SLA_DVKH')->where('is_active', true)->first();
         $slaPtn = SlaConfig::where('code', 'SLA_PTN')->where('is_active', true)->first();
@@ -75,10 +72,12 @@ class ReportController extends Controller
         $centers = DistributionCenter::where('is_active', true)
             ->orderBy('name')
             ->get();
+        $statusOptions = $this->requestStatusOptions();
 
         return view('reports.summary', compact(
             'requests',
             'centers',
+            'statusOptions',
             'canViewAllCenters',
             'totalRequests',
             'completedRequests',
@@ -117,6 +116,19 @@ class ReportController extends Controller
     private function canViewAllCenters($user): bool
     {
         return $user->hasAnyRole(['Admin', 'LanhDao']);
+    }
+
+    private function requestStatusOptions(): array
+    {
+        return [
+            'DRAFT' => 'Nháp',
+            'WAIT_DVKH' => 'Chờ DVKH kiểm tra',
+            'WAIT_PTN' => 'Chờ PTN lập phiếu',
+            'PTN_PROCESSING' => 'Đã lập phiếu - Chờ Trưởng PTN ký',
+            'SIGNED' => 'Đã ký số',
+            'COMPLETED' => 'Hoàn tất',
+            'CANCELLED' => 'Đã trả lại / hủy',
+        ];
     }
 
     private function slaCounts($baseQuery, ?SlaConfig $slaDvkh, ?SlaConfig $slaPtn): array

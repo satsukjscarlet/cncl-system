@@ -135,6 +135,7 @@ class PermissionSeeder extends Seeder
             'customer.create',
             'customer.update',
             'customer.delete',
+            'customer.import',
             'request.view',
             'request.create',
             'request.update',
@@ -151,6 +152,9 @@ class PermissionSeeder extends Seeder
 
         $ptn->syncPermissions([
             'dashboard.view',
+            'product.view',
+            'product.create',
+            'product.update',
             'request.view',
             'ptn.process',
             'certificate.view',
@@ -159,6 +163,9 @@ class PermissionSeeder extends Seeder
 
         $truongPtn->syncPermissions([
             'dashboard.view',
+            'product.view',
+            'product.create',
+            'product.update',
             'request.view',
             'certificate.view',
             'certificate.sign',

@@ -6,6 +6,34 @@
     <title>{{ $certificate->certificate_no }}</title>
 
     <style>
+        @font-face {
+            font-family: "TimesNewRomanPdf";
+            font-style: normal;
+            font-weight: normal;
+            src: url("{{ str_replace('\\', '/', public_path('fonts/times.ttf')) }}") format("truetype");
+        }
+
+        @font-face {
+            font-family: "TimesNewRomanPdf";
+            font-style: normal;
+            font-weight: bold;
+            src: url("{{ str_replace('\\', '/', public_path('fonts/timesbd.ttf')) }}") format("truetype");
+        }
+
+        @font-face {
+            font-family: "TimesNewRomanPdf";
+            font-style: italic;
+            font-weight: normal;
+            src: url("{{ str_replace('\\', '/', public_path('fonts/timesi.ttf')) }}") format("truetype");
+        }
+
+        @font-face {
+            font-family: "TimesNewRomanPdf";
+            font-style: italic;
+            font-weight: bold;
+            src: url("{{ str_replace('\\', '/', public_path('fonts/timesbi.ttf')) }}") format("truetype");
+        }
+
         @page {
             size: A4 portrait;
             margin: 16px 22px 136px 22px;
@@ -16,7 +44,7 @@
         }
 
         body {
-            font-family: "Times New Roman", "DejaVu Serif", serif;
+            font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
             font-size: 13px;
             color: #111;
             margin: 0;
@@ -53,7 +81,7 @@
 
         .company-title {
             color: #d71920;
-            font-family: "Times New Roman", "DejaVu Serif", serif;
+            font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
             font-size: 15.7px;
             font-weight: bold;
             line-height: 1.18;
@@ -63,7 +91,7 @@
 
         .company-subtitle {
             color: #d71920;
-            font-family: "Times New Roman", "DejaVu Serif", serif;
+            font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
             font-size: 13.5px;
             font-weight: bold;
             line-height: 1.18;
@@ -75,7 +103,7 @@
             width: 18%;
             text-align: center;
             color: #0069b4;
-            font-family: Arial, "DejaVu Sans", sans-serif;
+            font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
             font-size: 9.7px;
             font-weight: bold;
             line-height: 1.18;
@@ -225,7 +253,7 @@
             padding: 7px 10px 6px;
             text-align: center;
             color: #b82222;
-            font-family: Arial, "DejaVu Sans", sans-serif;
+            font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
             font-size: 9.5px;
             line-height: 1.28;
             background: #fffdfd;
@@ -257,7 +285,7 @@
             right: 0;
             bottom: 8px;
             color: #6aa842;
-            font-family: Arial, "DejaVu Sans", sans-serif;
+            font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
             font-size: 8.5px;
             line-height: 1.2;
             text-align: center;
@@ -269,7 +297,7 @@
             right: -22px;
             bottom: -136px;
             height: 128px;
-            font-family: Arial, "DejaVu Sans", sans-serif;
+            font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
         }
 
         .footer-website {

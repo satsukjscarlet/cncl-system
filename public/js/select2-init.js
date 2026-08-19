@@ -66,6 +66,42 @@
                 };
             }
 
+            if ($select.hasClass('product-select')) {
+                options.dropdownCssClass = 'cncl-product-select-dropdown';
+                options.templateResult = function (item) {
+                    if (!item.id) {
+                        return item.text;
+                    }
+
+                    var code = item.code || (item.element ? jQuery(item.element).data('code') : '') || '';
+                    var name = item.name || (item.element ? jQuery(item.element).data('name') : '') || item.text || '';
+
+                    if (!code && item.text) {
+                        var parts = String(item.text).split(' - ');
+                        code = parts.shift() || '';
+                        name = parts.join(' - ') || item.text;
+                    }
+
+                    return jQuery('<div class="cncl-product-option"></div>')
+                        .append(jQuery('<div class="cncl-product-option-code"></div>').text(code))
+                        .append(jQuery('<div class="cncl-product-option-name"></div>').text(name));
+                };
+                options.templateSelection = function (item) {
+                    if (!item.id) {
+                        return item.text;
+                    }
+
+                    var code = item.code || (item.element ? jQuery(item.element).data('code') : '') || '';
+                    var name = item.name || (item.element ? jQuery(item.element).data('name') : '') || item.text || '';
+
+                    if (!code && item.text) {
+                        return item.text;
+                    }
+
+                    return [code, name].filter(Boolean).join(' - ');
+                };
+            }
+
             $select.select2(options);
         });
 

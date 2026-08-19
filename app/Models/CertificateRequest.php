@@ -152,3 +152,4 @@ class CertificateRequest extends Model
         return $query;
     }
 }
+

@@ -284,15 +284,22 @@ class SmartCaService
 
     private function signatureOptions(QualityCertificate $certificate, ?int $pageCount = null): array
     {
+        $visible = (bool) SystemSetting::getValue('smartca_signature_visible', true);
+        $showCheck = (bool) SystemSetting::getValue('smartca_signature_show_check', true);
         $renderMode = (int) SystemSetting::getValue('smartca_signature_render_mode', 0);
         $imagePath = SystemSetting::getValue('smartca_signature_image_path');
         $hasImage = $imagePath && Storage::disk('public')->exists($imagePath);
+        $customImage = $visible ? $this->signatureCustomImageBase64($imagePath, (bool) $hasImage, $showCheck) : null;
         $pageMode = (string) SystemSetting::getValue('smartca_signature_page_mode', 'last');
         $page = $pageMode === 'fixed'
             ? (int) SystemSetting::getValue('smartca_signature_page', 1)
             : max(1, (int) ($pageCount ?: 1));
 
-        if ($renderMode > 0 && !$hasImage) {
+        if ($visible && $showCheck && $customImage) {
+            $renderMode = 4;
+        }
+
+        if ($renderMode > 0 && !$customImage) {
             $renderMode = 0;
         }
 
@@ -301,19 +308,118 @@ class SmartCaService
             'fontSize' => (int) SystemSetting::getValue('smartca_signature_font_size', 11),
             'fontColor' => (string) SystemSetting::getValue('smartca_signature_font_color', '#000000'),
             'signatureText' => $this->signatureText($certificate),
-            'signatures' => [
+        ];
+
+        if ($visible) {
+            $options['signatures'] = [
                 [
                     'page' => $page,
                     'rectangle' => (string) SystemSetting::getValue('smartca_signature_rectangle', '315,150,565,220'),
                 ],
-            ],
-        ];
+            ];
+        }
 
-        if ($renderMode > 0 && $hasImage) {
-            $options['customImage'] = base64_encode(Storage::disk('public')->get($imagePath));
+        if ($visible && $renderMode > 0 && $customImage) {
+            $options['customImage'] = $customImage;
         }
 
         return $options;
+    }
+
+    private function signatureCustomImageBase64(?string $imagePath, bool $hasImage, bool $showCheck): ?string
+    {
+        $imageContent = $hasImage ? Storage::disk('public')->get($imagePath) : null;
+
+        if (!$showCheck) {
+            return $imageContent ? base64_encode($imageContent) : null;
+        }
+
+        $composed = $this->composeSignatureImageWithCheck($imageContent);
+
+        return $composed ? base64_encode($composed) : ($imageContent ? base64_encode($imageContent) : null);
+    }
+
+    private function composeSignatureImageWithCheck(?string $imageContent = null): ?string
+    {
+        if (
+            !function_exists('imagecreatetruecolor')
+            || !function_exists('imagecreatefromstring')
+            || !function_exists('imagepng')
+        ) {
+            return null;
+        }
+
+        $source = $imageContent ? @imagecreatefromstring($imageContent) : null;
+        $sourceWidth = $source ? imagesx($source) : 0;
+        $sourceHeight = $source ? imagesy($source) : 0;
+        $checkSize = 118;
+        $maxSourceWidth = 220;
+        $maxSourceHeight = 86;
+        $scale = $source
+            ? min($maxSourceWidth / max(1, $sourceWidth), $maxSourceHeight / max(1, $sourceHeight), 1)
+            : 1;
+        $targetSourceWidth = $source ? max(1, (int) round($sourceWidth * $scale)) : 0;
+        $targetSourceHeight = $source ? max(1, (int) round($sourceHeight * $scale)) : 0;
+        $canvasWidth = max(260, $targetSourceWidth, $checkSize);
+        $canvasHeight = max(96, $targetSourceHeight);
+
+        $canvas = imagecreatetruecolor($canvasWidth, $canvasHeight);
+        imagesavealpha($canvas, true);
+        imagefill($canvas, 0, 0, imagecolorallocatealpha($canvas, 0, 0, 0, 127));
+
+        if ($source) {
+            imagecopyresampled(
+                $canvas,
+                $source,
+                (int) floor(($canvasWidth - $targetSourceWidth) / 2),
+                (int) floor(($canvasHeight - $targetSourceHeight) / 2),
+                0,
+                0,
+                $targetSourceWidth,
+                $targetSourceHeight,
+                $sourceWidth,
+                $sourceHeight
+            );
+            imagedestroy($source);
+        }
+
+        $this->drawGreenCheck(
+            $canvas,
+            (int) floor(($canvasWidth - $checkSize) / 2),
+            $canvasHeight - $checkSize + 20,
+            $checkSize
+        );
+
+        ob_start();
+        imagepng($canvas);
+        $png = ob_get_clean();
+        imagedestroy($canvas);
+
+        return is_string($png) && $png !== '' ? $png : null;
+    }
+
+    private function drawGreenCheck($canvas, int $x, int $y, int $size): void
+    {
+        $green = imagecolorallocate($canvas, 24, 169, 87);
+
+        imagesetthickness($canvas, max(8, (int) floor($size / 9)));
+        imageline(
+            $canvas,
+            $x + (int) floor($size * .12),
+            $y + (int) floor($size * .56),
+            $x + (int) floor($size * .42),
+            $y + (int) floor($size * .88),
+            $green
+        );
+        imageline(
+            $canvas,
+            $x + (int) floor($size * .42),
+            $y + (int) floor($size * .88),
+            $x + (int) floor($size * .92),
+            $y + (int) floor($size * .10),
+            $green
+        );
+        imagesetthickness($canvas, 1);
     }
 
     private function countPdfPages(string $pdfContent): int

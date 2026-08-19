@@ -180,14 +180,19 @@ class DashboardController extends Controller
                 ->latest()
                 ->take(8)
                 ->get()
-                ->map(fn (QualityCertificate $certificate) => [
-                    'code' => $certificate->certificate_no,
-                    'title' => $certificate->request->customer->customer_name ?? '-',
-                    'subtitle' => $certificate->request->distributionCenter->name ?? '',
-                    'status' => $certificate->smartca_status ?: $certificate->status,
-                    'date' => optional($certificate->created_at)->format('d/m/Y H:i'),
-                    'url' => route('quality-certificates.show', $certificate),
-                ]);
+                ->map(function (QualityCertificate $certificate) {
+                    $request = $certificate->request;
+                    $customer = $request?->customer;
+
+                    return [
+                        'code' => $certificate->certificate_no,
+                        'title' => $customer?->customer_name ?? '-',
+                        'subtitle' => $request?->distributionCenter?->name ?? '',
+                        'status' => $certificate->smartca_status ?: $certificate->status,
+                        'date' => optional($certificate->created_at)->format('d/m/Y H:i'),
+                        'url' => route('quality-certificates.show', $certificate),
+                    ];
+                });
 
             return [
                 'title' => 'Phiếu cần Trưởng PTN xử lý ký số',
@@ -210,15 +215,21 @@ class DashboardController extends Controller
             ->latest()
             ->take(8)
             ->get()
-            ->map(fn (CertificateRequest $request) => [
-                'code' => $request->request_no,
-                'title' => $request->customer->customer_name ?? '-',
-                'subtitle' => trim(($request->distributionCenter->name ?? '') . ' ' . ($request->customer->project_name ? '- ' . $request->customer->project_name : '')),
-                'status' => $request->status,
-                'date' => optional($request->created_at)->format('d/m/Y H:i'),
-                'url' => $this->requestUrlForRole($role, $request),
-                'urgent' => $request->is_urgent,
-            ]);
+            ->map(function (CertificateRequest $request) use ($role) {
+                $customer = $request->customer;
+                $centerName = $request->distributionCenter?->name ?? '';
+                $projectName = $customer?->project_name;
+
+                return [
+                    'code' => $request->request_no,
+                    'title' => $customer?->customer_name ?? '-',
+                    'subtitle' => trim($centerName . ($projectName ? ' - ' . $projectName : '')),
+                    'status' => $request->status,
+                    'date' => optional($request->created_at)->format('d/m/Y H:i'),
+                    'url' => $this->requestUrlForRole($role, $request),
+                    'urgent' => $request->is_urgent,
+                ];
+            });
 
         return [
             'title' => match ($role) {
@@ -244,14 +255,18 @@ class DashboardController extends Controller
             ->latest()
             ->take(8)
             ->get()
-            ->map(fn (QualityCertificate $certificate) => [
-                'code' => $certificate->certificate_no,
-                'title' => $certificate->request->customer->customer_name ?? '-',
-                'subtitle' => $certificate->request->customer->project_name ?? '',
-                'status' => $certificate->signed_at ? 'Đã ký' : $certificate->status,
-                'date' => optional($certificate->created_at)->format('d/m/Y H:i'),
-                'url' => route('quality-certificates.show', $certificate),
-            ]);
+            ->map(function (QualityCertificate $certificate) {
+                $customer = $certificate->request?->customer;
+
+                return [
+                    'code' => $certificate->certificate_no,
+                    'title' => $customer?->customer_name ?? '-',
+                    'subtitle' => $customer?->project_name ?? '',
+                    'status' => $certificate->signed_at ? 'Đã ký' : $certificate->status,
+                    'date' => optional($certificate->created_at)->format('d/m/Y H:i'),
+                    'url' => route('quality-certificates.show', $certificate),
+                ];
+            });
 
         return [
             'title' => $role === 'TrungTam' ? 'Phiếu CNCL của trung tâm' : 'Phiếu CNCL gần đây',

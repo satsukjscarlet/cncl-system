@@ -50,7 +50,6 @@ class CertificateSummaryExport implements FromCollection, WithHeadings
             ->get()
             ->map(function ($item) use ($slaDvkh, $slaPtn) {
                 $minutes = Carbon::parse($item->created_at)->diffInMinutes(now());
-
                 $slaStatus = 'Bình thường';
 
                 if ($item->status === 'WAIT_DVKH' && $slaDvkh) {
@@ -61,7 +60,7 @@ class CertificateSummaryExport implements FromCollection, WithHeadings
                     }
                 }
 
-                if (in_array($item->status, ['WAIT_PTN', 'PTN_PROCESSING']) && $slaPtn) {
+                if (in_array($item->status, ['WAIT_PTN', 'PTN_PROCESSING'], true) && $slaPtn) {
                     if ($minutes >= $slaPtn->limit_minutes) {
                         $slaStatus = 'Quá hạn PTN';
                     } elseif ($minutes >= $slaPtn->warning_minutes) {
@@ -92,21 +91,21 @@ class CertificateSummaryExport implements FromCollection, WithHeadings
     public function headings(): array
     {
         return [
-            'so_yeu_cau',
-            'ngay_tao',
-            'trung_tam',
-            'khach_hang',
-            'cong_trinh',
-            'dia_diem_cong_trinh',
-            'ngay_xuat_hang',
-            'so_hoa_don',
-            'yeu_cau_ky_tuoi',
-            'so_ban_ky_tuoi',
-            'trang_thai',
-            'nguoi_tao',
-            'thoi_gian_cho_hien_tai_phut',
-            'canh_bao_sla',
-            'ghi_chu',
+            'Số yêu cầu',
+            'Ngày tạo',
+            'Trung tâm',
+            'Khách hàng',
+            'Công trình',
+            'Địa điểm công trình',
+            'Ngày xuất hàng',
+            'Số hóa đơn',
+            'Yêu cầu ký tươi',
+            'Số bản ký tươi',
+            'Trạng thái',
+            'Người tạo',
+            'Thời gian chờ hiện tại (phút)',
+            'Cảnh báo SLA',
+            'Ghi chú',
         ];
     }
 
@@ -114,12 +113,12 @@ class CertificateSummaryExport implements FromCollection, WithHeadings
     {
         return match ($status) {
             'DRAFT' => 'Nháp',
-            'WAIT_DVKH' => 'Chờ DVKH',
-            'WAIT_PTN' => 'Chờ PTN',
-            'PTN_PROCESSING' => 'PTN đang xử lý',
+            'WAIT_DVKH' => 'Chờ DVKH kiểm tra',
+            'WAIT_PTN' => 'Chờ PTN lập phiếu',
+            'PTN_PROCESSING' => 'Đã lập phiếu - Chờ Trưởng PTN ký',
             'SIGNED' => 'Đã ký số',
             'COMPLETED' => 'Hoàn tất',
-            'CANCELLED' => 'Hủy/Trả lại',
+            'CANCELLED' => 'Đã trả lại / hủy',
             default => $status ?? '',
         };
     }

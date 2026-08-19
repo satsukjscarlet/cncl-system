@@ -14,6 +14,7 @@ use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 
 class CertificateRequestController extends Controller
@@ -139,7 +140,9 @@ class CertificateRequestController extends Controller
             'results' => $products
                 ->map(fn ($product) => [
                     'id' => $product->id,
-                    'text' => $this->productOptionText($product),
+                    'text' => $this->productOptionDisplayText($product),
+                    'code' => $product->product_code,
+                    'name' => $product->product_name,
                 ])
                 ->values(),
         ]);
@@ -316,7 +319,9 @@ class CertificateRequestController extends Controller
 
                 return [
                     'product_id' => $product->id,
-                    'product_text' => $this->productOptionText($product),
+                    'product_code' => $product->product_code,
+                    'product_name' => $product->product_name,
+                    'product_text' => $this->productOptionDisplayText($product),
                     'quantity' => $rows->sum('quantity'),
                 ];
             })
@@ -353,7 +358,7 @@ class CertificateRequestController extends Controller
         $rules = [
             'customer_mode' => ['required', 'in:existing,new'],
             'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
-            'new_customer_code' => ['nullable', 'string', 'max:100', 'unique:customers,customer_code'],
+            'new_customer_code' => $this->newCustomerCodeRules($request),
             'new_customer_name' => ['required_if:customer_mode,new', 'nullable', 'string', 'max:500'],
             'new_customer_address' => ['nullable', 'string'],
             'new_tax_code' => ['nullable', 'string', 'max:100'],
@@ -389,7 +394,7 @@ class CertificateRequestController extends Controller
         if (!$distributionCenterId) {
             return back()
                 ->withInput()
-                ->with('error', 'TÃ i khoáº£n Trung tÃ¢m chÆ°a Ä‘Æ°á»£c gÃ¡n Trung tÃ¢m phÃ¢n phá»‘i.');
+                ->with('error', 'T?i kho?n Trung t?m ch?a ???c g?n Trung t?m ph?n ph?i.');
         }
 
         DB::beginTransaction();
@@ -427,9 +432,9 @@ class CertificateRequestController extends Controller
             $this->logDuplicateInvoiceWarning($certificateRequest);
 
             ActivityLogger::log(
-                'YÃªu cáº§u cáº¥p phiáº¿u',
+                'Y?u c?u c?p phi?u',
                 'create',
-                'Táº¡o yÃªu cáº§u cáº¥p phiáº¿u: ' . $certificateRequest->request_no,
+                'T?o y?u c?u c?p phi?u: ' . $certificateRequest->request_no,
                 null,
                 $certificateRequest->load('details')->toArray(),
                 $certificateRequest
@@ -443,13 +448,13 @@ class CertificateRequestController extends Controller
 
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('success', 'Táº¡o yÃªu cáº§u cáº¥p phiáº¿u thÃ nh cÃ´ng.');
+                ->with('success', 'T?o y?u c?u c?p phi?u th?nh c?ng.');
         } catch (\Throwable $e) {
             DB::rollBack();
 
             return back()
                 ->withInput()
-                ->with('error', 'CÃ³ lá»—i khi táº¡o yÃªu cáº§u: ' . $e->getMessage());
+                ->with('error', 'Có lỗi khi tạo yêu cầu: ' . $e->getMessage());
         }
     }
 
@@ -481,7 +486,7 @@ class CertificateRequestController extends Controller
         if (!in_array($certificateRequest->status, ['DRAFT', 'WAIT_DVKH'])) {
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('error', 'Chá»‰ Ä‘Æ°á»£c sá»­a yÃªu cáº§u á»Ÿ tráº¡ng thÃ¡i NhÃ¡p hoáº·c Chá» DVKH.');
+                ->with('error', 'Ch? ???c s?a y?u c?u ? tr?ng th?i Nh?p ho?c Ch? DVKH.');
         }
 
         $certificateRequest->load([
@@ -513,13 +518,13 @@ class CertificateRequestController extends Controller
         if (!in_array($certificateRequest->status, ['DRAFT', 'WAIT_DVKH'])) {
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('error', 'Chá»‰ Ä‘Æ°á»£c sá»­a yÃªu cáº§u á»Ÿ tráº¡ng thÃ¡i NhÃ¡p hoáº·c Chá» DVKH.');
+                ->with('error', 'Ch? ???c s?a y?u c?u ? tr?ng th?i Nh?p ho?c Ch? DVKH.');
         }
 
         $rules = [
             'customer_mode' => ['required', 'in:existing,new'],
             'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
-            'new_customer_code' => ['nullable', 'string', 'max:100', 'unique:customers,customer_code'],
+            'new_customer_code' => $this->newCustomerCodeRules($request, $certificateRequest),
             'new_customer_name' => ['required_if:customer_mode,new', 'nullable', 'string', 'max:500'],
             'new_customer_address' => ['nullable', 'string'],
             'new_tax_code' => ['nullable', 'string', 'max:100'],
@@ -587,9 +592,9 @@ class CertificateRequestController extends Controller
             $this->logDuplicateInvoiceWarning($certificateRequest);
 
             ActivityLogger::log(
-                'YÃªu cáº§u cáº¥p phiáº¿u',
+                'Y?u c?u c?p phi?u',
                 'update',
-                'Cáº­p nháº­t yÃªu cáº§u cáº¥p phiáº¿u: ' . $certificateRequest->request_no,
+                'C?p nh?t y?u c?u c?p phi?u: ' . $certificateRequest->request_no,
                 $oldData,
                 $certificateRequest->fresh()->load('details')->toArray(),
                 $certificateRequest
@@ -599,13 +604,13 @@ class CertificateRequestController extends Controller
 
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('success', 'Cáº­p nháº­t yÃªu cáº§u cáº¥p phiáº¿u thÃ nh cÃ´ng.');
+                ->with('success', 'C?p nh?t y?u c?u c?p phi?u th?nh c?ng.');
         } catch (\Throwable $e) {
             DB::rollBack();
 
             return back()
                 ->withInput()
-                ->with('error', 'CÃ³ lá»—i khi cáº­p nháº­t yÃªu cáº§u: ' . $e->getMessage());
+                ->with('error', 'Có lỗi khi cập nhật yêu cầu: ' . $e->getMessage());
         }
     }
 
@@ -616,7 +621,7 @@ class CertificateRequestController extends Controller
         if (!in_array($certificateRequest->status, ['DRAFT', 'WAIT_DVKH'])) {
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('error', 'Chá»‰ Ä‘Æ°á»£c xÃ³a yÃªu cáº§u á»Ÿ tráº¡ng thÃ¡i NhÃ¡p hoáº·c Chá» DVKH.');
+                ->with('error', 'Ch? ???c x?a y?u c?u ? tr?ng th?i Nh?p ho?c Ch? DVKH.');
         }
 
         $oldData = $certificateRequest->load('details')->toArray();
@@ -624,9 +629,9 @@ class CertificateRequestController extends Controller
         $certificateRequest->delete();
 
         ActivityLogger::log(
-            'YÃªu cáº§u cáº¥p phiáº¿u',
+            'Y?u c?u c?p phi?u',
             'delete',
-            'XÃ³a yÃªu cáº§u cáº¥p phiáº¿u: ' . $certificateRequest->request_no,
+            'X?a y?u c?u c?p phi?u: ' . $certificateRequest->request_no,
             $oldData,
             null,
             $certificateRequest
@@ -634,7 +639,7 @@ class CertificateRequestController extends Controller
 
         return redirect()
             ->route('certificate-requests.index')
-            ->with('success', 'XÃ³a yÃªu cáº§u cáº¥p phiáº¿u thÃ nh cÃ´ng.');
+            ->with('success', 'X?a y?u c?u c?p phi?u th?nh c?ng.');
     }
 
     private function generateRequestNo(): string
@@ -652,39 +657,39 @@ class CertificateRequestController extends Controller
 
         $steps = [
             [
-                'title' => 'Trung tÃ¢m táº¡o yÃªu cáº§u',
+                'title' => 'Trung tâm tạo yêu cầu',
                 'status' => 'done',
                 'icon' => 'fas fa-file-alt',
                 'time' => $certificateRequest->created_at,
-                'description' => 'YÃªu cáº§u ' . $certificateRequest->request_no . ' Ä‘Æ°á»£c khá»Ÿi táº¡o.',
+                'description' => 'Yêu cầu ' . $certificateRequest->request_no . ' được khởi tạo.',
             ],
             [
-                'title' => 'DVKH kiá»ƒm tra',
+                'title' => 'DVKH kiểm tra',
                 'status' => 'pending',
                 'icon' => 'fas fa-user-check',
                 'time' => null,
-                'description' => 'Chá» DVKH xÃ¡c nháº­n thÃ´ng tin yÃªu cáº§u.',
+                'description' => 'Chờ DVKH xác nhận thông tin yêu cầu.',
             ],
             [
-                'title' => 'PTN láº­p phiáº¿u',
+                'title' => 'PTN lập phiếu',
                 'status' => 'pending',
                 'icon' => 'fas fa-vials',
                 'time' => $certificate?->created_at,
-                'description' => 'Chá» PTN láº­p phiáº¿u CNCL.',
+                'description' => 'Chờ PTN lập phiếu CNCL.',
             ],
             [
-                'title' => 'TrÆ°á»Ÿng PTN kÃ½ sá»‘',
+                'title' => 'Trưởng PTN ký số',
                 'status' => 'pending',
                 'icon' => 'fas fa-file-signature',
                 'time' => $certificate?->smartca_requested_at,
-                'description' => 'Chá» TrÆ°á»Ÿng PTN gá»­i yÃªu cáº§u kÃ½ sá»‘.',
+                'description' => 'Chờ Trưởng PTN gửi yêu cầu ký số.',
             ],
             [
-                'title' => 'PhÃ¡t hÃ nh / thu há»“i',
+                'title' => 'Phát hành / thu hồi',
                 'status' => 'pending',
                 'icon' => 'fas fa-paper-plane',
                 'time' => $certificate?->signed_at ?: $certificate?->revoked_at,
-                'description' => 'Chá» kÃ½ sá»‘ thÃ nh cÃ´ng vÃ  phÃ¡t hÃ nh phiáº¿u.',
+                'description' => 'Chờ ký số thành công và phát hành phiếu.',
             ],
         ];
 
@@ -692,7 +697,7 @@ class CertificateRequestController extends Controller
             $steps[1]['status'] = 'current';
         } elseif ($certificateRequest->status === 'CANCELLED') {
             $steps[1]['status'] = 'danger';
-            $steps[1]['description'] = 'YÃªu cáº§u Ä‘Ã£ bá»‹ tráº£ láº¡i / há»§y.';
+            $steps[1]['description'] = 'Yêu cầu đã bị trả lại / hủy.';
             $steps[2]['status'] = 'skipped';
             $steps[3]['status'] = 'skipped';
             $steps[4]['status'] = 'skipped';
@@ -700,7 +705,7 @@ class CertificateRequestController extends Controller
             return $steps;
         } else {
             $steps[1]['status'] = 'done';
-            $steps[1]['description'] = 'DVKH Ä‘Ã£ xÃ¡c nháº­n vÃ  chuyá»ƒn yÃªu cáº§u sang PTN.';
+            $steps[1]['description'] = 'DVKH đã xác nhận và chuyển yêu cầu sang PTN.';
         }
 
         if ($certificateRequest->status === 'WAIT_PTN') {
@@ -708,8 +713,8 @@ class CertificateRequestController extends Controller
         } elseif ($certificate || in_array($certificateRequest->status, ['PTN_PROCESSING', 'COMPLETED'], true)) {
             $steps[2]['status'] = 'done';
             $steps[2]['description'] = $certificate
-                ? 'PTN Ä‘Ã£ láº­p phiáº¿u ' . $certificate->certificate_no . '.'
-                : 'PTN Ä‘Ã£ tiáº¿p nháº­n xá»­ lÃ½ yÃªu cáº§u.';
+                ? 'PTN đã lập phiếu ' . $certificate->certificate_no . '.'
+                : 'PTN đã tiếp nhận xử lý yêu cầu.';
         }
 
         if (!$certificate) {
@@ -719,30 +724,30 @@ class CertificateRequestController extends Controller
         if ($certificate->status === 'REJECTED') {
             $steps[3]['status'] = 'danger';
             $steps[3]['time'] = $certificate->rejected_at;
-            $steps[3]['description'] = 'TrÆ°á»Ÿng PTN Ä‘Ã£ tráº£ láº¡i phiáº¿u: ' . ($certificate->rejected_reason ?: '-');
+            $steps[3]['description'] = 'Trưởng PTN đã trả lại phiếu: ' . ($certificate->rejected_reason ?: '-');
             $steps[4]['status'] = 'skipped';
-            $steps[4]['description'] = 'ChÆ°a phÃ¡t hÃ nh vÃ¬ phiáº¿u Ä‘Ã£ bá»‹ tráº£ láº¡i.';
+            $steps[4]['description'] = 'Chưa phát hành vì phiếu đã bị trả lại.';
         } elseif ($certificate->status === 'REVOKED') {
             $steps[3]['status'] = 'done';
-            $steps[3]['description'] = 'Phiáº¿u cÅ© Ä‘Ã£ Ä‘Æ°á»£c kÃ½ sá»‘ trÆ°á»›c khi bá»‹ thu há»“i.';
+            $steps[3]['description'] = 'Phiếu cũ đã được ký số trước khi bị thu hồi.';
             $steps[4]['status'] = 'danger';
-            $steps[4]['description'] = 'Phiáº¿u Ä‘Ã£ há»§y / thu há»“i. LÃ½ do: ' . ($certificate->revoked_reason ?: '-');
+            $steps[4]['description'] = 'Phiếu đã hủy / thu hồi. Lý do: ' . ($certificate->revoked_reason ?: '-');
         } elseif ($certificate->signed_at) {
             $steps[3]['status'] = 'done';
             $steps[3]['time'] = $certificate->signed_at;
-            $steps[3]['description'] = 'Phiáº¿u Ä‘Ã£ kÃ½ sá»‘ thÃ nh cÃ´ng.';
+            $steps[3]['description'] = 'Phiếu đã ký số thành công.';
             $steps[4]['status'] = 'done';
             $steps[4]['time'] = $certificate->signed_at;
-            $steps[4]['description'] = 'Phiáº¿u Ä‘Ã£ phÃ¡t hÃ nh.';
+            $steps[4]['description'] = 'Phiếu đã phát hành.';
         } elseif ($certificate->smartcaStatusExpired()) {
             $steps[3]['status'] = 'danger';
-            $steps[3]['description'] = 'YÃªu cáº§u kÃ½ Ä‘Ã£ quÃ¡ háº¡n, cáº§n kiá»ƒm tra káº¿t quáº£ cÅ© hoáº·c gá»­i láº¡i yÃªu cáº§u kÃ½.';
+            $steps[3]['description'] = 'Yêu cầu ký đã quá hạn, cần kiểm tra kết quả cũ hoặc gửi lại yêu cầu ký.';
         } elseif ($certificate->smartca_status === 'PENDING') {
             $steps[3]['status'] = 'current';
-            $steps[3]['description'] = 'Äang chá» TrÆ°á»Ÿng PTN xÃ¡c nháº­n trÃªn app VNPT SmartCA.';
+            $steps[3]['description'] = 'Đang chờ Trưởng PTN xác nhận trên app VNPT SmartCA.';
         } else {
             $steps[3]['status'] = 'current';
-            $steps[3]['description'] = 'Chá» TrÆ°á»Ÿng PTN kiá»ƒm tra vÃ  gá»­i yÃªu cáº§u kÃ½ sá»‘.';
+            $steps[3]['description'] = 'Chờ Trưởng PTN kiểm tra và gửi yêu cầu ký số.';
         }
 
         return $steps;
@@ -757,7 +762,7 @@ class CertificateRequestController extends Controller
                 Auth::user()->hasRole('TrungTam')
                 && (int) $customer->distribution_center_id !== (int) Auth::user()->distribution_center_id
             ) {
-                abort(403, 'Anh khÃ´ng cÃ³ quyá»n chá»n khÃ¡ch hÃ ng cá»§a trung tÃ¢m khÃ¡c.');
+                abort(403, 'Anh không có quyền chọn khách hàng của trung tâm khác.');
             }
 
             if (
@@ -790,15 +795,30 @@ class CertificateRequestController extends Controller
         ]);
 
         ActivityLogger::log(
-            'KhÃ¡ch hÃ ng - CÃ´ng trÃ¬nh',
+            'Khách hàng - Công trình',
             'create_from_request',
-            'Táº¡o khÃ¡ch hÃ ng tá»« phiáº¿u Ä‘á» nghá»‹: ' . $customer->customer_name,
+            'Tạo khách hàng từ phiếu đề nghị: ' . $customer->customer_name,
             null,
             $customer->toArray(),
             $customer
         );
 
         return $customer->id;
+    }
+
+    private function newCustomerCodeRules(Request $request, ?CertificateRequest $certificateRequest = null): array
+    {
+        $centerId = Auth::user()->hasRole('TrungTam')
+            ? Auth::user()->distribution_center_id
+            : ($request->input('distribution_center_id') ?: $certificateRequest?->distribution_center_id);
+
+        return [
+            'nullable',
+            'string',
+            'max:100',
+            Rule::unique('customers', 'customer_code')
+                ->where(fn ($query) => $query->where('distribution_center_id', $centerId)),
+        ];
     }
 
     private function generateCustomerCode(): string
@@ -827,9 +847,9 @@ class CertificateRequestController extends Controller
         }
 
         ActivityLogger::log(
-            'YÃªu cáº§u cáº¥p phiáº¿u',
+            'Y?u c?u c?p phi?u',
             'duplicate_invoice_warning',
-            'Cáº£nh bÃ¡o sá»‘ hÃ³a Ä‘Æ¡n trÃ¹ng khi lÆ°u yÃªu cáº§u ' . $certificateRequest->request_no . ': ' . $certificateRequest->invoice_no . ' (' . $duplicateCount . ' báº£n ghi trÃ¹ng)'
+            'C?nh b?o s? h?a ??n tr?ng khi l?u y?u c?u ' . $certificateRequest->request_no . ': ' . $certificateRequest->invoice_no . ' (' . $duplicateCount . ' b?n ghi tr?ng)'
         );
     }
 
@@ -920,13 +940,23 @@ class CertificateRequestController extends Controller
             ->implode(' - ');
     }
 
+    private function productOptionDisplayText(Product $product): string
+    {
+        return collect([
+            $product->product_code,
+            $product->product_name,
+        ])
+            ->filter()
+            ->implode(' - ');
+    }
+
     private function authorizeCenter(CertificateRequest $certificateRequest): void
     {
         if (
             Auth::user()->hasRole('TrungTam')
             && $certificateRequest->distribution_center_id != Auth::user()->distribution_center_id
         ) {
-            abort(403, 'Anh khÃ´ng cÃ³ quyá»n xem dá»¯ liá»‡u cá»§a trung tÃ¢m khÃ¡c.');
+            abort(403, 'Anh không có quyền xem dữ liệu của trung tâm khác.');
         }
     }
 

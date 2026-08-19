@@ -255,6 +255,59 @@ select.form-control:not([size]):not([multiple]) {
     padding: 8px 12px;
 }
 
+.cncl-product-select-dropdown .select2-results__option {
+    padding: 0;
+}
+
+.cncl-product-select-dropdown .select2-results__option--selectable {
+    border-bottom: 1px solid #eef2f7;
+}
+
+.cncl-product-select-dropdown .select2-results__option--selectable:last-child {
+    border-bottom: 0;
+}
+
+.cncl-product-option {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(88px, 128px) minmax(0, 1fr);
+    min-height: 38px;
+}
+
+.cncl-product-option-code {
+    align-items: center;
+    background: #f8fafc;
+    border-right: 1px solid #e5e7eb;
+    color: #0f5fbd;
+    display: flex;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 10px;
+    white-space: nowrap;
+}
+
+.cncl-product-option-name {
+    align-items: center;
+    color: #1f2937;
+    display: flex;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.25;
+    padding: 8px 12px;
+}
+
+.cncl-product-select-dropdown .select2-results__option--highlighted[aria-selected] .cncl-product-option-code,
+.cncl-product-select-dropdown .select2-results__option--selected .cncl-product-option-code {
+    background: rgba(13, 110, 253, .12);
+    color: #063f82;
+}
+
+.cncl-product-select-dropdown .select2-results__option--highlighted[aria-selected] .cncl-product-option-name,
+.cncl-product-select-dropdown .select2-results__option--selected .cncl-product-option-name {
+    color: #0b2f5b;
+}
+
 .table {
     color: #243041;
 }

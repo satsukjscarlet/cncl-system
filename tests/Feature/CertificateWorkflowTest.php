@@ -363,6 +363,79 @@ class CertificateWorkflowTest extends TestCase
             ->assertJsonMissing(['id' => $npCustomer->id]);
     }
 
+    public function test_customer_import_warns_before_updating_duplicate_code_in_same_center(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $existing = $this->createCustomerForCenter($centerUser, 'KH-IMPORT-DUP');
+        $fileName = 'tests/customers-import-duplicate.xlsx';
+        $preview = null;
+
+        Excel::store(new class implements FromArray, WithHeadings {
+            public function headings(): array
+            {
+                return [
+                    'ma_khach_hang',
+                    'ten_khach_hang',
+                    'dia_chi_khach_hang',
+                    'email',
+                    'ten_cong_trinh',
+                    'dia_diem_cong_trinh',
+                    'dang_su_dung',
+                ];
+            }
+
+            public function array(): array
+            {
+                return [
+                    ['KH-IMPORT-DUP', 'Ten khach hang cap nhat', 'Dia chi moi', 'updated@example.com', 'Cong trinh moi', 'Dia diem moi', '1'],
+                    ['KH-IMPORT-NEW', 'Ten khach hang moi', 'Dia chi khach hang moi', 'new@example.com', 'Cong trinh moi 2', 'Dia diem moi 2', '1'],
+                ];
+            }
+        }, $fileName);
+
+        try {
+            $uploadedFile = new UploadedFile(
+                Storage::path($fileName),
+                'customers-import-duplicate.xlsx',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                null,
+                true
+            );
+
+            $response = $this->actingAs($centerUser)
+                ->post(route('customers.import'), [
+                    'file' => $uploadedFile,
+                ]);
+
+            $response
+                ->assertRedirect(route('customers.index'))
+                ->assertSessionHas('customer_import_preview');
+
+            $this->assertSame('Acceptance Khach hang NP', $existing->fresh()->customer_name);
+            $preview = session('customer_import_preview');
+
+            $this->actingAs($centerUser)
+                ->post(route('customers.import'), [
+                    'temp_path' => $preview['temp_path'],
+                    'confirm_update' => 1,
+                ])
+                ->assertRedirect(route('customers.index'))
+                ->assertSessionHas('success');
+
+            $this->assertSame('Ten khach hang cap nhat', $existing->fresh()->customer_name);
+            $this->assertDatabaseHas('customers', [
+                'distribution_center_id' => $centerUser->distribution_center_id,
+                'customer_code' => 'KH-IMPORT-NEW',
+                'customer_name' => 'Ten khach hang moi',
+            ]);
+        } finally {
+            Storage::delete($fileName);
+            if (!empty($preview['temp_path'] ?? null)) {
+                Storage::delete($preview['temp_path']);
+            }
+        }
+    }
+
     public function test_request_product_excel_import_maps_product_codes_and_merges_quantities(): void
     {
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();

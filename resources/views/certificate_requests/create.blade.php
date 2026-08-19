@@ -3,7 +3,7 @@
 @section('title', 'Tạo yêu cầu cấp phiếu')
 
 @section('css')
-    <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260725-1') }}">
+    <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260818-1') }}">
 @stop
 
 @section('content_header')
