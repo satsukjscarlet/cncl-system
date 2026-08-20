@@ -372,7 +372,7 @@
     </table>
 </div>
 
-<button type="button" class="btn btn-outline-primary" id="add-row">
+<button type="button" class="btn btn-outline-primary" id="add-row" title="Phím tắt: Ctrl + Enter">
     <i class="fas fa-plus"></i> Thêm dòng sản phẩm
 </button>
 
@@ -644,7 +644,7 @@
                 checkInvoiceDuplicate();
             }
 
-            addRowBtn.addEventListener('click', function() {
+            function addProductRow() {
                 const firstRow = tableBody.querySelector('tr');
                 const firstSelect = firstRow.querySelector('select.product-select');
 
@@ -676,6 +676,28 @@
                     window.initSelect2(firstRow);
                     window.initSelect2(newRow);
                 }
+
+                const newSelect = newRow.querySelector('select.product-select');
+
+                if (newSelect && window.jQuery && jQuery.fn.select2 && jQuery(newSelect).hasClass('select2-hidden-accessible')) {
+                    jQuery(newSelect).select2('open');
+                } else if (newSelect) {
+                    newSelect.focus();
+                }
+            }
+
+            addRowBtn.addEventListener('click', addProductRow);
+
+            document.addEventListener('keydown', function(e) {
+                const isShortcut = (e.ctrlKey || e.metaKey) && e.key === 'Enter';
+                const modalOpen = document.querySelector('.modal.show');
+
+                if (!isShortcut || modalOpen) {
+                    return;
+                }
+
+                e.preventDefault();
+                addProductRow();
             });
 
             tableBody.addEventListener('click', function(e) {

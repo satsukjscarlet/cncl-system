@@ -1576,9 +1576,16 @@ class QualityCertificateController extends Controller
     {
         $prefix = 'YC-' . date('Ymd') . '-';
 
-        $count = CertificateRequest::whereDate('created_at', now()->toDateString())->count() + 1;
+        $lastRequestNo = CertificateRequest::withTrashed()
+            ->where('request_no', 'like', $prefix . '%')
+            ->orderByDesc('request_no')
+            ->value('request_no');
 
-        return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
+        $nextNumber = $lastRequestNo
+            ? ((int) substr($lastRequestNo, strlen($prefix))) + 1
+            : 1;
+
+        return $prefix . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     private function authorizeCenter(QualityCertificate $qualityCertificate): void

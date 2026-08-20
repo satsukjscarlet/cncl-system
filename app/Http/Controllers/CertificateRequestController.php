@@ -430,7 +430,7 @@ class CertificateRequestController extends Controller
         if (!$distributionCenterId) {
             return back()
                 ->withInput()
-                ->with('error', 'T?i kho?n Trung t?m ch?a ???c g?n Trung t?m ph?n ph?i.');
+                ->with('error', 'Tài khoản Trung tâm chưa được gắn Trung tâm phân phối.');
         }
 
         DB::beginTransaction();
@@ -471,9 +471,9 @@ class CertificateRequestController extends Controller
             $this->logDuplicateInvoiceWarning($certificateRequest);
 
             ActivityLogger::log(
-                'Y?u c?u c?p phi?u',
+                'Yêu cầu cấp phiếu',
                 'create',
-                'T?o y?u c?u c?p phi?u: ' . $certificateRequest->request_no,
+                'Tạo yêu cầu cấp phiếu: ' . $certificateRequest->request_no,
                 null,
                 $certificateRequest->load('details')->toArray(),
                 $certificateRequest
@@ -640,9 +640,9 @@ class CertificateRequestController extends Controller
             $this->logDuplicateInvoiceWarning($certificateRequest);
 
             ActivityLogger::log(
-                'Y?u c?u c?p phi?u',
+                'Yêu cầu cấp phiếu',
                 'update',
-                'C?p nh?t y?u c?u c?p phi?u: ' . $certificateRequest->request_no,
+                'Cập nhật yêu cầu cấp phiếu: ' . $certificateRequest->request_no,
                 $oldData,
                 $certificateRequest->fresh()->load('details')->toArray(),
                 $certificateRequest
@@ -685,9 +685,9 @@ class CertificateRequestController extends Controller
         $certificateRequest->delete();
 
         ActivityLogger::log(
-            'Y?u c?u c?p phi?u',
+            'Yêu cầu cấp phiếu',
             'delete',
-            'X?a y?u c?u c?p phi?u: ' . $certificateRequest->request_no,
+            'Xóa yêu cầu cấp phiếu: ' . $certificateRequest->request_no,
             $oldData,
             null,
             $certificateRequest
@@ -695,16 +695,23 @@ class CertificateRequestController extends Controller
 
         return redirect()
             ->route('certificate-requests.index')
-            ->with('success', 'X?a y?u c?u c?p phi?u th?nh c?ng.');
+            ->with('success', 'Xóa yêu cầu cấp phiếu thành công.');
     }
 
     private function generateRequestNo(): string
     {
         $prefix = 'YC-' . date('Ymd') . '-';
 
-        $count = CertificateRequest::whereDate('created_at', now()->toDateString())->count() + 1;
+        $lastRequestNo = CertificateRequest::withTrashed()
+            ->where('request_no', 'like', $prefix . '%')
+            ->orderByDesc('request_no')
+            ->value('request_no');
 
-        return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
+        $nextNumber = $lastRequestNo
+            ? ((int) substr($lastRequestNo, strlen($prefix))) + 1
+            : 1;
+
+        return $prefix . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     private function requestWorkflowSteps(CertificateRequest $certificateRequest): array
@@ -749,6 +756,13 @@ class CertificateRequestController extends Controller
             ],
         ];
 
+        if ($certificateRequest->status === 'DRAFT') {
+            $steps[0]['status'] = 'current';
+            $steps[0]['description'] = 'Yêu cầu đang được lưu nháp, chưa gửi sang DVKH.';
+
+            return $steps;
+        }
+
         if ($certificateRequest->status === 'WAIT_DVKH') {
             $steps[1]['status'] = 'current';
         } elseif ($certificateRequest->status === 'CANCELLED') {
@@ -759,7 +773,7 @@ class CertificateRequestController extends Controller
             $steps[4]['status'] = 'skipped';
 
             return $steps;
-        } else {
+        } elseif (in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING', 'COMPLETED'], true) || $certificate) {
             $steps[1]['status'] = 'done';
             $steps[1]['description'] = 'DVKH đã xác nhận và chuyển yêu cầu sang PTN.';
         }
@@ -903,9 +917,9 @@ class CertificateRequestController extends Controller
         }
 
         ActivityLogger::log(
-            'Y?u c?u c?p phi?u',
+            'Yêu cầu cấp phiếu',
             'duplicate_invoice_warning',
-            'C?nh b?o s? h?a ??n tr?ng khi l?u y?u c?u ' . $certificateRequest->request_no . ': ' . $certificateRequest->invoice_no . ' (' . $duplicateCount . ' b?n ghi tr?ng)'
+            'Cảnh báo số hóa đơn trùng khi lưu yêu cầu ' . $certificateRequest->request_no . ': ' . $certificateRequest->invoice_no . ' (' . $duplicateCount . ' bản ghi trùng)'
         );
     }
 
