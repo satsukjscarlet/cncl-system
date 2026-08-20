@@ -530,7 +530,7 @@ return [
                 [
                     'type' => 'js',
                     'asset' => true,
-                    'location' => 'js/select2-init.js?v=20260611-3',
+                    'location' => 'js/select2-init.js?v=20260820-1',
                 ],
                 [
                     'type' => 'css',

@@ -112,6 +112,21 @@
         attempt = attempt || 0;
 
         if (initSelect2(document)) {
+            if (!window.__cnclSelect2AutoFocusBound) {
+                window.__cnclSelect2AutoFocusBound = true;
+
+                jQuery(document).on('select2:open', function () {
+                    window.setTimeout(function () {
+                        var searchField = document.querySelector('.select2-container--open .select2-search__field');
+
+                        if (searchField) {
+                            searchField.focus();
+                            searchField.select();
+                        }
+                    }, 0);
+                });
+            }
+
             if (!window.__cnclSelect2Observer) {
                 window.__cnclSelect2Observer = new MutationObserver(function (mutations) {
                     mutations.forEach(function (mutation) {

@@ -32,7 +32,7 @@ class CertificateRequestController extends Controller
         ]);
 
         if (Auth::user()->hasRole('TrungTam')) {
-            $query->where('distribution_center_id', Auth::user()->distribution_center_id);
+            $query->where('certificate_requests.distribution_center_id', Auth::user()->distribution_center_id);
         }
 
         if ($request->filled('keyword')) {
@@ -51,16 +51,51 @@ class CertificateRequestController extends Controller
         }
 
         if ($request->filled('distribution_center_id') && !Auth::user()->hasRole('TrungTam')) {
-            $query->where('distribution_center_id', $request->distribution_center_id);
+            $query->where('certificate_requests.distribution_center_id', $request->distribution_center_id);
         }
 
-        $requests = $query->latest()->paginate(15)->withQueryString();
+        $allowedSorts = [
+            'request_no',
+            'center',
+            'customer',
+            'delivery_date',
+            'invoice_no',
+            'hard_copy_quantity',
+            'status',
+            'created_at',
+        ];
+
+        $sort = in_array($request->input('sort'), $allowedSorts, true)
+            ? $request->input('sort')
+            : 'created_at';
+        $direction = $request->input('direction') === 'asc' ? 'asc' : 'desc';
+
+        if ($sort === 'center') {
+            $query->leftJoin('distribution_centers as sort_centers', 'sort_centers.id', '=', 'certificate_requests.distribution_center_id')
+                ->select('certificate_requests.*')
+                ->orderBy('sort_centers.name', $direction)
+                ->orderBy('certificate_requests.created_at', 'desc');
+        } elseif ($sort === 'customer') {
+            $query->leftJoin('customers as sort_customers', 'sort_customers.id', '=', 'certificate_requests.customer_id')
+                ->select('certificate_requests.*')
+                ->orderBy('sort_customers.customer_name', $direction)
+                ->orderBy('sort_customers.project_name', $direction)
+                ->orderBy('certificate_requests.created_at', 'desc');
+        } else {
+            $query->orderBy('certificate_requests.' . $sort, $direction)
+                ->orderBy('certificate_requests.created_at', 'desc');
+        }
+
+        $perPage = (int) $request->input('per_page', 15);
+        $perPage = in_array($perPage, [15, 30, 50, 100], true) ? $perPage : 15;
+
+        $requests = $query->paginate($perPage)->withQueryString();
 
         $centers = DistributionCenter::where('is_active', true)
             ->orderBy('name')
             ->get();
 
-        return view('certificate_requests.index', compact('requests', 'centers'));
+        return view('certificate_requests.index', compact('requests', 'centers', 'sort', 'direction', 'perPage'));
     }
 
     public function create()
@@ -379,6 +414,7 @@ class CertificateRequestController extends Controller
             'product_id.*' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'array', 'min:1'],
             'quantity.*' => ['required', 'numeric', 'min:0.01'],
+            'request_action' => ['nullable', 'in:draft,submit'],
         ];
 
         if (!Auth::user()->hasRole('TrungTam')) {
@@ -401,6 +437,7 @@ class CertificateRequestController extends Controller
 
         try {
             $customerId = $this->resolveCustomerId($data);
+            $requestStatus = $this->requestStatusFromAction($request);
 
             $certificateRequest = CertificateRequest::create([
                 'request_no' => $this->generateRequestNo(),
@@ -418,7 +455,9 @@ class CertificateRequestController extends Controller
                     : null,
                 'requester_name' => $data['requester_name'] ?? null,
                 'note' => $data['note'] ?? null,
-                'status' => 'WAIT_DVKH',
+                'status' => $requestStatus,
+                'submitted_at' => $requestStatus === 'WAIT_DVKH' ? now() : null,
+                'submitted_by' => $requestStatus === 'WAIT_DVKH' ? Auth::id() : null,
                 'created_by' => Auth::id(),
             ]);
 
@@ -442,13 +481,17 @@ class CertificateRequestController extends Controller
 
             DB::commit();
 
-            app(NotificationService::class)->notifyRequestCreated(
-                $certificateRequest->fresh(['distributionCenter', 'customer'])
-            );
+            if ($certificateRequest->status === 'WAIT_DVKH') {
+                app(NotificationService::class)->notifyRequestCreated(
+                    $certificateRequest->fresh(['distributionCenter', 'customer'])
+                );
+            }
 
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('success', 'T?o y?u c?u c?p phi?u th?nh c?ng.');
+                ->with('success', $certificateRequest->status === 'WAIT_DVKH'
+                    ? 'Đã tạo và gửi yêu cầu sang DVKH.'
+                    : 'Đã lưu nháp yêu cầu cấp phiếu.');
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -483,10 +526,10 @@ class CertificateRequestController extends Controller
     {
         $this->authorizeCenter($certificateRequest);
 
-        if (!in_array($certificateRequest->status, ['DRAFT', 'WAIT_DVKH'])) {
+        if ($certificateRequest->status !== 'DRAFT') {
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('error', 'Ch? ???c s?a y?u c?u ? tr?ng th?i Nh?p ho?c Ch? DVKH.');
+                ->with('error', 'Chỉ được sửa yêu cầu đang ở trạng thái Nháp. Yêu cầu đã gửi DVKH không còn được sửa trực tiếp.');
         }
 
         $certificateRequest->load([
@@ -515,10 +558,10 @@ class CertificateRequestController extends Controller
     {
         $this->authorizeCenter($certificateRequest);
 
-        if (!in_array($certificateRequest->status, ['DRAFT', 'WAIT_DVKH'])) {
+        if ($certificateRequest->status !== 'DRAFT') {
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('error', 'Ch? ???c s?a y?u c?u ? tr?ng th?i Nh?p ho?c Ch? DVKH.');
+                ->with('error', 'Chỉ được sửa yêu cầu đang ở trạng thái Nháp. Yêu cầu đã gửi DVKH không còn được sửa trực tiếp.');
         }
 
         $rules = [
@@ -545,6 +588,7 @@ class CertificateRequestController extends Controller
             'product_id.*' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'array', 'min:1'],
             'quantity.*' => ['required', 'numeric', 'min:0.01'],
+            'request_action' => ['nullable', 'in:draft,submit'],
         ];
 
         if (!Auth::user()->hasRole('TrungTam')) {
@@ -562,6 +606,7 @@ class CertificateRequestController extends Controller
         try {
             $oldData = $certificateRequest->load('details')->toArray();
             $customerId = $this->resolveCustomerId($data);
+            $requestStatus = $this->requestStatusFromAction($request);
 
             $certificateRequest->update([
                 'distribution_center_id' => $distributionCenterId,
@@ -578,6 +623,9 @@ class CertificateRequestController extends Controller
                     : null,
                 'requester_name' => $data['requester_name'] ?? null,
                 'note' => $data['note'] ?? null,
+                'status' => $requestStatus,
+                'submitted_at' => $requestStatus === 'WAIT_DVKH' ? now() : null,
+                'submitted_by' => $requestStatus === 'WAIT_DVKH' ? Auth::id() : null,
             ]);
 
             $certificateRequest->details()->delete();
@@ -602,9 +650,17 @@ class CertificateRequestController extends Controller
 
             DB::commit();
 
+            if ($certificateRequest->fresh()->status === 'WAIT_DVKH') {
+                app(NotificationService::class)->notifyRequestCreated(
+                    $certificateRequest->fresh(['distributionCenter', 'customer'])
+                );
+            }
+
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('success', 'C?p nh?t y?u c?u c?p phi?u th?nh c?ng.');
+                ->with('success', $requestStatus === 'WAIT_DVKH'
+                    ? 'Đã cập nhật và gửi yêu cầu sang DVKH.'
+                    : 'Đã lưu nháp yêu cầu cấp phiếu.');
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -618,10 +674,10 @@ class CertificateRequestController extends Controller
     {
         $this->authorizeCenter($certificateRequest);
 
-        if (!in_array($certificateRequest->status, ['DRAFT', 'WAIT_DVKH'])) {
+        if ($certificateRequest->status !== 'DRAFT') {
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('error', 'Ch? ???c x?a y?u c?u ? tr?ng th?i Nh?p ho?c Ch? DVKH.');
+                ->with('error', 'Chỉ được xóa yêu cầu đang ở trạng thái Nháp.');
         }
 
         $oldData = $certificateRequest->load('details')->toArray();
@@ -1017,6 +1073,13 @@ class CertificateRequestController extends Controller
     private function smartCaPendingTtlMinutes(): int
     {
         return max(1, (int) config('services.smartca.pending_ttl_minutes', 5));
+    }
+
+    private function requestStatusFromAction(Request $request): string
+    {
+        return $request->input('request_action', 'submit') === 'draft'
+            ? 'DRAFT'
+            : 'WAIT_DVKH';
     }
 }
 

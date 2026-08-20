@@ -429,6 +429,10 @@ select.form-control:not([size]):not([multiple]) {
     grid-template-columns: 116px minmax(280px, 1.7fr) minmax(220px, 1fr) minmax(190px, .85fr) auto;
 }
 
+.certificate-request-filter-toolbar {
+    grid-template-columns: 116px minmax(260px, 1.5fr) minmax(210px, .95fr) minmax(190px, .85fr) 112px auto;
+}
+
 .filter-title {
     align-items: center;
     color: #212529;
@@ -499,6 +503,23 @@ select.form-control:not([size]):not([multiple]) {
     white-space: nowrap;
 }
 
+.request-table .sort-link {
+    align-items: center;
+    color: #343a40;
+    display: inline-flex;
+    gap: .35rem;
+    text-decoration: none;
+}
+
+.request-table .sort-link:hover {
+    color: #0d7df2;
+}
+
+.request-table .sort-link i {
+    font-size: .8rem;
+    min-width: 10px;
+}
+
 .request-table tbody td {
     padding-bottom: .85rem;
     padding-top: .85rem;
@@ -507,6 +528,10 @@ select.form-control:not([size]):not([multiple]) {
 @media (max-width: 1399.98px) {
     .filter-toolbar {
         grid-template-columns: 100px minmax(260px, 1.5fr) minmax(210px, 1fr) minmax(180px, .85fr);
+    }
+
+    .certificate-request-filter-toolbar {
+        grid-template-columns: 100px minmax(260px, 1.5fr) minmax(210px, 1fr) minmax(180px, .85fr) 112px;
     }
 
     .filter-toolbar .filter-actions {

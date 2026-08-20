@@ -665,7 +665,7 @@ class QualityCertificateController extends Controller
 
         if ($existingReissue) {
             return redirect()
-                ->route($existingReissue->status === 'WAIT_DVKH' ? 'certificate-requests.edit' : 'certificate-requests.show', $existingReissue)
+                ->route($existingReissue->status === 'DRAFT' ? 'certificate-requests.edit' : 'certificate-requests.show', $existingReissue)
                 ->with('error', 'Phiếu này đã có yêu cầu cấp lại đang xử lý.');
         }
 
@@ -697,7 +697,7 @@ class QualityCertificateController extends Controller
                 'urgent_reason_id' => $oldRequest->urgent_reason_id,
                 'requester_name' => $oldRequest->requester_name,
                 'note' => trim(($oldRequest->note ? $oldRequest->note . "\n" : '') . '[Yêu cầu cấp lại từ phiếu ' . $qualityCertificate->certificate_no . ']: ' . $data['reissue_reason']),
-                'status' => 'WAIT_DVKH',
+                'status' => 'DRAFT',
                 'created_by' => Auth::id(),
             ]);
 
@@ -768,7 +768,7 @@ class QualityCertificateController extends Controller
 
             if ($existingReissue = $this->activeReissueRequestForCertificate($certificate)) {
                 return redirect()
-                    ->route($existingReissue->status === 'WAIT_DVKH' ? 'certificate-requests.edit' : 'certificate-requests.show', $existingReissue)
+                    ->route($existingReissue->status === 'DRAFT' ? 'certificate-requests.edit' : 'certificate-requests.show', $existingReissue)
                     ->with('error', 'Phiếu ' . $certificate->certificate_no . ' đã có yêu cầu cấp lại đang xử lý.');
             }
         }
@@ -1549,7 +1549,7 @@ class QualityCertificateController extends Controller
             'urgent_reason_id' => $oldRequest->urgent_reason_id,
             'requester_name' => $oldRequest->requester_name,
             'note' => trim(($oldRequest->note ? $oldRequest->note . "\n" : '') . '[Yêu cầu cấp lại từ phiếu ' . $certificateNos . ']: ' . $reason),
-            'status' => 'WAIT_DVKH',
+            'status' => 'DRAFT',
             'created_by' => Auth::id(),
         ]);
 

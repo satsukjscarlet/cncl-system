@@ -3,7 +3,7 @@
 @section('title', 'Yêu cầu cấp phiếu')
 
 @section('css')
-    <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260611-3') }}">
+    <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260819-1') }}">
 @stop
 
 @section('content_header')
@@ -22,6 +22,34 @@
 @stop
 
 @section('content')
+@php
+    $currentSort = $sort ?? request('sort', 'created_at');
+    $currentDirection = $direction ?? request('direction', 'desc');
+    $currentPerPage = $perPage ?? request('per_page', 15);
+
+    $sortUrl = function (string $column) use ($currentSort, $currentDirection) {
+        $nextDirection = $currentSort === $column && $currentDirection === 'asc' ? 'desc' : 'asc';
+        $query = request()->query();
+        unset($query['page']);
+        $query['sort'] = $column;
+        $query['direction'] = $nextDirection;
+
+        return route('certificate-requests.index', $query);
+    };
+
+    $sortIcon = function (string $column) use ($currentSort, $currentDirection) {
+        if ($currentSort !== $column) {
+            return '<i class="fas fa-sort text-muted"></i>';
+        }
+
+        return $currentDirection === 'asc'
+            ? '<i class="fas fa-sort-up text-primary"></i>'
+            : '<i class="fas fa-sort-down text-primary"></i>';
+    };
+
+    $hasActiveFilter = request()->hasAny(['keyword', 'distribution_center_id', 'status', 'sort', 'direction', 'per_page']);
+@endphp
+
 @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show">
         <i class="fas fa-check-circle"></i> {{ session('success') }}
@@ -39,7 +67,10 @@
 <div class="card request-filter-card">
     <div class="card-body">
         <form method="GET">
-            <div class="filter-toolbar">
+            <input type="hidden" name="sort" value="{{ $currentSort }}">
+            <input type="hidden" name="direction" value="{{ $currentDirection }}">
+
+            <div class="filter-toolbar certificate-request-filter-toolbar">
                 <div class="filter-title">
                     <span class="filter-icon"><i class="fas fa-filter"></i></span>
                     <span>Bộ lọc</span>
@@ -77,10 +108,10 @@
                     <label for="status">Trạng thái</label>
                     <div class="form-group mb-0">
                         <select id="status" name="status" class="form-control select2">
+                            <option value="">Tất cả trạng thái</option>
                             <option value="SIGN_READY" {{ request('status') == 'SIGN_READY' ? 'selected' : '' }}>Chờ Trưởng PTN ký</option>
                             <option value="SIGN_PENDING" {{ request('status') == 'SIGN_PENDING' ? 'selected' : '' }}>Đang chờ ký số</option>
                             <option value="SIGN_EXPIRED" {{ request('status') == 'SIGN_EXPIRED' ? 'selected' : '' }}>Quá hạn ký số</option>
-                            <option value="">Tất cả trạng thái</option>
                             <option value="DRAFT" {{ request('status') == 'DRAFT' ? 'selected' : '' }}>Nháp</option>
                             <option value="WAIT_DVKH" {{ request('status') == 'WAIT_DVKH' ? 'selected' : '' }}>Chờ DVKH</option>
                             <option value="WAIT_PTN" {{ request('status') == 'WAIT_PTN' ? 'selected' : '' }}>Chờ PTN lập phiếu</option>
@@ -88,6 +119,17 @@
                             <option value="SIGNED" {{ request('status') == 'SIGNED' ? 'selected' : '' }}>Đã ký số</option>
                             <option value="COMPLETED" {{ request('status') == 'COMPLETED' ? 'selected' : '' }}>Hoàn tất</option>
                             <option value="CANCELLED" {{ request('status') == 'CANCELLED' ? 'selected' : '' }}>Hủy/Trả lại</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-field filter-per-page">
+                    <label for="per_page">Hiển thị</label>
+                    <div class="form-group mb-0">
+                        <select id="per_page" name="per_page" class="form-control">
+                            @foreach([15, 30, 50, 100] as $size)
+                                <option value="{{ $size }}" {{ (int) $currentPerPage === $size ? 'selected' : '' }}>{{ $size }} dòng</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -101,7 +143,7 @@
                         <i class="fas fa-sync"></i>
                     </a>
 
-                    @if(request()->hasAny(['keyword', 'distribution_center_id', 'status']))
+                    @if($hasActiveFilter)
                         <a href="{{ route('certificate-requests.index') }}" class="btn btn-outline-danger">
                             <i class="fas fa-times"></i> Xóa lọc
                         </a>
@@ -116,7 +158,7 @@
     <div class="card-header bg-white">
         <div>
             <h3 class="card-title mb-0"><i class="fas fa-file-alt"></i> Danh sách yêu cầu</h3>
-            <div class="text-muted small mt-1">Hiển thị các yêu cầu cấp phiếu theo điều kiện lọc hiện tại.</div>
+            <div class="text-muted small mt-1">Bấm tiêu đề cột để sắp xếp tăng/giảm theo dữ liệu hiện tại.</div>
         </div>
         <div class="card-tools">
             <span class="badge badge-info">Tổng số: {{ $requests->total() }}</span>
@@ -128,13 +170,41 @@
             <thead class="thead-light">
                 <tr>
                     <th style="width:60px">STT</th>
-                    <th>Số yêu cầu</th>
-                    <th>Trung tâm</th>
-                    <th>Khách hàng / Công trình</th>
-                    <th>Ngày xuất hàng</th>
-                    <th>Số hóa đơn</th>
-                    <th>Ký tươi</th>
-                    <th>Trạng thái</th>
+                    <th>
+                        <a class="sort-link" href="{{ $sortUrl('request_no') }}">
+                            Số yêu cầu {!! $sortIcon('request_no') !!}
+                        </a>
+                    </th>
+                    <th>
+                        <a class="sort-link" href="{{ $sortUrl('center') }}">
+                            Trung tâm {!! $sortIcon('center') !!}
+                        </a>
+                    </th>
+                    <th>
+                        <a class="sort-link" href="{{ $sortUrl('customer') }}">
+                            Khách hàng / Công trình {!! $sortIcon('customer') !!}
+                        </a>
+                    </th>
+                    <th>
+                        <a class="sort-link" href="{{ $sortUrl('delivery_date') }}">
+                            Ngày xuất hàng {!! $sortIcon('delivery_date') !!}
+                        </a>
+                    </th>
+                    <th>
+                        <a class="sort-link" href="{{ $sortUrl('invoice_no') }}">
+                            Số hóa đơn {!! $sortIcon('invoice_no') !!}
+                        </a>
+                    </th>
+                    <th>
+                        <a class="sort-link" href="{{ $sortUrl('hard_copy_quantity') }}">
+                            Ký tươi {!! $sortIcon('hard_copy_quantity') !!}
+                        </a>
+                    </th>
+                    <th>
+                        <a class="sort-link" href="{{ $sortUrl('status') }}">
+                            Trạng thái {!! $sortIcon('status') !!}
+                        </a>
+                    </th>
                     <th style="width:150px" class="text-center">Thao tác</th>
                 </tr>
             </thead>
@@ -171,7 +241,7 @@
                                 <i class="fas fa-eye"></i>
                             </a>
 
-                            @if(in_array($item->status, ['DRAFT', 'WAIT_DVKH']))
+                            @if($item->status === 'DRAFT')
                                 @can('request.update')
                                     <a href="{{ route('certificate-requests.edit', $item) }}" class="btn btn-sm btn-warning" title="Sửa">
                                         <i class="fas fa-edit"></i>

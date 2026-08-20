@@ -490,8 +490,12 @@
         <i class="fas fa-arrow-left"></i> Quay lại
     </a>
 
-    <button class="btn btn-primary">
-        <i class="{{ $formSubmitIcon }}"></i> {{ $formSubmitText }}
+    <button type="submit" name="request_action" value="draft" class="btn btn-outline-secondary mr-2">
+        <i class="fas fa-save"></i> Lưu nháp
+    </button>
+
+    <button type="submit" name="request_action" value="submit" class="btn btn-primary">
+        <i class="fas fa-paper-plane"></i> Gửi DVKH
     </button>
 </div>
 

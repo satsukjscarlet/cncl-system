@@ -193,7 +193,9 @@ class DvkhRequestController extends Controller
         $oldData = $certificateRequest->toArray();
 
         $certificateRequest->update([
-            'status' => 'CANCELLED',
+            'status' => 'DRAFT',
+            'submitted_at' => null,
+            'submitted_by' => null,
             'note' => trim(($certificateRequest->note ? $certificateRequest->note . "\n" : '') . '[DVKH trả lại]: ' . $data['reason']),
         ]);
 

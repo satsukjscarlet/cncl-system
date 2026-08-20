@@ -27,6 +27,8 @@ class CertificateRequest extends Model
         'requester_name',
         'note',
         'status',
+        'submitted_at',
+        'submitted_by',
         'created_by',
     ];
 
@@ -34,6 +36,7 @@ class CertificateRequest extends Model
         'delivery_date' => 'date',
         'require_hard_copy' => 'boolean',
         'is_urgent' => 'boolean',
+        'submitted_at' => 'datetime',
     ];
 
     public function distributionCenter()
@@ -66,6 +69,11 @@ class CertificateRequest extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function submittedBy()
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
     }
 
     public function urgentReason()
@@ -152,4 +160,3 @@ class CertificateRequest extends Model
         return $query;
     }
 }
-

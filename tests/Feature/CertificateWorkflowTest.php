@@ -306,6 +306,60 @@ class CertificateWorkflowTest extends TestCase
         $this->assertSame(route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'urgent' => '1']), $dvkhItems->firstWhere('label', 'Yêu cầu gấp cần kiểm tra')['url']);
     }
 
+    public function test_center_can_save_draft_then_submit_to_dvkh(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-DRAFT-SUBMIT');
+
+        $this->actingAs($centerUser)
+            ->post(route('certificate-requests.store'), [
+                'customer_mode' => 'existing',
+                'customer_id' => $customer->id,
+                'delivery_date' => '2026-08-08',
+                'invoice_no' => 'INV-DRAFT-SUBMIT',
+                'require_hard_copy' => '0',
+                'hard_copy_quantity' => 0,
+                'is_urgent' => '0',
+                'requester_name' => 'Nguoi tao nhap',
+                'note' => 'Luu nhap truoc',
+                'product_id' => [$this->product->id],
+                'quantity' => [12],
+                'request_action' => 'draft',
+            ])
+            ->assertRedirect(route('certificate-requests.index'));
+
+        $certificateRequest = CertificateRequest::where('invoice_no', 'INV-DRAFT-SUBMIT')->firstOrFail();
+
+        $this->assertSame('DRAFT', $certificateRequest->status);
+        $this->assertNull($certificateRequest->submitted_at);
+        $this->assertSame(0, UserNotification::where('user_id', $dvkh->id)->where('type', 'request_created')->count());
+
+        $this->actingAs($centerUser)
+            ->put(route('certificate-requests.update', $certificateRequest), [
+                'customer_mode' => 'existing',
+                'customer_id' => $customer->id,
+                'delivery_date' => '2026-08-09',
+                'invoice_no' => 'INV-DRAFT-SUBMIT',
+                'require_hard_copy' => '0',
+                'hard_copy_quantity' => 0,
+                'is_urgent' => '0',
+                'requester_name' => 'Nguoi gui DVKH',
+                'note' => 'Gui DVKH sau khi kiem tra',
+                'product_id' => [$this->product->id],
+                'quantity' => [15],
+                'request_action' => 'submit',
+            ])
+            ->assertRedirect(route('certificate-requests.index'));
+
+        $certificateRequest->refresh();
+
+        $this->assertSame('WAIT_DVKH', $certificateRequest->status);
+        $this->assertNotNull($certificateRequest->submitted_at);
+        $this->assertSame($centerUser->id, $certificateRequest->submitted_by);
+        $this->assertSame(1, UserNotification::where('user_id', $dvkh->id)->where('type', 'request_created')->count());
+    }
+
     public function test_request_can_create_new_customer_with_manual_customer_code(): void
     {
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
@@ -535,7 +589,7 @@ class CertificateWorkflowTest extends TestCase
             ->where('reissue_of_certificate_id', $oldCertificate->id)
             ->firstOrFail();
 
-        $this->assertSame('WAIT_DVKH', $reissueRequest->status);
+        $this->assertSame('DRAFT', $reissueRequest->status);
         $this->assertSame($oldCertificate->id, $reissueRequest->reissue_of_certificate_id);
         $this->assertTrue($reissueRequest->reissueCertificates->contains($oldCertificate));
         $this->assertSame('ISSUED', $oldCertificate->fresh()->status);
@@ -553,10 +607,12 @@ class CertificateWorkflowTest extends TestCase
                 'note' => 'Da sua du lieu truoc khi DVKH xac nhan.',
                 'product_id' => [$this->product->id],
                 'quantity' => [15],
+                'request_action' => 'submit',
             ])
             ->assertRedirect(route('certificate-requests.index'));
 
         $reissueRequest->refresh()->load('details');
+        $this->assertSame('WAIT_DVKH', $reissueRequest->status);
         $this->assertSame('INV-E2E-REISSUE-NEW', $reissueRequest->invoice_no);
         $this->assertEquals(15, (float) $reissueRequest->details->first()->quantity);
         $this->assertSame('ISSUED', $oldCertificate->fresh()->status);
@@ -620,12 +676,32 @@ class CertificateWorkflowTest extends TestCase
         $this->assertTrue($reissueRequest->reissueCertificates->contains($firstOldCertificate));
         $this->assertTrue($reissueRequest->reissueCertificates->contains($secondOldCertificate));
         $this->assertSame($firstOldCertificate->id, $reissueRequest->reissue_of_certificate_id);
-        $this->assertSame('WAIT_DVKH', $reissueRequest->status);
+        $this->assertSame('DRAFT', $reissueRequest->status);
         $this->assertSame($centerUser->distribution_center_id, $reissueRequest->distribution_center_id);
 
         $mergedQuantities = $reissueRequest->details->pluck('quantity', 'product_id');
         $this->assertEquals(17, (float) $mergedQuantities[$this->product->id]);
         $this->assertEquals(5, (float) $mergedQuantities[$secondProduct->id]);
+
+        $this->actingAs($centerUser)
+            ->put(route('certificate-requests.update', $reissueRequest), [
+                'customer_mode' => 'existing',
+                'customer_id' => $customer->id,
+                'delivery_date' => optional($reissueRequest->delivery_date)->format('Y-m-d'),
+                'invoice_no' => $reissueRequest->invoice_no,
+                'require_hard_copy' => $reissueRequest->require_hard_copy ? '1' : '0',
+                'hard_copy_quantity' => $reissueRequest->hard_copy_quantity,
+                'is_urgent' => $reissueRequest->is_urgent ? '1' : '0',
+                'urgent_reason_id' => $reissueRequest->urgent_reason_id,
+                'requester_name' => $reissueRequest->requester_name,
+                'note' => $reissueRequest->note,
+                'product_id' => $reissueRequest->details->pluck('product_id')->all(),
+                'quantity' => $reissueRequest->details->pluck('quantity')->all(),
+                'request_action' => 'submit',
+            ])
+            ->assertRedirect(route('certificate-requests.index'));
+
+        $this->assertSame('WAIT_DVKH', $reissueRequest->fresh()->status);
 
         $this->actingAs($dvkh)
             ->post(route('dvkh.requests.approve', $reissueRequest))

@@ -10,7 +10,7 @@
     </div>
 
     <div>
-        @if(in_array($certificateRequest->status, ['DRAFT', 'WAIT_DVKH']))
+        @if($certificateRequest->status === 'DRAFT')
             @can('request.update')
                 <a href="{{ route('certificate-requests.edit', $certificateRequest) }}" class="btn btn-warning mr-2">
                     <i class="fas fa-edit"></i> Sửa yêu cầu
