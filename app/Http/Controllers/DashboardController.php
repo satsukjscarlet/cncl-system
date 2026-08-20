@@ -29,9 +29,13 @@ class DashboardController extends Controller
             'completed' => (clone $requestQuery)->where('status', 'COMPLETED')->count(),
             'cancelled' => (clone $requestQuery)->where('status', 'CANCELLED')->count(),
             'urgent' => (clone $requestQuery)->where('is_urgent', true)->whereNotIn('status', ['COMPLETED', 'CANCELLED'])->count(),
+            'urgent_dvkh' => (clone $requestQuery)->where('status', 'WAIT_DVKH')->where('is_urgent', true)->count(),
+            'urgent_ptn' => (clone $requestQuery)->whereIn('status', ['WAIT_PTN', 'PTN_PROCESSING'])->where('is_urgent', true)->count(),
             'duplicate_invoice' => $this->duplicateInvoiceCount(clone $requestQuery),
+            'duplicate_invoice_dvkh' => $this->duplicateInvoiceCount((clone $requestQuery)->where('status', 'WAIT_DVKH')),
             'total_certificates' => (clone $certificateQuery)->count(),
             'signed_certificates' => (clone $certificateQuery)->whereNotNull('signed_at')->count(),
+            'issued_certificates' => (clone $certificateQuery)->whereNotNull('signed_at')->where('status', 'ISSUED')->count(),
             'unsigned_certificates' => (clone $certificateQuery)->whereNull('signed_at')->whereNotIn('status', ['REJECTED', 'REVOKED'])->count(),
             'sign_ready' => (clone $certificateQuery)
                 ->whereNull('signed_at')
@@ -131,36 +135,37 @@ class DashboardController extends Controller
             'TrungTam' => [
                 $this->card('Yêu cầu của tôi', $metrics['total_requests'], 'fas fa-file-alt', 'primary', route('certificate-requests.index')),
                 $this->card('Chờ DVKH', $metrics['wait_dvkh'], 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
-                $this->card('Chờ PTN / Chờ ký', $metrics['wait_ptn'] + $metrics['ptn_processing'], 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
-                $this->card('Phiếu đã cấp', $metrics['signed_certificates'], 'fas fa-file-signature', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
+                $this->card('Chờ PTN lập phiếu', $metrics['wait_ptn'], 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
+                $this->card('Đã lập phiếu - chờ ký', $metrics['ptn_processing'], 'fas fa-file-signature', 'primary', route('certificate-requests.index', ['status' => 'PTN_PROCESSING'])),
+                $this->card('Phiếu đã cấp', $metrics['issued_certificates'], 'fas fa-check-circle', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
             ],
             'DVKH' => [
                 $this->card('Chờ DVKH kiểm tra', $metrics['wait_dvkh'], 'fas fa-user-check', 'warning', route('dvkh.requests.index', ['status' => 'WAIT_DVKH'])),
-                $this->card('Yêu cầu gấp', $metrics['urgent'], 'fas fa-bolt', 'danger', route('dvkh.requests.index', ['status' => 'WAIT_DVKH'])),
-                $this->card('Trùng số hóa đơn', $metrics['duplicate_invoice'], 'fas fa-copy', 'orange', route('dvkh.requests.index', ['duplicate_invoice' => '1'])),
+                $this->card('Yêu cầu gấp', $metrics['urgent_dvkh'], 'fas fa-bolt', 'danger', route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'urgent' => '1'])),
+                $this->card('Trùng số hóa đơn', $metrics['duplicate_invoice_dvkh'], 'fas fa-copy', 'orange', route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'duplicate_invoice' => '1'])),
                 $this->card('Đã chuyển PTN', $metrics['wait_ptn'], 'fas fa-vials', 'info', route('dvkh.requests.index', ['status' => 'WAIT_PTN'])),
             ],
             'PTN' => [
                 $this->card('Chờ PTN lập phiếu', $metrics['wait_ptn'], 'fas fa-inbox', 'warning', route('ptn.requests.index', ['status' => 'WAIT_PTN'])),
-                $this->card('Đã lập phiếu - Chờ ký', $metrics['ptn_processing'], 'fas fa-vials', 'info', route('ptn.requests.index', ['status' => 'PTN_PROCESSING'])),
-                $this->card('Phiếu chờ trưởng PTN', $metrics['sign_ready'], 'fas fa-file-signature', 'primary', route('quality-certificates.index', ['status' => 'UNSIGNED'])),
-                $this->card('Yêu cầu gấp', $metrics['urgent'], 'fas fa-bolt', 'danger', route('ptn.requests.index')),
+                $this->card('Đã lập phiếu - chờ ký', $metrics['ptn_processing'], 'fas fa-vials', 'info', route('ptn.requests.index', ['status' => 'PTN_PROCESSING'])),
+                $this->card('Phiếu chờ Trưởng PTN ký', $metrics['sign_ready'], 'fas fa-file-signature', 'primary', route('quality-certificates.index', ['status' => 'SIGN_READY'])),
+                $this->card('Yêu cầu gấp', $metrics['urgent_ptn'], 'fas fa-bolt', 'danger', route('ptn.requests.index', ['status' => '', 'urgent' => '1'])),
             ],
             'TruongPTN' => [
                 $this->card('Sẵn sàng ký', $metrics['sign_ready'], 'fas fa-pen-nib', 'primary', route('quality-certificates.signing-queue', ['status' => 'READY'])),
                 $this->card('Đang chờ app', $metrics['sign_pending'], 'fas fa-mobile-alt', 'warning', route('quality-certificates.signing-queue', ['status' => 'PENDING'])),
                 $this->card('Quá hạn ký', $metrics['sign_expired'], 'fas fa-hourglass-end', 'danger', route('quality-certificates.signing-queue', ['status' => 'EXPIRED'])),
-                $this->card('Đã ký', $metrics['signed_certificates'], 'fas fa-check-circle', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
+                $this->card('Đã ký', $metrics['issued_certificates'], 'fas fa-check-circle', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
             ],
             default => [
                 $this->card('Tổng yêu cầu', $metrics['total_requests'], 'fas fa-file-alt', 'primary', route('certificate-requests.index')),
                 $this->card('Chờ DVKH', $metrics['wait_dvkh'], 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
-                $this->card('Chờ PTN / Chờ ký', $metrics['wait_ptn'] + $metrics['ptn_processing'], 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
-                $this->card('Phiếu đã cấp', $metrics['signed_certificates'], 'fas fa-check-circle', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
+                $this->card('Chờ PTN lập phiếu', $metrics['wait_ptn'], 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
+                $this->card('Đã lập phiếu - chờ ký', $metrics['ptn_processing'], 'fas fa-file-signature', 'primary', route('certificate-requests.index', ['status' => 'PTN_PROCESSING'])),
+                $this->card('Phiếu đã cấp', $metrics['issued_certificates'], 'fas fa-check-circle', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
             ],
         };
     }
-
     private function primaryListForRole(string $role, $user, Carbon $expiredBefore): array
     {
         if ($role === 'TruongPTN') {
@@ -195,9 +200,9 @@ class DashboardController extends Controller
                 });
 
             return [
-                'title' => 'Phiếu cần Trưởng PTN xử lý ký số',
+                'title' => 'Phiáº¿u cáº§n TrÆ°á»Ÿng PTN xá»­ lÃ½ kÃ½ sá»‘',
                 'icon' => 'fas fa-user-check',
-                'empty' => 'Không có phiếu cần xử lý ký số.',
+                'empty' => 'KhÃ´ng cÃ³ phiáº¿u cáº§n xá»­ lÃ½ kÃ½ sá»‘.',
                 'items' => $items,
             ];
         }
@@ -233,17 +238,17 @@ class DashboardController extends Controller
 
         return [
             'title' => match ($role) {
-                'TrungTam' => 'Yêu cầu của trung tâm cần theo dõi',
-                'DVKH' => 'Yêu cầu chờ DVKH kiểm tra',
-                'PTN' => 'Yêu cầu chờ PTN lập phiếu / chờ ký',
-                default => 'Công việc đang chờ thực hiện',
+                'TrungTam' => 'YÃªu cáº§u cá»§a trung tÃ¢m cáº§n theo dÃµi',
+                'DVKH' => 'YÃªu cáº§u chá» DVKH kiá»ƒm tra',
+                'PTN' => 'YÃªu cáº§u chá» PTN láº­p phiáº¿u / chá» kÃ½',
+                default => 'CÃ´ng viá»‡c Ä‘ang chá» thá»±c hiá»‡n',
             },
             'icon' => match ($role) {
                 'DVKH' => 'fas fa-user-check',
                 'PTN' => 'fas fa-vials',
                 default => 'fas fa-tasks',
             },
-            'empty' => 'Không có công việc cần thực hiện.',
+            'empty' => 'KhÃ´ng cÃ³ cÃ´ng viá»‡c cáº§n thá»±c hiá»‡n.',
             'items' => $items,
         ];
     }
@@ -262,16 +267,16 @@ class DashboardController extends Controller
                     'code' => $certificate->certificate_no,
                     'title' => $customer?->customer_name ?? '-',
                     'subtitle' => $customer?->project_name ?? '',
-                    'status' => $certificate->signed_at ? 'Đã ký' : $certificate->status,
+                    'status' => $certificate->signed_at ? 'ÄÃ£ kÃ½' : $certificate->status,
                     'date' => optional($certificate->created_at)->format('d/m/Y H:i'),
                     'url' => route('quality-certificates.show', $certificate),
                 ];
             });
 
         return [
-            'title' => $role === 'TrungTam' ? 'Phiếu CNCL của trung tâm' : 'Phiếu CNCL gần đây',
+            'title' => $role === 'TrungTam' ? 'Phiáº¿u CNCL cá»§a trung tÃ¢m' : 'Phiáº¿u CNCL gáº§n Ä‘Ã¢y',
             'icon' => 'fas fa-file-signature',
-            'empty' => 'Chưa có phiếu CNCL.',
+            'empty' => 'ChÆ°a cÃ³ phiáº¿u CNCL.',
             'items' => $items,
         ];
     }
@@ -308,7 +313,7 @@ class DashboardController extends Controller
 
             $item->sla_level = $minutes >= $sla->limit_minutes ? 'danger' : 'warning';
             $item->sla_minutes = $minutes;
-            $item->sla_step_name = $item->status === 'WAIT_DVKH' ? 'DVKH kiểm tra' : 'PTN lập phiếu';
+            $item->sla_step_name = $item->status === 'WAIT_DVKH' ? 'DVKH kiá»ƒm tra' : 'PTN láº­p phiáº¿u';
             $item->sla_limit_minutes = $sla->limit_minutes;
 
             $alerts->push($item);
