@@ -21,7 +21,20 @@ class CertificateRequestController extends Controller
 {
     public function index(Request $request)
     {
-        $query = CertificateRequest::with([
+        $baseQuery = CertificateRequest::query();
+
+        if (Auth::user()->hasRole('TrungTam')) {
+            $baseQuery->where('certificate_requests.distribution_center_id', Auth::user()->distribution_center_id);
+        }
+
+        $tabCounts = $this->requestTabCounts(clone $baseQuery);
+        $currentGroup = $request->input('status_group');
+
+        if (!$request->filled('status') && !$request->has('status_group')) {
+            $currentGroup = 'processing';
+        }
+
+        $query = (clone $baseQuery)->with([
             'distributionCenter',
             'customer',
             'creator',
@@ -30,10 +43,6 @@ class CertificateRequestController extends Controller
             'reissueCertificates',
             'qualityCertificate',
         ]);
-
-        if (Auth::user()->hasRole('TrungTam')) {
-            $query->where('certificate_requests.distribution_center_id', Auth::user()->distribution_center_id);
-        }
 
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
@@ -48,6 +57,8 @@ class CertificateRequestController extends Controller
 
         if ($request->filled('status')) {
             $this->applyStatusFilter($query, $request->status);
+        } elseif ($currentGroup && $currentGroup !== 'all') {
+            $this->applyStatusGroupFilter($query, $currentGroup);
         }
 
         if ($request->filled('distribution_center_id') && !Auth::user()->hasRole('TrungTam')) {
@@ -95,7 +106,15 @@ class CertificateRequestController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('certificate_requests.index', compact('requests', 'centers', 'sort', 'direction', 'perPage'));
+        return view('certificate_requests.index', compact(
+            'requests',
+            'centers',
+            'sort',
+            'direction',
+            'perPage',
+            'tabCounts',
+            'currentGroup'
+        ));
     }
 
     public function create()
@@ -1081,6 +1100,102 @@ class CertificateRequestController extends Controller
                     ->whereNotNull('signed_at')
                     ->where('status', 'ISSUED');
             });
+        }
+    }
+
+    private function requestTabCounts($baseQuery): array
+    {
+        return [
+            'processing' => tap(clone $baseQuery, fn ($query) => $this->applyStatusGroupFilter($query, 'processing'))->count(),
+            'draft' => (clone $baseQuery)->where('status', 'DRAFT')->count(),
+            'wait_dvkh' => (clone $baseQuery)->where('status', 'WAIT_DVKH')->count(),
+            'wait_ptn' => (clone $baseQuery)->where('status', 'WAIT_PTN')->count(),
+            'sign_ready' => tap(clone $baseQuery, fn ($query) => $this->applyStatusFilter($query, 'SIGN_READY'))->count(),
+            'sign_pending' => tap(clone $baseQuery, fn ($query) => $this->applyStatusFilter($query, 'SIGN_PENDING'))->count(),
+            'sign_expired' => tap(clone $baseQuery, fn ($query) => $this->applyStatusFilter($query, 'SIGN_EXPIRED'))->count(),
+            'completed' => tap(clone $baseQuery, fn ($query) => $this->applyStatusGroupFilter($query, 'completed'))->count(),
+            'cancelled' => (clone $baseQuery)->where('status', 'CANCELLED')->count(),
+            'all' => (clone $baseQuery)->count(),
+        ];
+    }
+
+    private function applyStatusGroupFilter($query, string $group): void
+    {
+        if ($group === 'processing') {
+            $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
+
+            $query->where(function ($q) use ($expiredBefore) {
+                $q->whereIn('status', ['DRAFT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING'])
+                    ->orWhereHas('qualityCertificates', function ($certificate) use ($expiredBefore) {
+                        $certificate
+                            ->whereNull('signed_at')
+                            ->where(function ($statusQuery) use ($expiredBefore) {
+                                $statusQuery
+                                    ->where('status', 'DRAFT')
+                                    ->orWhere('smartca_status', 'PENDING')
+                                    ->orWhere('smartca_status', 'EXPIRED')
+                                    ->orWhere(function ($pending) use ($expiredBefore) {
+                                        $pending->where('smartca_status', 'PENDING')
+                                            ->where('smartca_requested_at', '<=', $expiredBefore);
+                                    });
+                            });
+                    });
+            });
+
+            return;
+        }
+
+        if ($group === 'draft') {
+            $query->where('status', 'DRAFT');
+
+            return;
+        }
+
+        if ($group === 'wait_dvkh') {
+            $query->where('status', 'WAIT_DVKH');
+
+            return;
+        }
+
+        if ($group === 'wait_ptn') {
+            $query->where('status', 'WAIT_PTN');
+
+            return;
+        }
+
+        if ($group === 'sign_ready') {
+            $this->applyStatusFilter($query, 'SIGN_READY');
+
+            return;
+        }
+
+        if ($group === 'sign_pending') {
+            $this->applyStatusFilter($query, 'SIGN_PENDING');
+
+            return;
+        }
+
+        if ($group === 'sign_expired') {
+            $this->applyStatusFilter($query, 'SIGN_EXPIRED');
+
+            return;
+        }
+
+        if ($group === 'completed') {
+            $query->where(function ($q) {
+                $q->where('status', 'COMPLETED')
+                    ->orWhereHas('qualityCertificates', function ($certificate) {
+                        $certificate
+                            ->whereNotNull('signed_at')
+                            ->where('status', 'ISSUED');
+                    });
+            });
+
+            return;
+        }
+
+        if ($group === 'cancelled') {
+            $query->where('status', 'CANCELLED');
         }
     }
 
