@@ -166,6 +166,7 @@ class DashboardController extends Controller
             ],
         };
     }
+
     private function primaryListForRole(string $role, $user, Carbon $expiredBefore): array
     {
         if ($role === 'TruongPTN') {
@@ -200,9 +201,9 @@ class DashboardController extends Controller
                 });
 
             return [
-                'title' => 'Phiáº¿u cáº§n TrÆ°á»Ÿng PTN xá»­ lÃ½ kÃ½ sá»‘',
+                'title' => 'Phiếu cần Trưởng PTN xử lý ký số',
                 'icon' => 'fas fa-user-check',
-                'empty' => 'KhÃ´ng cÃ³ phiáº¿u cáº§n xá»­ lÃ½ kÃ½ sá»‘.',
+                'empty' => 'Không có phiếu cần xử lý ký số.',
                 'items' => $items,
             ];
         }
@@ -238,17 +239,17 @@ class DashboardController extends Controller
 
         return [
             'title' => match ($role) {
-                'TrungTam' => 'YÃªu cáº§u cá»§a trung tÃ¢m cáº§n theo dÃµi',
-                'DVKH' => 'YÃªu cáº§u chá» DVKH kiá»ƒm tra',
-                'PTN' => 'YÃªu cáº§u chá» PTN láº­p phiáº¿u / chá» kÃ½',
-                default => 'CÃ´ng viá»‡c Ä‘ang chá» thá»±c hiá»‡n',
+                'TrungTam' => 'Yêu cầu của trung tâm cần theo dõi',
+                'DVKH' => 'Yêu cầu chờ DVKH kiểm tra',
+                'PTN' => 'Yêu cầu chờ PTN lập phiếu / chờ ký',
+                default => 'Công việc đang chờ thực hiện',
             },
             'icon' => match ($role) {
                 'DVKH' => 'fas fa-user-check',
                 'PTN' => 'fas fa-vials',
                 default => 'fas fa-tasks',
             },
-            'empty' => 'KhÃ´ng cÃ³ cÃ´ng viá»‡c cáº§n thá»±c hiá»‡n.',
+            'empty' => 'Không có công việc cần thực hiện.',
             'items' => $items,
         ];
     }
@@ -267,16 +268,16 @@ class DashboardController extends Controller
                     'code' => $certificate->certificate_no,
                     'title' => $customer?->customer_name ?? '-',
                     'subtitle' => $customer?->project_name ?? '',
-                    'status' => $certificate->signed_at ? 'ÄÃ£ kÃ½' : $certificate->status,
+                    'status' => $certificate->signed_at ? 'Đã ký' : $certificate->status,
                     'date' => optional($certificate->created_at)->format('d/m/Y H:i'),
                     'url' => route('quality-certificates.show', $certificate),
                 ];
             });
 
         return [
-            'title' => $role === 'TrungTam' ? 'Phiáº¿u CNCL cá»§a trung tÃ¢m' : 'Phiáº¿u CNCL gáº§n Ä‘Ã¢y',
+            'title' => $role === 'TrungTam' ? 'Phiếu CNCL của trung tâm' : 'Phiếu CNCL gần đây',
             'icon' => 'fas fa-file-signature',
-            'empty' => 'ChÆ°a cÃ³ phiáº¿u CNCL.',
+            'empty' => 'Chưa có phiếu CNCL.',
             'items' => $items,
         ];
     }
@@ -313,7 +314,7 @@ class DashboardController extends Controller
 
             $item->sla_level = $minutes >= $sla->limit_minutes ? 'danger' : 'warning';
             $item->sla_minutes = $minutes;
-            $item->sla_step_name = $item->status === 'WAIT_DVKH' ? 'DVKH kiá»ƒm tra' : 'PTN láº­p phiáº¿u';
+            $item->sla_step_name = $item->status === 'WAIT_DVKH' ? 'DVKH kiểm tra' : 'PTN lập phiếu';
             $item->sla_limit_minutes = $sla->limit_minutes;
 
             $alerts->push($item);
