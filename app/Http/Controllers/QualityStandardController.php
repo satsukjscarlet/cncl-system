@@ -57,9 +57,10 @@ class QualityStandardController extends Controller
         ActivityLogger::log(
             'Tiêu chuẩn chất lượng',
             'create',
-            'Thêm tiêu chuẩn: ' . $standard->code,
+            'Thêm tiêu chuẩn chất lượng: ' . $standard->code . ' - ' . $standard->name,
             null,
-            $standard->toArray()
+            $standard->toArray(),
+            $standard
         );
 
         return redirect()
@@ -84,17 +85,18 @@ class QualityStandardController extends Controller
         ]);
 
         $oldData = $qualityStandard->toArray();
-
         $data['is_active'] = $request->boolean('is_active');
 
         $qualityStandard->update($data);
+        $qualityStandard->refresh();
 
         ActivityLogger::log(
             'Tiêu chuẩn chất lượng',
             'update',
-            'Cập nhật tiêu chuẩn: ' . $qualityStandard->code,
+            'Cập nhật tiêu chuẩn chất lượng: ' . $qualityStandard->code . ' - ' . $qualityStandard->name,
             $oldData,
-            $qualityStandard->fresh()->toArray()
+            $qualityStandard->toArray(),
+            $qualityStandard
         );
 
         return redirect()
@@ -117,9 +119,10 @@ class QualityStandardController extends Controller
         ActivityLogger::log(
             'Tiêu chuẩn chất lượng',
             'delete',
-            'Xóa tiêu chuẩn: ' . $oldData['code'],
+            'Xóa tiêu chuẩn chất lượng: ' . $oldData['code'] . ' - ' . $oldData['name'],
             $oldData,
-            null
+            null,
+            $qualityStandard
         );
 
         return redirect()
@@ -135,10 +138,7 @@ class QualityStandardController extends Controller
             'Xuất Excel danh mục tiêu chuẩn chất lượng'
         );
 
-        return Excel::download(
-            new QualityStandardsExport(),
-            'danh_muc_tieu_chuan_chat_luong.xlsx'
-        );
+        return Excel::download(new QualityStandardsExport(), 'danh_muc_tieu_chuan_chat_luong.xlsx');
     }
 
     public function import(Request $request)
@@ -147,10 +147,7 @@ class QualityStandardController extends Controller
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
         ]);
 
-        Excel::import(
-            new QualityStandardsImport(),
-            $request->file('file')
-        );
+        Excel::import(new QualityStandardsImport(), $request->file('file'));
 
         ActivityLogger::log(
             'Tiêu chuẩn chất lượng',
@@ -165,8 +162,6 @@ class QualityStandardController extends Controller
 
     public function template(): BinaryFileResponse
     {
-        return response()->download(
-            storage_path('app/templates/template_tieu_chuan_chat_luong.xlsx')
-        );
+        return response()->download(storage_path('app/templates/template_tieu_chuan_chat_luong.xlsx'));
     }
 }

@@ -17,10 +17,7 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::with([
-            'group',
-            'qualityStandard'
-        ]);
+        $query = Product::with(['group', 'qualityStandard']);
 
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
@@ -48,75 +45,49 @@ class ProductController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $groups = ProductGroup::where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $groups = ProductGroup::where('is_active', true)->orderBy('name')->get();
+        $standards = QualityStandard::where('is_active', true)->orderBy('name')->get();
 
-        $standards = QualityStandard::where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        return view(
-            'products.index',
-            compact(
-                'products',
-                'groups',
-                'standards'
-            )
-        );
+        return view('products.index', compact('products', 'groups', 'standards'));
     }
 
     public function create()
     {
-        $groups = ProductGroup::where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $groups = ProductGroup::where('is_active', true)->orderBy('name')->get();
+        $standards = QualityStandard::where('is_active', true)->orderBy('name')->get();
 
-        $standards = QualityStandard::where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        return view(
-            'products.create',
-            compact(
-                'groups',
-                'standards'
-            )
-        );
+        return view('products.create', compact('groups', 'standards'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'product_group_id'      => ['required', 'exists:product_groups,id'],
-            'quality_standard_id'   => ['nullable', 'exists:quality_standards,id'],
-
-            'product_code'          => ['required', 'string', 'max:255', 'unique:products,product_code'],
-            'product_name'          => ['required', 'string', 'max:500'],
-
-            'unit'                  => ['nullable', 'string', 'max:100'],
-            'nominal_size'          => ['nullable', 'string', 'max:255'],
-
-            'technical_requirements'=> ['nullable', 'string'],
-
-            'certificate_type'      => ['nullable', 'string', 'max:100'],
-            'certificate_template'  => ['nullable', 'string', 'max:255'],
-
-            'note'                  => ['nullable', 'string'],
-
-            'is_active'             => ['nullable'],
+            'product_group_id' => ['required', 'exists:product_groups,id'],
+            'quality_standard_id' => ['nullable', 'exists:quality_standards,id'],
+            'product_code' => ['required', 'string', 'max:255', 'unique:products,product_code'],
+            'product_name' => ['required', 'string', 'max:500'],
+            'unit' => ['nullable', 'string', 'max:100'],
+            'nominal_size' => ['nullable', 'string', 'max:255'],
+            'technical_requirements' => ['nullable', 'string'],
+            'certificate_type' => ['nullable', 'string', 'max:100'],
+            'certificate_template' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string'],
+            'is_active' => ['nullable'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active');
+        $data['certificate_type'] = $data['certificate_type'] ?: 'CNCL';
+        $data['certificate_template'] = $data['certificate_template'] ?: 'default';
 
         $product = Product::create($data);
 
         ActivityLogger::log(
             'Sản phẩm',
             'create',
-            'Thêm sản phẩm: ' . $product->product_name,
+            'Thêm sản phẩm: ' . $product->product_code . ' - ' . $product->product_name,
             null,
-            $product->toArray()
+            $product->toArray(),
+            $product
         );
 
         return redirect()
@@ -126,58 +97,43 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        $groups = ProductGroup::where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $groups = ProductGroup::where('is_active', true)->orderBy('name')->get();
+        $standards = QualityStandard::where('is_active', true)->orderBy('name')->get();
 
-        $standards = QualityStandard::where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        return view(
-            'products.edit',
-            compact(
-                'product',
-                'groups',
-                'standards'
-            )
-        );
+        return view('products.edit', compact('product', 'groups', 'standards'));
     }
 
     public function update(Request $request, Product $product)
     {
         $data = $request->validate([
-            'product_group_id'      => ['required', 'exists:product_groups,id'],
-            'quality_standard_id'   => ['nullable', 'exists:quality_standards,id'],
-
-            'product_code'          => ['required', 'string', 'max:255', 'unique:products,product_code,' . $product->id],
-            'product_name'          => ['required', 'string', 'max:500'],
-
-            'unit'                  => ['nullable', 'string', 'max:100'],
-            'nominal_size'          => ['nullable', 'string', 'max:255'],
-
-            'technical_requirements'=> ['nullable', 'string'],
-
-            'certificate_type'      => ['nullable', 'string', 'max:100'],
-            'certificate_template'  => ['nullable', 'string', 'max:255'],
-
-            'note'                  => ['nullable', 'string'],
-
-            'is_active'             => ['nullable'],
+            'product_group_id' => ['required', 'exists:product_groups,id'],
+            'quality_standard_id' => ['nullable', 'exists:quality_standards,id'],
+            'product_code' => ['required', 'string', 'max:255', 'unique:products,product_code,' . $product->id],
+            'product_name' => ['required', 'string', 'max:500'],
+            'unit' => ['nullable', 'string', 'max:100'],
+            'nominal_size' => ['nullable', 'string', 'max:255'],
+            'technical_requirements' => ['nullable', 'string'],
+            'certificate_type' => ['nullable', 'string', 'max:100'],
+            'certificate_template' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string'],
+            'is_active' => ['nullable'],
         ]);
 
         $oldData = $product->toArray();
-
         $data['is_active'] = $request->boolean('is_active');
+        $data['certificate_type'] = $data['certificate_type'] ?: ($product->certificate_type ?: 'CNCL');
+        $data['certificate_template'] = $data['certificate_template'] ?: ($product->certificate_template ?: 'default');
 
         $product->update($data);
+        $product->refresh();
 
         ActivityLogger::log(
             'Sản phẩm',
             'update',
-            'Cập nhật sản phẩm: ' . $product->product_name,
+            'Cập nhật sản phẩm: ' . $product->product_code . ' - ' . $product->product_name,
             $oldData,
-            $product->fresh()->toArray()
+            $product->toArray(),
+            $product
         );
 
         return redirect()
@@ -194,9 +150,10 @@ class ProductController extends Controller
         ActivityLogger::log(
             'Sản phẩm',
             'delete',
-            'Xóa sản phẩm: ' . $oldData['product_name'],
+            'Xóa sản phẩm: ' . $oldData['product_code'] . ' - ' . $oldData['product_name'],
             $oldData,
-            null
+            null,
+            $product
         );
 
         return redirect()
@@ -212,20 +169,13 @@ class ProductController extends Controller
             'Xuất Excel danh mục sản phẩm'
         );
 
-        return Excel::download(
-            new ProductsExport(),
-            'danh_muc_san_pham.xlsx'
-        );
+        return Excel::download(new ProductsExport(), 'danh_muc_san_pham.xlsx');
     }
 
     public function import(Request $request)
     {
         $request->validate([
-            'file' => [
-                'required',
-                'file',
-                'mimes:xlsx,xls,csv'
-            ],
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
         ]);
 
         @ini_set('memory_limit', '1024M');
@@ -265,10 +215,6 @@ class ProductController extends Controller
 
     public function template(): BinaryFileResponse
     {
-        return response()->download(
-            storage_path(
-                'app/templates/template_san_pham.xlsx'
-            )
-        );
+        return response()->download(storage_path('app/templates/template_san_pham.xlsx'));
     }
 }

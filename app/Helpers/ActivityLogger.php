@@ -42,7 +42,7 @@ class ActivityLogger
             return null;
         }
 
-        foreach (['certificate_no', 'request_no', 'code', 'username', 'name'] as $attribute) {
+        foreach (['certificate_no', 'request_no', 'product_code', 'customer_code', 'code', 'username', 'name'] as $attribute) {
             if (filled($subject->{$attribute} ?? null)) {
                 return (string) $subject->{$attribute};
             }

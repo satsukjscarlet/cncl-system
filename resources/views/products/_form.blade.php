@@ -1,5 +1,8 @@
 @csrf
 
+<input type="hidden" name="certificate_type" value="{{ old('certificate_type', $product->certificate_type ?? 'CNCL') }}">
+<input type="hidden" name="certificate_template" value="{{ old('certificate_template', $product->certificate_template ?? 'default') }}">
+
 <div class="row">
     <div class="col-md-4">
         <div class="form-group">
@@ -88,39 +91,6 @@
     </div>
 
     <div class="col-md-4">
-        <div class="form-group">
-            <label>Mẫu phiếu</label>
-            <input type="text"
-                   name="certificate_template"
-                   class="form-control"
-                   value="{{ old('certificate_template', $product->certificate_template ?? '') }}"
-                   placeholder="VD: PVC, HDPE, PPR">
-        </div>
-    </div>
-</div>
-
-<div class="form-group">
-    <label>Yêu cầu kỹ thuật</label>
-    <textarea name="technical_requirements"
-              class="form-control"
-              rows="3"
-              placeholder="Cho phép nhập chữ, số, ký hiệu, dấu Ø, /, -, ...">{{ old('technical_requirements', $product->technical_requirements ?? '') }}</textarea>
-</div>
-
-<div class="row">
-    <div class="col-md-6">
-        <div class="form-group">
-            <label>Loại phiếu CNCL</label>
-            <select name="certificate_type" class="form-control select2">
-                <option value="">-- Chọn loại phiếu --</option>
-                <option value="CNCL" {{ old('certificate_type', $product->certificate_type ?? '') == 'CNCL' ? 'selected' : '' }}>
-                    Phiếu chứng nhận chất lượng
-                </option>
-            </select>
-        </div>
-    </div>
-
-    <div class="col-md-6">
         <label>Trạng thái</label>
         <div class="custom-control custom-switch mt-2">
             <input type="checkbox"
@@ -132,6 +102,14 @@
             <label class="custom-control-label" for="is_active">Đang sử dụng</label>
         </div>
     </div>
+</div>
+
+<div class="form-group">
+    <label>Yêu cầu kỹ thuật</label>
+    <textarea name="technical_requirements"
+              class="form-control"
+              rows="3"
+              placeholder="Cho phép nhập chữ, số, ký hiệu, dấu Ø, /, -, ...">{{ old('technical_requirements', $product->technical_requirements ?? '') }}</textarea>
 </div>
 
 <div class="form-group">
