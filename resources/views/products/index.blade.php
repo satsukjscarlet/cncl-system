@@ -1,6 +1,7 @@
 @extends('adminlte::page')
 
 @section('title', 'Sản phẩm')
+
 @section('css')
     <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260611-3') }}">
 @stop
@@ -157,12 +158,16 @@
                                 </a>
                             @endcan
                             @can('product.delete')
-                                <form action="{{ route('products.destroy', $product) }}" method="POST"
-                                    class="d-inline" onsubmit="return confirm('Xóa sản phẩm này?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-sm btn-danger" title="Xóa"><i class="fas fa-trash"></i></button>
-                                </form>
+                                @if($product->is_active)
+                                    <form action="{{ route('products.destroy', $product) }}" method="POST"
+                                        class="d-inline" onsubmit="return confirm('Ngừng sử dụng sản phẩm này? Sản phẩm sẽ không còn hiển thị khi lập yêu cầu mới, nhưng dữ liệu cũ vẫn được giữ.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-sm btn-danger" title="Ngừng sử dụng"><i class="fas fa-ban"></i></button>
+                                    </form>
+                                @else
+                                    <button class="btn btn-sm btn-secondary" title="Đã ngừng sử dụng" disabled><i class="fas fa-ban"></i></button>
+                                @endif
                             @endcan
                         </td>
                     </tr>

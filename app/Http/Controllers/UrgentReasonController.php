@@ -53,9 +53,10 @@ class UrgentReasonController extends Controller
         ActivityLogger::log(
             'Danh mục lý do gấp',
             'create',
-            'Thêm lý do gấp: ' . $urgentReason->code,
+            'Thêm lý do gấp: ' . $urgentReason->code . ' - ' . $urgentReason->name,
             null,
-            $urgentReason->toArray()
+            $urgentReason->toArray(),
+            $urgentReason
         );
 
         return redirect()
@@ -81,13 +82,15 @@ class UrgentReasonController extends Controller
         $data['is_active'] = $request->boolean('is_active');
 
         $urgentReason->update($data);
+        $urgentReason->refresh();
 
         ActivityLogger::log(
             'Danh mục lý do gấp',
             'update',
-            'Cập nhật lý do gấp: ' . $urgentReason->code,
+            'Cập nhật lý do gấp: ' . $urgentReason->code . ' - ' . $urgentReason->name,
             $oldData,
-            $urgentReason->fresh()->toArray()
+            $urgentReason->toArray(),
+            $urgentReason
         );
 
         return redirect()
@@ -97,25 +100,22 @@ class UrgentReasonController extends Controller
 
     public function destroy(UrgentReason $urgentReason)
     {
-        if ($urgentReason->certificateRequests()->exists()) {
-            return redirect()
-                ->route('urgent-reasons.index')
-                ->with('error', 'Không thể xóa lý do gấp đã được sử dụng trong yêu cầu cấp phiếu.');
-        }
-
         $oldData = $urgentReason->toArray();
-        $urgentReason->delete();
+
+        $urgentReason->update(['is_active' => false]);
+        $urgentReason->refresh();
 
         ActivityLogger::log(
             'Danh mục lý do gấp',
             'delete',
-            'Xóa lý do gấp: ' . $oldData['code'],
+            'Ngừng sử dụng lý do gấp: ' . $oldData['code'] . ' - ' . $oldData['name'],
             $oldData,
-            null
+            $urgentReason->toArray(),
+            $urgentReason
         );
 
         return redirect()
             ->route('urgent-reasons.index')
-            ->with('success', 'Xóa lý do gấp thành công.');
+            ->with('success', 'Đã ngừng sử dụng lý do gấp.');
     }
 }

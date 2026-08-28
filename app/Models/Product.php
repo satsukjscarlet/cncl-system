@@ -29,11 +29,11 @@ class Product extends Model
 
     public function group()
     {
-        return $this->belongsTo(ProductGroup::class, 'product_group_id');
+        return $this->belongsTo(ProductGroup::class, 'product_group_id')->withTrashed();
     }
 
     public function qualityStandard()
     {
-        return $this->belongsTo(QualityStandard::class, 'quality_standard_id');
+        return $this->belongsTo(QualityStandard::class, 'quality_standard_id')->withTrashed();
     }
 }

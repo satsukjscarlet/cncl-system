@@ -145,20 +145,21 @@ class ProductController extends Controller
     {
         $oldData = $product->toArray();
 
-        $product->delete();
+        $product->update(['is_active' => false]);
+        $product->refresh();
 
         ActivityLogger::log(
             'Sản phẩm',
             'delete',
-            'Xóa sản phẩm: ' . $oldData['product_code'] . ' - ' . $oldData['product_name'],
+            'Ngừng sử dụng sản phẩm: ' . $oldData['product_code'] . ' - ' . $oldData['product_name'],
             $oldData,
-            null,
+            $product->toArray(),
             $product
         );
 
         return redirect()
             ->route('products.index')
-            ->with('success', 'Xóa sản phẩm thành công.');
+            ->with('success', 'Đã ngừng sử dụng sản phẩm.');
     }
 
     public function export(): BinaryFileResponse

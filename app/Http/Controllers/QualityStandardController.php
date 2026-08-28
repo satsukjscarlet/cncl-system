@@ -106,28 +106,23 @@ class QualityStandardController extends Controller
 
     public function destroy(QualityStandard $qualityStandard)
     {
-        if ($qualityStandard->products()->exists()) {
-            return redirect()
-                ->route('quality-standards.index')
-                ->with('error', 'Không thể xóa tiêu chuẩn đã được sử dụng trong danh mục sản phẩm.');
-        }
-
         $oldData = $qualityStandard->toArray();
 
-        $qualityStandard->delete();
+        $qualityStandard->update(['is_active' => false]);
+        $qualityStandard->refresh();
 
         ActivityLogger::log(
             'Tiêu chuẩn chất lượng',
             'delete',
-            'Xóa tiêu chuẩn chất lượng: ' . $oldData['code'] . ' - ' . $oldData['name'],
+            'Ngừng sử dụng tiêu chuẩn chất lượng: ' . $oldData['code'] . ' - ' . $oldData['name'],
             $oldData,
-            null,
+            $qualityStandard->toArray(),
             $qualityStandard
         );
 
         return redirect()
             ->route('quality-standards.index')
-            ->with('success', 'Xóa tiêu chuẩn chất lượng thành công.');
+            ->with('success', 'Đã ngừng sử dụng tiêu chuẩn chất lượng.');
     }
 
     public function export(): BinaryFileResponse

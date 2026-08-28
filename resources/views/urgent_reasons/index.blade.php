@@ -118,14 +118,18 @@
                             @endcan
 
                             @can('urgent_reason.delete')
-                                <form action="{{ route('urgent-reasons.destroy', $urgentReason) }}"
-                                      method="POST"
-                                      class="d-inline"
-                                      onsubmit="return confirm('Xóa lý do gấp này?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-sm btn-danger" title="Xóa"><i class="fas fa-trash"></i></button>
-                                </form>
+                                @if($urgentReason->is_active)
+                                    <form action="{{ route('urgent-reasons.destroy', $urgentReason) }}"
+                                          method="POST"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Ngừng sử dụng lý do gấp này? Lý do sẽ không còn hiển thị khi tạo yêu cầu mới, nhưng dữ liệu cũ vẫn được giữ.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-sm btn-danger" title="Ngừng sử dụng"><i class="fas fa-ban"></i></button>
+                                    </form>
+                                @else
+                                    <button class="btn btn-sm btn-secondary" title="Đã ngừng sử dụng" disabled><i class="fas fa-ban"></i></button>
+                                @endif
                             @endcan
                         </td>
                     </tr>

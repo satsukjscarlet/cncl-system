@@ -1,6 +1,7 @@
 @extends('adminlte::page')
 
 @section('title', 'Tiêu chuẩn chất lượng')
+
 @section('css')
     <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260611-3') }}">
 @stop
@@ -131,12 +132,16 @@
                             @endcan
 
                             @can('quality_standard.delete')
-                                <form action="{{ route('quality-standards.destroy', $standard) }}" method="POST"
-                                      class="d-inline" onsubmit="return confirm('Xóa tiêu chuẩn này?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-sm btn-danger" title="Xóa"><i class="fas fa-trash"></i></button>
-                                </form>
+                                @if($standard->is_active)
+                                    <form action="{{ route('quality-standards.destroy', $standard) }}" method="POST"
+                                          class="d-inline" onsubmit="return confirm('Ngừng sử dụng tiêu chuẩn này? Tiêu chuẩn sẽ không còn hiển thị khi chọn mới, nhưng dữ liệu cũ vẫn được giữ.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-sm btn-danger" title="Ngừng sử dụng"><i class="fas fa-ban"></i></button>
+                                    </form>
+                                @else
+                                    <button class="btn btn-sm btn-secondary" title="Đã ngừng sử dụng" disabled><i class="fas fa-ban"></i></button>
+                                @endif
                             @endcan
                         </td>
                     </tr>
