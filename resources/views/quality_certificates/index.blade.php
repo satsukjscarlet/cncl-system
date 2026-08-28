@@ -39,7 +39,7 @@
 
     <div class="card-body">
         <form method="GET" class="row align-items-end">
-            <div class="col-lg-7 col-md-6">
+            <div class="{{ $isCenterUser ? 'col-lg-7 col-md-6' : 'col-lg-4 col-md-6' }}">
                 <div class="form-group">
                     <label>Từ khóa</label>
                     <input type="text"
@@ -49,6 +49,22 @@
                            placeholder="Số phiếu, số yêu cầu, khách hàng, công trình, hóa đơn">
                 </div>
             </div>
+
+            @unless($isCenterUser)
+                <div class="col-lg-3 col-md-6">
+                    <div class="form-group">
+                        <label>Trung tâm</label>
+                        <select name="distribution_center_id" class="form-control select2">
+                            <option value="">Tất cả trung tâm</option>
+                            @foreach($centers as $center)
+                                <option value="{{ $center->id }}" {{ request('distribution_center_id') == $center->id ? 'selected' : '' }}>
+                                    {{ $center->code }} - {{ $center->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            @endunless
 
             <div class="col-lg-3 col-md-4">
                 <div class="form-group">

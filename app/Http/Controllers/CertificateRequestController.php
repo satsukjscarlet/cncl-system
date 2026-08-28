@@ -25,6 +25,8 @@ class CertificateRequestController extends Controller
 
         if (Auth::user()->hasRole('TrungTam')) {
             $baseQuery->where('certificate_requests.distribution_center_id', Auth::user()->distribution_center_id);
+        } elseif (!Auth::user()->hasRole('Admin')) {
+            $baseQuery->where('certificate_requests.status', '!=', 'DRAFT');
         }
 
         $tabCounts = $this->requestTabCounts(clone $baseQuery);
@@ -1085,6 +1087,17 @@ class CertificateRequestController extends Controller
 
     private function authorizeCenter(CertificateRequest $certificateRequest): void
     {
+        if (
+            $certificateRequest->status === 'DRAFT'
+            && !Auth::user()->hasRole('Admin')
+            && !(
+                Auth::user()->hasRole('TrungTam')
+                && $certificateRequest->distribution_center_id == Auth::user()->distribution_center_id
+            )
+        ) {
+            abort(403, 'Yêu cầu nháp chưa được Trung tâm gửi vào quy trình.');
+        }
+
         if (
             Auth::user()->hasRole('TrungTam')
             && $certificateRequest->distribution_center_id != Auth::user()->distribution_center_id

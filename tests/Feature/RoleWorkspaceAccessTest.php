@@ -128,10 +128,42 @@ class RoleWorkspaceAccessTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_internal_processing_roles_cannot_view_center_drafts_before_submission(): void
+    {
+        $npUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $ptn = User::where('username', 'ptn')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $npCenter = DistributionCenter::where('code', 'NP')->firstOrFail();
+
+        $draftRequest = $this->createRequestForCenter($npCenter, $npUser, 'YC-DRAFT-PRIVATE', 'DRAFT');
+
+        foreach ([$dvkh, $ptn] as $user) {
+            $this->actingAs($user)
+                ->get(route('certificate-requests.index', ['status' => 'DRAFT']))
+                ->assertOk()
+                ->assertDontSee($draftRequest->request_no);
+
+            $this->actingAs($user)
+                ->get(route('certificate-requests.show', $draftRequest))
+                ->assertForbidden();
+        }
+
+        $this->actingAs($npUser)
+            ->get(route('certificate-requests.show', $draftRequest))
+            ->assertOk();
+
+        $this->actingAs($admin)
+            ->get(route('certificate-requests.index', ['status' => 'DRAFT']))
+            ->assertOk()
+            ->assertSee($draftRequest->request_no);
+    }
+
     private function createRequestForCenter(
         DistributionCenter $center,
         User $creator,
-        string $requestNo
+        string $requestNo,
+        string $status = 'WAIT_DVKH'
     ): CertificateRequest {
         $customer = Customer::create([
             'distribution_center_id' => $center->id,
@@ -149,7 +181,7 @@ class RoleWorkspaceAccessTest extends TestCase
             'invoice_no' => 'INV-' . $center->code,
             'require_hard_copy' => false,
             'hard_copy_quantity' => 0,
-            'status' => 'WAIT_DVKH',
+            'status' => $status,
             'created_by' => $creator->id,
         ]);
     }

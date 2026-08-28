@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\ActivityLogger;
 use App\Mail\QualityCertificateIssuedMail;
 use App\Models\CertificateRequest;
+use App\Models\DistributionCenter;
 use App\Models\PrintLog;
 use App\Models\QualityCertificate;
 use App\Models\SystemSetting;
@@ -37,6 +38,12 @@ class QualityCertificateController extends Controller
         if ($user->hasRole('TrungTam')) {
             $query->whereHas('request', function ($q) use ($user) {
                 $q->where('distribution_center_id', $user->distribution_center_id);
+            });
+        }
+
+        if ($request->filled('distribution_center_id') && !$user->hasRole('TrungTam')) {
+            $query->whereHas('request', function ($q) use ($request) {
+                $q->where('distribution_center_id', $request->distribution_center_id);
             });
         }
 
@@ -109,7 +116,12 @@ class QualityCertificateController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('quality_certificates.index', compact('certificates'));
+        $centers = DistributionCenter::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        $isCenterUser = $user->hasRole('TrungTam');
+
+        return view('quality_certificates.index', compact('certificates', 'centers', 'isCenterUser'));
     }
 
     public function signingQueue(Request $request)

@@ -142,6 +142,35 @@ class CertificateWorkflowTest extends TestCase
             ->assertSee($certificate->certificate_no);
     }
 
+    public function test_quality_certificate_list_can_filter_by_distribution_center_for_internal_users(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $npUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $tpUser = User::where('username', 'trungtam_tp')->firstOrFail();
+
+        $npCustomer = $this->createCustomerForCenter($npUser, 'KH-QC-FILTER-NP');
+        $tpCustomer = $this->createCustomerForCenter($tpUser, 'KH-QC-FILTER-TP');
+
+        $npCertificate = $this->createIssuedCertificate($npUser, $npCustomer, 'INV-QC-FILTER-NP', [[$this->product, 4]]);
+        $tpCertificate = $this->createIssuedCertificate($tpUser, $tpCustomer, 'INV-QC-FILTER-TP', [[$this->product, 5]]);
+
+        $this->actingAs($admin)
+            ->get(route('quality-certificates.index', [
+                'distribution_center_id' => $npUser->distribution_center_id,
+            ]))
+            ->assertOk()
+            ->assertSee($npCertificate->certificate_no)
+            ->assertDontSee($tpCertificate->certificate_no)
+            ->assertSee('name="distribution_center_id"', false);
+
+        $this->actingAs($npUser)
+            ->get(route('quality-certificates.index'))
+            ->assertOk()
+            ->assertSee($npCertificate->certificate_no)
+            ->assertDontSee($tpCertificate->certificate_no)
+            ->assertDontSee('name="distribution_center_id"', false);
+    }
+
     public function test_head_of_lab_can_return_unsigned_certificate_to_dvkh(): void
     {
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
