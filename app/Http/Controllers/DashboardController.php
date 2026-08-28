@@ -23,6 +23,7 @@ class DashboardController extends Controller
 
         $metrics = [
             'total_requests' => (clone $requestQuery)->count(),
+            'request_draft' => (clone $requestQuery)->where('status', 'DRAFT')->count(),
             'wait_dvkh' => (clone $requestQuery)->where('status', 'WAIT_DVKH')->count(),
             'wait_ptn' => (clone $requestQuery)->where('status', 'WAIT_PTN')->count(),
             'ptn_processing' => (clone $requestQuery)->where('status', 'PTN_PROCESSING')->count(),
@@ -36,6 +37,8 @@ class DashboardController extends Controller
             'total_certificates' => (clone $certificateQuery)->count(),
             'signed_certificates' => (clone $certificateQuery)->whereNotNull('signed_at')->count(),
             'issued_certificates' => (clone $certificateQuery)->whereNotNull('signed_at')->where('status', 'ISSUED')->count(),
+            'revoked_certificates' => (clone $certificateQuery)->where('status', 'REVOKED')->count(),
+            'rejected_certificates' => (clone $certificateQuery)->where('status', 'REJECTED')->count(),
             'unsigned_certificates' => (clone $certificateQuery)->whereNull('signed_at')->whereNotIn('status', ['REJECTED', 'REVOKED'])->count(),
             'sign_ready' => (clone $certificateQuery)
                 ->whereNull('signed_at')
@@ -132,6 +135,18 @@ class DashboardController extends Controller
     private function cardsForRole(string $role, array $metrics): array
     {
         return match ($role) {
+            'Admin' => [
+                $this->card('Tổng yêu cầu', $metrics['total_requests'], 'fas fa-layer-group', 'primary', route('certificate-requests.index', ['status_group' => 'all'])),
+                $this->card('Yêu cầu nháp', $metrics['request_draft'], 'fas fa-edit', 'secondary', route('certificate-requests.index', ['status_group' => 'draft'])),
+                $this->card('Chờ DVKH', $metrics['wait_dvkh'], 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
+                $this->card('Chờ PTN lập phiếu', $metrics['wait_ptn'], 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
+                $this->card('Phiếu nháp / chờ ký', $metrics['sign_ready'], 'fas fa-pen-nib', 'primary', route('quality-certificates.index', ['status' => 'SIGN_READY'])),
+                $this->card('Đang chờ app ký', $metrics['sign_pending'], 'fas fa-mobile-alt', 'warning', route('quality-certificates.index', ['status' => 'SMARTCA_PENDING'])),
+                $this->card('Quá hạn ký số', $metrics['sign_expired'], 'fas fa-hourglass-end', 'danger', route('quality-certificates.index', ['status' => 'SMARTCA_EXPIRED'])),
+                $this->card('Đã phát hành', $metrics['issued_certificates'], 'fas fa-check-circle', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
+                $this->card('Đã hủy / thu hồi', $metrics['revoked_certificates'], 'fas fa-ban', 'danger', route('quality-certificates.index', ['status' => 'REVOKED'])),
+                $this->card('Trưởng PTN trả lại', $metrics['rejected_certificates'], 'fas fa-undo', 'secondary', route('quality-certificates.index', ['status' => 'REJECTED'])),
+            ],
             'TrungTam' => [
                 $this->card('Yêu cầu của tôi', $metrics['total_requests'], 'fas fa-file-alt', 'primary', route('certificate-requests.index')),
                 $this->card('Chờ DVKH', $metrics['wait_dvkh'], 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
@@ -194,7 +209,7 @@ class DashboardController extends Controller
                         'code' => $certificate->certificate_no,
                         'title' => $customer?->customer_name ?? '-',
                         'subtitle' => $request?->distributionCenter?->name ?? '',
-                        'status' => $certificate->smartca_status ?: $certificate->status,
+                        'status' => $certificate->displayStatusMeta()['text'],
                         'date' => optional($certificate->created_at)->format('d/m/Y H:i'),
                         'url' => route('quality-certificates.show', $certificate),
                     ];
@@ -211,7 +226,8 @@ class DashboardController extends Controller
         $statuses = match ($role) {
             'DVKH' => ['WAIT_DVKH'],
             'PTN' => ['WAIT_PTN', 'PTN_PROCESSING'],
-            'TrungTam' => ['WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'CANCELLED'],
+            'TrungTam' => ['DRAFT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'CANCELLED'],
+            'Admin' => ['DRAFT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'CANCELLED'],
             default => ['WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING'],
         };
 
@@ -230,7 +246,7 @@ class DashboardController extends Controller
                     'code' => $request->request_no,
                     'title' => $customer?->customer_name ?? '-',
                     'subtitle' => trim($centerName . ($projectName ? ' - ' . $projectName : '')),
-                    'status' => $request->status,
+                    'status' => $request->displayStatusMeta()['text'],
                     'date' => optional($request->created_at)->format('d/m/Y H:i'),
                     'url' => $this->requestUrlForRole($role, $request),
                     'urgent' => $request->is_urgent,
@@ -242,6 +258,7 @@ class DashboardController extends Controller
                 'TrungTam' => 'Yêu cầu của trung tâm cần theo dõi',
                 'DVKH' => 'Yêu cầu chờ DVKH kiểm tra',
                 'PTN' => 'Yêu cầu chờ PTN lập phiếu / chờ ký',
+                'Admin' => 'Yêu cầu cần theo dõi',
                 default => 'Công việc đang chờ thực hiện',
             },
             'icon' => match ($role) {
@@ -268,7 +285,7 @@ class DashboardController extends Controller
                     'code' => $certificate->certificate_no,
                     'title' => $customer?->customer_name ?? '-',
                     'subtitle' => $customer?->project_name ?? '',
-                    'status' => $certificate->signed_at ? 'Đã ký' : $certificate->status,
+                    'status' => $certificate->displayStatusMeta()['text'],
                     'date' => optional($certificate->created_at)->format('d/m/Y H:i'),
                     'url' => route('quality-certificates.show', $certificate),
                 ];

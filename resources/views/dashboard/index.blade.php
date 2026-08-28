@@ -54,7 +54,7 @@
     <div>
         <h1 class="m-0">Không gian làm việc CNCL</h1>
         <small class="text-muted">
-            Vai trò hiện tại: <strong>{{ $role }}</strong>. Hệ thống chỉ ưu tiên hiển thị các việc phù hợp với tài khoản này.
+            Vai trò hiện tại: <strong>{{ $role }}</strong>. Hệ thống ưu tiên hiển thị các việc phù hợp với tài khoản này.
         </small>
     </div>
 
