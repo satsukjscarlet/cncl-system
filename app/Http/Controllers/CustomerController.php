@@ -136,19 +136,21 @@ class CustomerController extends Controller
         $this->authorizeCustomerCenter($customer);
 
         $oldData = $customer->toArray();
-        $customer->delete();
+        $customer->update(['is_active' => false]);
+        $customer->refresh();
 
         ActivityLogger::log(
             'Khách hàng - Công trình',
-            'delete',
-            'Xóa khách hàng/công trình: ' . $oldData['customer_name'],
+            'deactivate',
+            'Ngừng sử dụng khách hàng/công trình: ' . $oldData['customer_name'],
             $oldData,
-            null
+            $customer->toArray(),
+            $customer
         );
 
         return redirect()
             ->route('customers.index')
-            ->with('success', 'Xóa khách hàng - công trình thành công.');
+            ->with('success', 'Đã ngừng sử dụng khách hàng - công trình.');
     }
 
     public function export(): BinaryFileResponse

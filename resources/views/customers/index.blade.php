@@ -165,12 +165,16 @@
                             @endcan
 
                             @can('customer.delete')
-                                <form action="{{ route('customers.destroy', $customer) }}" method="POST"
-                                      class="d-inline" onsubmit="return confirm('Xóa khách hàng này?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-sm btn-danger" title="Xóa"><i class="fas fa-trash"></i></button>
-                                </form>
+                                @if($customer->is_active)
+                                    <form action="{{ route('customers.destroy', $customer) }}" method="POST"
+                                          class="d-inline" onsubmit="return confirm('Ngừng sử dụng khách hàng/công trình này? Dữ liệu cũ vẫn được giữ để tra cứu phiếu đã phát sinh.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-sm btn-danger" title="Ngừng sử dụng"><i class="fas fa-ban"></i></button>
+                                    </form>
+                                @else
+                                    <button class="btn btn-sm btn-secondary" title="Đã ngừng sử dụng" disabled><i class="fas fa-ban"></i></button>
+                                @endif
                             @endcan
                         </td>
                     </tr>

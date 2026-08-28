@@ -237,6 +237,10 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:request.create|request.update|ptn.process')
         ->name('certificate-requests.paste-products');
 
+    Route::post('certificate-requests/{certificateRequest}/submit-draft', [CertificateRequestController::class, 'submitDraft'])
+        ->middleware('permission:request.update')
+        ->name('certificate-requests.submit-draft');
+
     Route::resource('certificate-requests', CertificateRequestController::class)
         ->only(['show'])
         ->middleware('permission:request.view');

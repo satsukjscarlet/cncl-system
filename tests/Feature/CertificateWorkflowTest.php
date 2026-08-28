@@ -360,6 +360,49 @@ class CertificateWorkflowTest extends TestCase
         $this->assertSame(1, UserNotification::where('user_id', $dvkh->id)->where('type', 'request_created')->count());
     }
 
+    public function test_draft_request_can_be_submitted_to_dvkh_from_detail_screen(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-DRAFT-SHOW-SUBMIT');
+
+        $certificateRequest = CertificateRequest::create([
+            'request_no' => 'YC-DRAFT-SHOW-SUBMIT',
+            'request_type' => 'NORMAL',
+            'distribution_center_id' => $centerUser->distribution_center_id,
+            'customer_id' => $customer->id,
+            'delivery_date' => '2026-08-08',
+            'invoice_no' => 'INV-DRAFT-SHOW-SUBMIT',
+            'require_hard_copy' => false,
+            'hard_copy_quantity' => 0,
+            'is_urgent' => false,
+            'requester_name' => 'Nguoi tao nhap',
+            'status' => 'DRAFT',
+            'created_by' => $centerUser->id,
+        ]);
+
+        $certificateRequest->details()->create([
+            'product_id' => $this->product->id,
+            'quantity' => 8,
+        ]);
+
+        $this->actingAs($centerUser)
+            ->get(route('certificate-requests.show', $certificateRequest))
+            ->assertOk()
+            ->assertSee('Gửi DVKH');
+
+        $this->actingAs($centerUser)
+            ->post(route('certificate-requests.submit-draft', $certificateRequest))
+            ->assertRedirect(route('certificate-requests.show', $certificateRequest));
+
+        $certificateRequest->refresh();
+
+        $this->assertSame('WAIT_DVKH', $certificateRequest->status);
+        $this->assertNotNull($certificateRequest->submitted_at);
+        $this->assertSame($centerUser->id, $certificateRequest->submitted_by);
+        $this->assertSame(1, UserNotification::where('user_id', $dvkh->id)->where('type', 'request_created')->count());
+    }
+
     public function test_request_can_create_new_customer_with_manual_customer_code(): void
     {
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
@@ -415,6 +458,21 @@ class CertificateWorkflowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('results.0.id', $tpCustomer->id)
             ->assertJsonMissing(['id' => $npCustomer->id]);
+    }
+
+    public function test_customer_delete_action_deactivates_instead_of_soft_deleting(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-DEACTIVATE');
+
+        $this->actingAs($centerUser)
+            ->delete(route('customers.destroy', $customer))
+            ->assertRedirect(route('customers.index'));
+
+        $customer->refresh();
+
+        $this->assertFalse($customer->is_active);
+        $this->assertNull($customer->deleted_at);
     }
 
     public function test_customer_import_warns_before_updating_duplicate_code_in_same_center(): void

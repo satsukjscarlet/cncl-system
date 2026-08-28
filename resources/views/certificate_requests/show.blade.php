@@ -9,12 +9,21 @@
         <small class="text-muted">{{ $certificateRequest->request_no }}</small>
     </div>
 
-    <div>
+    <div class="d-flex flex-wrap align-items-center">
         @if($certificateRequest->status === 'DRAFT')
             @can('request.update')
                 <a href="{{ route('certificate-requests.edit', $certificateRequest) }}" class="btn btn-warning mr-2">
                     <i class="fas fa-edit"></i> Sửa yêu cầu
                 </a>
+                <form action="{{ route('certificate-requests.submit-draft', $certificateRequest) }}"
+                      method="POST"
+                      class="d-inline mr-2"
+                      onsubmit="return confirm('Gửi yêu cầu này sang DVKH? Sau khi gửi, yêu cầu sẽ không còn được sửa trực tiếp.')">
+                    @csrf
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i> Gửi DVKH
+                    </button>
+                </form>
             @endcan
         @endif
 

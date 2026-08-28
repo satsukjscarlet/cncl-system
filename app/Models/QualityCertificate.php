@@ -58,7 +58,7 @@ class QualityCertificate extends Model
 
     public function request()
     {
-        return $this->belongsTo(CertificateRequest::class, 'certificate_request_id');
+        return $this->belongsTo(CertificateRequest::class, 'certificate_request_id')->withTrashed();
     }
 
     public function details()

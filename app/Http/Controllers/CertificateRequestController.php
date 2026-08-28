@@ -717,6 +717,50 @@ class CertificateRequestController extends Controller
             ->with('success', 'Xóa yêu cầu cấp phiếu thành công.');
     }
 
+    public function submitDraft(CertificateRequest $certificateRequest)
+    {
+        $this->authorizeCenter($certificateRequest);
+
+        if ($certificateRequest->status !== 'DRAFT') {
+            return redirect()
+                ->route('certificate-requests.show', $certificateRequest)
+                ->with('error', 'Chỉ được gửi DVKH với yêu cầu đang ở trạng thái nháp.');
+        }
+
+        if (!$certificateRequest->details()->exists()) {
+            return redirect()
+                ->route('certificate-requests.show', $certificateRequest)
+                ->with('error', 'Yêu cầu chưa có sản phẩm, vui lòng cập nhật trước khi gửi DVKH.');
+        }
+
+        $oldData = $certificateRequest->toArray();
+
+        $certificateRequest->update([
+            'status' => 'WAIT_DVKH',
+            'submitted_at' => now(),
+            'submitted_by' => Auth::id(),
+        ]);
+
+        $this->logDuplicateInvoiceWarning($certificateRequest);
+
+        ActivityLogger::log(
+            'Yêu cầu cấp phiếu',
+            'submit',
+            'Gửi yêu cầu cấp phiếu sang DVKH: ' . $certificateRequest->request_no,
+            $oldData,
+            $certificateRequest->fresh()->toArray(),
+            $certificateRequest
+        );
+
+        app(NotificationService::class)->notifyRequestCreated(
+            $certificateRequest->fresh(['distributionCenter', 'customer'])
+        );
+
+        return redirect()
+            ->route('certificate-requests.show', $certificateRequest)
+            ->with('success', 'Đã gửi yêu cầu sang DVKH.');
+    }
+
     private function generateRequestNo(): string
     {
         $prefix = 'YC-' . date('Ymd') . '-';
