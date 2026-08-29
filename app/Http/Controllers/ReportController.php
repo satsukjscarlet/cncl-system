@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\CertificateSummaryExport;
 use App\Models\CertificateRequest;
 use App\Models\DistributionCenter;
+use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -69,6 +70,16 @@ class ReportController extends Controller
 
         [$warningCount, $overdueCount] = $this->slaCounts($query, $slaDvkh, $slaPtn);
 
+        $reportYear = $this->reportYear($request);
+        $statisticsCenterId = !$canViewAllCenters
+            ? $user->distribution_center_id
+            : ($request->filled('distribution_center_id') ? (int) $request->distribution_center_id : null);
+        [$monthlyCertificateStats, $monthlyCertificateTotals, $monthlyCertificateGrandTotal] = $this->monthlyCertificateStats(
+            $reportYear,
+            $statisticsCenterId,
+            $canViewAllCenters
+        );
+
         $centers = DistributionCenter::where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -84,7 +95,11 @@ class ReportController extends Controller
             'cancelledRequests',
             'certificateCount',
             'warningCount',
-            'overdueCount'
+            'overdueCount',
+            'reportYear',
+            'monthlyCertificateStats',
+            'monthlyCertificateTotals',
+            'monthlyCertificateGrandTotal'
         ));
     }
 
@@ -160,5 +175,88 @@ class ReportController extends Controller
         }
 
         return [$warningCount, $overdueCount];
+    }
+
+    private function reportYear(Request $request): int
+    {
+        $year = (int) $request->input('report_year', now()->year);
+
+        if ($year < 2000 || $year > 2100) {
+            return (int) now()->year;
+        }
+
+        return $year;
+    }
+
+    private function monthlyCertificateStats(int $year, ?int $distributionCenterId, bool $canViewAllCenters): array
+    {
+        $centersQuery = DistributionCenter::where('is_active', true)->orderBy('name');
+
+        if ($distributionCenterId) {
+            $centersQuery->where('id', $distributionCenterId);
+        }
+
+        $centers = $centersQuery->get();
+        $rowsByCenter = [];
+
+        foreach ($centers as $center) {
+            $rowsByCenter[$center->id] = [
+                'center' => $center,
+                'months' => array_fill(1, 12, 0),
+                'total' => 0,
+            ];
+        }
+
+        $monthExpression = $this->monthExpression('quality_certificates.signed_at');
+
+        $query = QualityCertificate::query()
+            ->join('certificate_requests', 'certificate_requests.id', '=', 'quality_certificates.certificate_request_id')
+            ->where('quality_certificates.status', 'ISSUED')
+            ->whereNotNull('quality_certificates.signed_at')
+            ->whereYear('quality_certificates.signed_at', $year)
+            ->selectRaw('certificate_requests.distribution_center_id as distribution_center_id')
+            ->selectRaw($monthExpression . ' as report_month')
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy('certificate_requests.distribution_center_id')
+            ->groupByRaw($monthExpression);
+
+        if ($distributionCenterId) {
+            $query->where('certificate_requests.distribution_center_id', $distributionCenterId);
+        } elseif (!$canViewAllCenters) {
+            $query->whereRaw('1 = 0');
+        }
+
+        $query->get()->each(function ($item) use (&$rowsByCenter) {
+            $centerId = (int) $item->distribution_center_id;
+            $month = (int) $item->report_month;
+
+            if (!isset($rowsByCenter[$centerId]) || $month < 1 || $month > 12) {
+                return;
+            }
+
+            $rowsByCenter[$centerId]['months'][$month] = (int) $item->total;
+            $rowsByCenter[$centerId]['total'] += (int) $item->total;
+        });
+
+        $totals = array_fill(1, 12, 0);
+        $grandTotal = 0;
+
+        foreach ($rowsByCenter as $row) {
+            foreach ($row['months'] as $month => $count) {
+                $totals[$month] += $count;
+                $grandTotal += $count;
+            }
+        }
+
+        return [array_values($rowsByCenter), $totals, $grandTotal];
+    }
+
+    private function monthExpression(string $column): string
+    {
+        if (config('database.default') === 'sqlite') {
+            return "CAST(strftime('%m', {$column}) AS INTEGER)";
+        }
+
+        return "MONTH({$column})";
     }
 }

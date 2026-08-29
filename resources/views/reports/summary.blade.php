@@ -40,6 +40,24 @@
             gap: 8px;
         }
 
+        .monthly-stats-card .table th,
+        .monthly-stats-card .table td {
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .monthly-stats-card .table .center-name {
+            min-width: 190px;
+            text-align: left;
+            white-space: normal;
+        }
+
+        .monthly-stats-card .total-cell {
+            font-weight: 700;
+            background: #f8fafc;
+        }
+
         @media (max-width: 767.98px) {
             .report-filter-actions .btn {
                 flex: 1 1 auto;
@@ -148,7 +166,7 @@
             </div>
 
             @if($canViewAllCenters)
-                <div class="col-xl-3 col-md-6">
+                <div class="col-xl-2 col-md-6">
                     <div class="form-group">
                         <label>Trung tâm</label>
                         <select name="distribution_center_id" class="form-control select2">
@@ -163,7 +181,7 @@
                 </div>
             @endif
 
-            <div class="{{ $canViewAllCenters ? 'col-xl-3' : 'col-xl-6' }} col-md-6">
+            <div class="{{ $canViewAllCenters ? 'col-xl-2' : 'col-xl-4' }} col-md-6">
                 <div class="form-group">
                     <label>Trạng thái</label>
                     <select name="status" class="form-control select2">
@@ -173,6 +191,19 @@
                                 {{ $label }}
                             </option>
                         @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-xl-2 col-md-6">
+                <div class="form-group">
+                    <label>Năm thống kê phiếu</label>
+                    <select name="report_year" class="form-control select2">
+                        @for($year = now()->year + 1; $year >= now()->year - 5; $year--)
+                            <option value="{{ $year }}" {{ (int) request('report_year', $reportYear) === $year ? 'selected' : '' }}>
+                                {{ $year }}
+                            </option>
+                        @endfor
                     </select>
                 </div>
             </div>
@@ -188,6 +219,58 @@
                 </div>
             </div>
         </form>
+    </div>
+</div>
+
+<div class="card monthly-stats-card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h3 class="card-title mb-0">
+            <i class="fas fa-chart-bar"></i> Thống kê số lượng phiếu đã phát hành theo trung tâm - {{ $reportYear }}
+        </h3>
+        <span class="badge badge-primary">Tổng năm: {{ number_format($monthlyCertificateGrandTotal) }}</span>
+    </div>
+
+    <div class="card-body table-responsive p-0">
+        <table class="table table-bordered table-hover mb-0">
+            <thead class="thead-light">
+                <tr>
+                    <th class="center-name">Trung tâm</th>
+                    @for($month = 1; $month <= 12; $month++)
+                        <th>T{{ $month }}</th>
+                    @endfor
+                    <th>Tổng</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($monthlyCertificateStats as $row)
+                    <tr>
+                        <td class="center-name">
+                            <strong>{{ $row['center']->code }}</strong> - {{ $row['center']->name }}
+                        </td>
+                        @foreach($row['months'] as $count)
+                            <td>{{ $count ? number_format($count) : '-' }}</td>
+                        @endforeach
+                        <td class="total-cell">{{ number_format($row['total']) }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="14" class="text-center text-muted py-4">
+                            <i class="fas fa-database fa-2x mb-2"></i><br>
+                            Không có dữ liệu phiếu đã phát hành trong năm {{ $reportYear }}.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th class="center-name">Tổng theo tháng</th>
+                    @foreach($monthlyCertificateTotals as $count)
+                        <th>{{ $count ? number_format($count) : '-' }}</th>
+                    @endforeach
+                    <th>{{ number_format($monthlyCertificateGrandTotal) }}</th>
+                </tr>
+            </tfoot>
+        </table>
     </div>
 </div>
 

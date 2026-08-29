@@ -159,6 +159,40 @@ class RoleWorkspaceAccessTest extends TestCase
             ->assertSee($draftRequest->request_no);
     }
 
+    public function test_summary_report_shows_monthly_certificate_counts_by_distribution_center(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $npUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $tpUser = User::where('username', 'trungtam_tp')->firstOrFail();
+        $npCenter = DistributionCenter::where('code', 'NP')->firstOrFail();
+        $tpCenter = DistributionCenter::where('code', 'TP')->firstOrFail();
+
+        $npRequest = $this->createRequestForCenter($npCenter, $npUser, 'YC-REPORT-NP', 'COMPLETED');
+        $tpRequest = $this->createRequestForCenter($tpCenter, $tpUser, 'YC-REPORT-TP', 'COMPLETED');
+
+        $this->createIssuedCertificateForRequest($npRequest, 'CNCL-REPORT-NP-1', '2026-01-15 08:00:00');
+        $this->createIssuedCertificateForRequest($npRequest, 'CNCL-REPORT-NP-2', '2026-01-20 08:00:00');
+        $this->createIssuedCertificateForRequest($tpRequest, 'CNCL-REPORT-TP-1', '2026-02-10 08:00:00');
+
+        $this->actingAs($admin)
+            ->get(route('reports.summary', ['report_year' => 2026]))
+            ->assertOk()
+            ->assertSee('Thống kê số lượng phiếu đã phát hành theo trung tâm - 2026')
+            ->assertSee('NP - ' . $npCenter->name)
+            ->assertSee('TP - ' . $tpCenter->name)
+            ->assertSee('Tổng năm: 3');
+
+        $this->actingAs($admin)
+            ->get(route('reports.summary', [
+                'report_year' => 2026,
+                'distribution_center_id' => $npCenter->id,
+            ]))
+            ->assertOk()
+            ->assertSee('NP - ' . $npCenter->name)
+            ->assertDontSee('<strong>TP</strong> - ' . $tpCenter->name, false)
+            ->assertSee('Tổng năm: 2');
+    }
+
     private function createRequestForCenter(
         DistributionCenter $center,
         User $creator,
@@ -183,6 +217,23 @@ class RoleWorkspaceAccessTest extends TestCase
             'hard_copy_quantity' => 0,
             'status' => $status,
             'created_by' => $creator->id,
+        ]);
+    }
+
+    private function createIssuedCertificateForRequest(
+        CertificateRequest $request,
+        string $certificateNo,
+        string $signedAt
+    ): QualityCertificate {
+        return QualityCertificate::create([
+            'certificate_no' => $certificateNo,
+            'certificate_request_id' => $request->id,
+            'status' => 'ISSUED',
+            'created_by' => $request->created_by,
+            'signed_at' => $signedAt,
+            'signed_by' => 'Truong PTN',
+            'pdf_path' => 'quality-certificates/report-test-' . $request->id . '.pdf',
+            'print_count' => 0,
         ]);
     }
 
