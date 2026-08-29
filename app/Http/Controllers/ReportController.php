@@ -28,6 +28,7 @@ class ReportController extends Controller
             'customer',
             'creator',
             'qualityCertificate',
+            'qualityCertificates',
         ]);
 
         if (!$canViewAllCenters) {
@@ -42,12 +43,20 @@ class ReportController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        $requestStatus = $request->input('request_status', $request->input('status'));
+
+        if (filled($requestStatus)) {
+            $query->where('status', $requestStatus);
         }
 
         if ($request->filled('distribution_center_id') && $canViewAllCenters) {
             $query->where('distribution_center_id', $request->distribution_center_id);
+        }
+
+        $certificateStatusBaseQuery = clone $query;
+
+        if ($request->filled('certificate_status')) {
+            $this->applyCertificateStatusFilter($query, $request->certificate_status);
         }
 
         $requests = (clone $query)
@@ -64,6 +73,9 @@ class ReportController extends Controller
                 $certificateQuery->where('status', 'ISSUED');
             })
             ->count();
+
+        $certificateStatusCounts = $this->certificateStatusCounts($certificateStatusBaseQuery);
+        $revokedCertificateCount = $certificateStatusCounts[QualityCertificate::STATUS_REVOKED] ?? 0;
 
         $slaDvkh = SlaConfig::where('code', 'SLA_DVKH')->where('is_active', true)->first();
         $slaPtn = SlaConfig::where('code', 'SLA_PTN')->where('is_active', true)->first();
@@ -84,16 +96,20 @@ class ReportController extends Controller
             ->orderBy('name')
             ->get();
         $statusOptions = $this->requestStatusOptions();
+        $certificateStatusOptions = $this->certificateStatusOptions();
 
         return view('reports.summary', compact(
             'requests',
             'centers',
             'statusOptions',
+            'certificateStatusOptions',
             'canViewAllCenters',
             'totalRequests',
             'completedRequests',
             'cancelledRequests',
             'certificateCount',
+            'certificateStatusCounts',
+            'revokedCertificateCount',
             'warningCount',
             'overdueCount',
             'reportYear',
@@ -116,13 +132,15 @@ class ReportController extends Controller
         $distributionCenterId = !$canViewAllCenters
             ? $user->distribution_center_id
             : ($request->distribution_center_id ? (int) $request->distribution_center_id : null);
+        $requestStatus = $request->input('request_status', $request->input('status'));
 
         return Excel::download(
             new CertificateSummaryExport(
                 $request->date_from,
                 $request->date_to,
-                $request->status,
-                $distributionCenterId
+                $requestStatus,
+                $distributionCenterId,
+                $request->certificate_status
             ),
             'bao_cao_tong_hop_cncl.xlsx'
         );
@@ -144,6 +162,125 @@ class ReportController extends Controller
             'COMPLETED' => 'Hoàn tất',
             'CANCELLED' => 'Đã trả lại / hủy',
         ];
+    }
+
+    private function certificateStatusOptions(): array
+    {
+        return [
+            'NO_CERTIFICATE' => 'Chưa lập phiếu',
+            'WAIT_PTN_MANAGER_APPROVAL' => 'Chờ Trưởng PTN duyệt',
+            'READY_TO_SIGN' => 'Chờ gửi ký số',
+            'SIGN_PENDING' => 'Đang chờ ký số',
+            'SIGN_EXPIRED' => 'Quá hạn ký số',
+            'ISSUED' => 'Đã ký / phát hành',
+            'REJECTED' => 'Trưởng PTN trả lại',
+            'REVOKED' => 'Đã hủy / thu hồi',
+        ];
+    }
+
+    private function certificateStatusCounts($baseQuery): array
+    {
+        $counts = [];
+
+        foreach (array_keys($this->certificateStatusOptions()) as $status) {
+            $query = clone $baseQuery;
+            $this->applyCertificateStatusFilter($query, $status);
+            $counts[$status] = $query->count();
+        }
+
+        return $counts;
+    }
+
+    private function applyCertificateStatusFilter($query, string $status): void
+    {
+        if ($status === 'NO_CERTIFICATE') {
+            $query->whereDoesntHave('qualityCertificates');
+
+            return;
+        }
+
+        $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
+
+        if ($status === 'WAIT_PTN_MANAGER_APPROVAL') {
+            $query->whereHas('qualityCertificates', function ($certificate) {
+                $certificate
+                    ->whereNull('signed_at')
+                    ->whereIn('status', [
+                        QualityCertificate::STATUS_DRAFT,
+                        QualityCertificate::STATUS_WAIT_PTN_MANAGER_APPROVAL,
+                    ])
+                    ->where(function ($q) {
+                        $q->whereNull('smartca_status')
+                            ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+                    });
+            });
+
+            return;
+        }
+
+        if ($status === 'READY_TO_SIGN') {
+            $query->whereHas('qualityCertificates', function ($certificate) {
+                $certificate
+                    ->whereNull('signed_at')
+                    ->where('status', QualityCertificate::STATUS_READY_TO_SIGN)
+                    ->where(function ($q) {
+                        $q->whereNull('smartca_status')
+                            ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+                    });
+            });
+
+            return;
+        }
+
+        if ($status === 'SIGN_PENDING') {
+            $query->whereHas('qualityCertificates', function ($certificate) use ($expiredBefore) {
+                $certificate
+                    ->whereNull('signed_at')
+                    ->where('smartca_status', 'PENDING')
+                    ->where('smartca_requested_at', '>', $expiredBefore);
+            });
+
+            return;
+        }
+
+        if ($status === 'SIGN_EXPIRED') {
+            $query->whereHas('qualityCertificates', function ($certificate) use ($expiredBefore) {
+                $certificate
+                    ->whereNull('signed_at')
+                    ->where(function ($q) use ($expiredBefore) {
+                        $q->where('status', QualityCertificate::STATUS_SIGN_EXPIRED)
+                            ->orWhere('smartca_status', 'EXPIRED')
+                            ->orWhere(function ($pending) use ($expiredBefore) {
+                                $pending->where('smartca_status', 'PENDING')
+                                    ->where('smartca_requested_at', '<=', $expiredBefore);
+                            });
+                    });
+            });
+
+            return;
+        }
+
+        if ($status === 'ISSUED') {
+            $query->whereHas('qualityCertificates', function ($certificate) {
+                $certificate
+                    ->where('status', QualityCertificate::STATUS_ISSUED)
+                    ->whereNotNull('signed_at');
+            });
+
+            return;
+        }
+
+        if (in_array($status, [
+            QualityCertificate::STATUS_REJECTED,
+            QualityCertificate::STATUS_REVOKED,
+        ], true)) {
+            $query->whereHas('qualityCertificates', fn ($certificate) => $certificate->where('status', $status));
+        }
+    }
+
+    private function smartCaPendingTtlMinutes(): int
+    {
+        return max(1, (int) config('services.smartca.pending_ttl_minutes', 5));
     }
 
     private function slaCounts($baseQuery, ?SlaConfig $slaDvkh, ?SlaConfig $slaPtn): array

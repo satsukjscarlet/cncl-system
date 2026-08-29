@@ -255,12 +255,12 @@
 
                 <table class="info-table">
                     <tr>
-                        <td class="index">1</td>
+                        <td class="index">1.</td>
                         <td class="label">Tên khách hàng:</td>
                         <td class="value">{{ $customer->customer_name ?? '' }}</td>
                     </tr>
                     <tr>
-                        <td class="index">2</td>
+                        <td class="index">2.</td>
                         <td class="label">Tên công trình :</td>
                         <td class="value">{{ $customer->project_name ?? '' }}</td>
                     </tr>
@@ -272,7 +272,7 @@
                         </tr>
                     @endif
                     <tr>
-                        <td class="index">3</td>
+                        <td class="index">3.</td>
                         <td class="label">Ngày xuất hàng:</td>
                         <td class="value">{{ $deliveryDate }}</td>
                     </tr>

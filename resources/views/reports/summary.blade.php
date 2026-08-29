@@ -58,6 +58,32 @@
             background: #f8fafc;
         }
 
+        .certificate-status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 10px;
+        }
+
+        .certificate-status-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            background: #fff;
+        }
+
+        .certificate-status-item span {
+            color: #475569;
+            font-weight: 600;
+        }
+
+        .certificate-status-item strong {
+            font-size: 20px;
+            color: #0f172a;
+        }
+
         @media (max-width: 767.98px) {
             .report-filter-actions .btn {
                 flex: 1 1 auto;
@@ -83,7 +109,7 @@
 
 @section('content')
 <div class="row report-kpi">
-    <div class="col-lg-2 col-md-4 col-6">
+    <div class="col-xl-3 col-lg-4 col-md-6">
         <div class="small-box bg-primary">
             <div class="inner">
                 <h3>{{ number_format($totalRequests) }}</h3>
@@ -93,17 +119,17 @@
         </div>
     </div>
 
-    <div class="col-lg-2 col-md-4 col-6">
+    <div class="col-xl-3 col-lg-4 col-md-6">
         <div class="small-box bg-success">
             <div class="inner">
                 <h3>{{ number_format($completedRequests) }}</h3>
-                <p>Hoàn tất</p>
+                <p>Yêu cầu hoàn tất</p>
             </div>
             <div class="icon"><i class="fas fa-check-circle"></i></div>
         </div>
     </div>
 
-    <div class="col-lg-2 col-md-4 col-6">
+    <div class="col-xl-3 col-lg-4 col-md-6">
         <div class="small-box bg-info">
             <div class="inner">
                 <h3>{{ number_format($certificateCount) }}</h3>
@@ -113,17 +139,27 @@
         </div>
     </div>
 
-    <div class="col-lg-2 col-md-4 col-6">
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="small-box bg-danger">
+            <div class="inner">
+                <h3>{{ number_format($revokedCertificateCount) }}</h3>
+                <p>Phiếu đã hủy / thu hồi</p>
+            </div>
+            <div class="icon"><i class="fas fa-file-alt"></i></div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-lg-4 col-md-6">
         <div class="small-box bg-secondary">
             <div class="inner">
                 <h3>{{ number_format($cancelledRequests) }}</h3>
-                <p>Đã hủy / trả lại</p>
+                <p>Yêu cầu bị trả lại / hủy</p>
             </div>
             <div class="icon"><i class="fas fa-ban"></i></div>
         </div>
     </div>
 
-    <div class="col-lg-2 col-md-4 col-6">
+    <div class="col-xl-3 col-lg-4 col-md-6">
         <div class="small-box bg-warning">
             <div class="inner">
                 <h3>{{ number_format($warningCount) }}</h3>
@@ -133,13 +169,30 @@
         </div>
     </div>
 
-    <div class="col-lg-2 col-md-4 col-6">
+    <div class="col-xl-3 col-lg-4 col-md-6">
         <div class="small-box bg-danger">
             <div class="inner">
                 <h3>{{ number_format($overdueCount) }}</h3>
                 <p>Quá hạn SLA</p>
             </div>
             <div class="icon"><i class="fas fa-fire"></i></div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-white">
+        <h3 class="card-title mb-0"><i class="fas fa-certificate"></i> Trạng thái phiếu CNCL</h3>
+    </div>
+    <div class="card-body">
+        <div class="certificate-status-grid">
+            @foreach($certificateStatusOptions as $status => $label)
+                <a href="{{ route('reports.summary', array_merge(request()->except(['page', 'certificate_status']), ['certificate_status' => $status])) }}"
+                   class="certificate-status-item">
+                    <span>{{ $label }}</span>
+                    <strong>{{ number_format($certificateStatusCounts[$status] ?? 0) }}</strong>
+                </a>
+            @endforeach
         </div>
     </div>
 </div>
@@ -181,13 +234,27 @@
                 </div>
             @endif
 
-            <div class="{{ $canViewAllCenters ? 'col-xl-2' : 'col-xl-4' }} col-md-6">
+            <div class="col-xl-2 col-md-6">
                 <div class="form-group">
-                    <label>Trạng thái</label>
-                    <select name="status" class="form-control select2">
-                        <option value="">Tất cả trạng thái</option>
+                    <label>Trạng thái yêu cầu</label>
+                    <select name="request_status" class="form-control select2">
+                        <option value="">Tất cả yêu cầu</option>
                         @foreach($statusOptions as $status => $label)
-                            <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
+                            <option value="{{ $status }}" {{ request('request_status', request('status')) === $status ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-xl-2 col-md-6">
+                <div class="form-group">
+                    <label>Trạng thái phiếu</label>
+                    <select name="certificate_status" class="form-control select2">
+                        <option value="">Tất cả phiếu</option>
+                        @foreach($certificateStatusOptions as $status => $label)
+                            <option value="{{ $status }}" {{ request('certificate_status') === $status ? 'selected' : '' }}>
                                 {{ $label }}
                             </option>
                         @endforeach
@@ -292,13 +359,20 @@
                     <th>Ngày xuất hàng</th>
                     <th>Số hóa đơn</th>
                     <th>Ký tươi</th>
-                    <th>Trạng thái</th>
+                    <th>Số phiếu</th>
+                    <th>Trạng thái yêu cầu</th>
+                    <th>Trạng thái phiếu</th>
                     <th>Người tạo</th>
                 </tr>
             </thead>
 
             <tbody>
                 @forelse($requests as $item)
+                    @php
+                        $reportCertificate = $item->qualityCertificates
+                            ->sortByDesc(fn ($certificate) => optional($certificate->created_at)->timestamp ?? 0)
+                            ->first();
+                    @endphp
                     <tr>
                         <td>{{ $requests->firstItem() + $loop->index }}</td>
                         <td>
@@ -324,13 +398,29 @@
                             @endif
                         </td>
                         <td>
-                            @include('certificate_requests.partials.status_badge', ['certificateRequest' => $item])
+                            @if($reportCertificate)
+                                <a href="{{ route('quality-certificates.show', $reportCertificate) }}" class="report-request-no">
+                                    {{ $reportCertificate->certificate_no }}
+                                </a>
+                            @else
+                                <span class="text-muted">Chưa lập</span>
+                            @endif
+                        </td>
+                        <td>
+                            @include('certificate_requests.partials.status_badge', ['status' => $item->status])
+                        </td>
+                        <td>
+                            @if($reportCertificate)
+                                @include('certificate_requests.partials.status_badge', ['qualityCertificate' => $reportCertificate])
+                            @else
+                                <span class="badge badge-light">Chưa lập phiếu</span>
+                            @endif
                         </td>
                         <td>{{ $item->creator->name ?? '-' }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center text-muted py-4">
+                        <td colspan="12" class="text-center text-muted py-4">
                             <i class="fas fa-database fa-2x mb-2"></i><br>
                             Không có dữ liệu báo cáo.
                         </td>

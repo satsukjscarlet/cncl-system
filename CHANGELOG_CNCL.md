@@ -10,6 +10,48 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-08-29
 
+### Báo cáo tổng hợp - làm rõ KPI yêu cầu và phiếu
+
+File chính:
+- `app/Http/Controllers/ReportController.php`
+- `resources/views/reports/summary.blade.php`
+
+Nội dung:
+- Đổi nhãn KPI `Hoàn tất` thành `Yêu cầu hoàn tất` để tránh nhầm với phiếu đã phát hành.
+- Đổi nhãn KPI `Đã hủy / trả lại` thành `Yêu cầu bị trả lại / hủy`.
+- Bổ sung KPI riêng `Phiếu đã hủy / thu hồi`, lấy từ trạng thái phiếu `REVOKED`.
+- Điều chỉnh layout KPI báo cáo sang dạng nhiều cột rõ hơn khi có thêm số liệu phiếu hủy/thu hồi.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php -l app\Http\Controllers\ReportController.php`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
+### Báo cáo tổng hợp - bổ sung trạng thái phiếu CNCL đầy đủ
+
+File chính:
+- `app/Http/Controllers/ReportController.php`
+- `app/Exports/CertificateSummaryExport.php`
+- `resources/views/reports/summary.blade.php`
+- `tests/Feature/RoleWorkspaceAccessTest.php`
+
+Nội dung:
+- Tách bộ lọc `Trạng thái yêu cầu` và `Trạng thái phiếu CNCL` trên màn báo cáo tổng hợp.
+- Bổ sung các trạng thái phiếu vào báo cáo: chưa lập phiếu, chờ Trưởng PTN duyệt, chờ gửi ký số, đang chờ ký số, quá hạn ký số, đã ký/phát hành, Trưởng PTN trả lại, đã hủy/thu hồi.
+- Thêm dải thống kê nhanh số lượng phiếu theo từng trạng thái.
+- Dải thống kê trạng thái phiếu vẫn giữ bức tranh tổng theo ngày/trung tâm/trạng thái yêu cầu, không bị co lại theo filter `Trạng thái phiếu` đang chọn.
+- Bổ sung cột `Số phiếu`, `Trạng thái yêu cầu`, `Trạng thái phiếu` trong bảng dữ liệu báo cáo.
+- Đồng bộ export Excel để xuất thêm số phiếu và trạng thái phiếu, đồng thời nhận bộ lọc trạng thái phiếu.
+- Bổ sung test lọc báo cáo theo trạng thái phiếu.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php -l app\Http\Controllers\ReportController.php`: pass.
+- `php -l app\Exports\CertificateSummaryExport.php`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
 ### Phân quyền - Việt hóa tên quyền trên giao diện
 
 File chính:

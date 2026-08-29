@@ -193,6 +193,34 @@ class RoleWorkspaceAccessTest extends TestCase
             ->assertSee('Tổng năm: 2');
     }
 
+    public function test_summary_report_can_filter_by_certificate_status(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $npUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $npCenter = DistributionCenter::where('code', 'NP')->firstOrFail();
+
+        $readyRequest = $this->createRequestForCenter($npCenter, $npUser, 'YC-REPORT-READY', 'PTN_PROCESSING');
+        $revokedRequest = $this->createRequestForCenter($npCenter, $npUser, 'YC-REPORT-REVOKED', 'COMPLETED');
+
+        $this->createCertificateForRequest($readyRequest, 'CNCL-REPORT-READY', 'READY_TO_SIGN');
+        $this->createCertificateForRequest($revokedRequest, 'CNCL-REPORT-REVOKED', 'REVOKED');
+
+        $this->actingAs($admin)
+            ->get(route('reports.summary', ['certificate_status' => 'READY_TO_SIGN']))
+            ->assertOk()
+            ->assertSee('Trạng thái phiếu CNCL')
+            ->assertSee('CNCL-REPORT-READY')
+            ->assertSee('Chờ gửi ký số')
+            ->assertDontSee('CNCL-REPORT-REVOKED');
+
+        $this->actingAs($admin)
+            ->get(route('reports.summary', ['certificate_status' => 'REVOKED']))
+            ->assertOk()
+            ->assertSee('CNCL-REPORT-REVOKED')
+            ->assertSee('Đã hủy / thu hồi')
+            ->assertDontSee('CNCL-REPORT-READY');
+    }
+
     private function createRequestForCenter(
         DistributionCenter $center,
         User $creator,
@@ -201,7 +229,7 @@ class RoleWorkspaceAccessTest extends TestCase
     ): CertificateRequest {
         $customer = Customer::create([
             'distribution_center_id' => $center->id,
-            'customer_code' => 'KH-' . $center->code,
+            'customer_code' => 'KH-' . $center->code . '-' . $requestNo,
             'customer_name' => 'Khach hang ' . $center->code,
             'project_name' => 'Cong trinh ' . $center->code,
             'is_active' => true,
@@ -233,6 +261,20 @@ class RoleWorkspaceAccessTest extends TestCase
             'signed_at' => $signedAt,
             'signed_by' => 'Truong PTN',
             'pdf_path' => 'quality-certificates/report-test-' . $request->id . '.pdf',
+            'print_count' => 0,
+        ]);
+    }
+
+    private function createCertificateForRequest(
+        CertificateRequest $request,
+        string $certificateNo,
+        string $status
+    ): QualityCertificate {
+        return QualityCertificate::create([
+            'certificate_no' => $certificateNo,
+            'certificate_request_id' => $request->id,
+            'status' => $status,
+            'created_by' => $request->created_by,
             'print_count' => 0,
         ]);
     }
