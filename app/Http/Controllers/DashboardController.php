@@ -40,9 +40,17 @@ class DashboardController extends Controller
             'revoked_certificates' => (clone $certificateQuery)->where('status', 'REVOKED')->count(),
             'rejected_certificates' => (clone $certificateQuery)->where('status', 'REJECTED')->count(),
             'unsigned_certificates' => (clone $certificateQuery)->whereNull('signed_at')->whereNotIn('status', ['REJECTED', 'REVOKED'])->count(),
+            'sign_waiting_approval' => (clone $certificateQuery)
+                ->whereNull('signed_at')
+                ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL'])
+                ->where(function ($q) {
+                    $q->whereNull('smartca_status')
+                        ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+                })
+                ->count(),
             'sign_ready' => (clone $certificateQuery)
                 ->whereNull('signed_at')
-                ->where('status', 'DRAFT')
+                ->where('status', 'READY_TO_SIGN')
                 ->where(function ($q) {
                     $q->whereNull('smartca_status')
                         ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
@@ -167,7 +175,8 @@ class DashboardController extends Controller
                 $this->card('Yêu cầu gấp', $metrics['urgent_ptn'], 'fas fa-bolt', 'danger', route('ptn.requests.index', ['status' => '', 'urgent' => '1'])),
             ],
             'TruongPTN' => [
-                $this->card('Sẵn sàng ký', $metrics['sign_ready'], 'fas fa-pen-nib', 'primary', route('quality-certificates.signing-queue', ['status' => 'READY'])),
+                $this->card('Chờ duyệt', $metrics['sign_waiting_approval'], 'fas fa-user-check', 'info', route('quality-certificates.signing-queue', ['status' => 'WAIT_APPROVAL'])),
+                $this->card('Chờ gửi ký', $metrics['sign_ready'], 'fas fa-paper-plane', 'primary', route('quality-certificates.ready-to-sign')),
                 $this->card('Đang chờ app', $metrics['sign_pending'], 'fas fa-mobile-alt', 'warning', route('quality-certificates.signing-queue', ['status' => 'PENDING'])),
                 $this->card('Quá hạn ký', $metrics['sign_expired'], 'fas fa-hourglass-end', 'danger', route('quality-certificates.signing-queue', ['status' => 'EXPIRED'])),
                 $this->card('Đã ký', $metrics['issued_certificates'], 'fas fa-check-circle', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
@@ -190,7 +199,7 @@ class DashboardController extends Controller
                 ->whereNull('signed_at')
                 ->whereNotIn('status', ['ISSUED', 'REVOKED'])
                 ->where(function ($q) use ($expiredBefore) {
-                    $q->where('status', 'DRAFT')
+                    $q->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL', 'READY_TO_SIGN'])
                         ->orWhere('smartca_status', 'PENDING')
                         ->orWhere('smartca_status', 'EXPIRED')
                         ->orWhere(function ($pending) use ($expiredBefore) {

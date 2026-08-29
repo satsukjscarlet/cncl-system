@@ -47,14 +47,15 @@ class WorkQueueService
                 $this->item('Yêu cầu gấp của PTN', (clone $requests)->whereIn('status', ['WAIT_PTN', 'PTN_PROCESSING'])->where('is_urgent', true)->count(), 'fas fa-bolt', 'danger', route('ptn.requests.index', ['urgent' => '1'])),
             ],
             'TruongPTN' => [
-                $this->item('Phiếu sẵn sàng ký', $this->signReadyCount(clone $certificates), 'fas fa-pen-nib', 'primary', route('quality-certificates.signing-queue', ['status' => 'READY'])),
+                $this->item('Phiếu chờ duyệt', $this->signWaitingApprovalCount(clone $certificates), 'fas fa-user-check', 'info', route('quality-certificates.signing-queue', ['status' => 'WAIT_APPROVAL'])),
+                $this->item('Phiếu chờ gửi ký', $this->signReadyCount(clone $certificates), 'fas fa-paper-plane', 'primary', route('quality-certificates.ready-to-sign')),
                 $this->item('Đang chờ xác nhận app', $this->signPendingCount(clone $certificates, $expiredBefore), 'fas fa-mobile-alt', 'warning', route('quality-certificates.signing-queue', ['status' => 'PENDING'])),
                 $this->item('Quá hạn ký cần xử lý', $this->signExpiredCount(clone $certificates, $expiredBefore), 'fas fa-hourglass-end', 'danger', route('quality-certificates.signing-queue', ['status' => 'EXPIRED'])),
             ],
             default => [
                 $this->item('Chờ DVKH', (clone $requests)->where('status', 'WAIT_DVKH')->count(), 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
                 $this->item('Chờ PTN lập phiếu', (clone $requests)->where('status', 'WAIT_PTN')->count(), 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
-                $this->item('Phiếu chờ ký', $this->signReadyCount(clone $certificates), 'fas fa-file-signature', 'primary', route('quality-certificates.index', ['status' => 'SIGN_READY'])),
+                $this->item('Phiếu chờ ký', $this->signWaitingApprovalCount(clone $certificates) + $this->signReadyCount(clone $certificates), 'fas fa-file-signature', 'primary', route('quality-certificates.index', ['status' => 'SIGN_READY'])),
             ],
         };
     }
@@ -87,7 +88,19 @@ class WorkQueueService
     {
         return $query
             ->whereNull('signed_at')
-            ->where('status', 'DRAFT')
+            ->where('status', 'READY_TO_SIGN')
+            ->where(function ($q) {
+                $q->whereNull('smartca_status')
+                    ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+            })
+            ->count();
+    }
+
+    private function signWaitingApprovalCount(Builder $query): int
+    {
+        return $query
+            ->whereNull('signed_at')
+            ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL'])
             ->where(function ($q) {
                 $q->whereNull('smartca_status')
                     ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);

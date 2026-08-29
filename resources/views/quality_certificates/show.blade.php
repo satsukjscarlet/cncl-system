@@ -38,6 +38,9 @@
         && $smartCaExpiresAt
         && $smartCaExpiresAt->lte(now());
     $smartCaCanResend = $qualityCertificate->smartca_status === 'EXPIRED' || $smartCaPendingExpired;
+    $statusMeta = $qualityCertificate->displayStatusMeta();
+    $canApproveForSigning = $qualityCertificate->canApproveForSigningQueue();
+    $canSendSignature = $qualityCertificate->canSendSignatureRequest();
 @endphp
 
 <div class="row">
@@ -54,15 +57,9 @@
                 <p><strong>Ngày lập:</strong> {{ optional($qualityCertificate->created_at)->format('d/m/Y H:i') }}</p>
                 <p>
                     <strong>Trạng thái:</strong>
-                    @if ($qualityCertificate->status === 'REVOKED')
-                        <span class="badge badge-danger">Đã hủy/thu hồi</span>
-                    @elseif ($qualityCertificate->status === 'REJECTED')
-                        <span class="badge badge-secondary">Đã trả lại</span>
-                    @elseif ($qualityCertificate->signed_at)
-                        <span class="badge badge-success">Đã ký/phát hành</span>
-                    @else
-                        <span class="badge badge-warning">Chưa ký</span>
-                    @endif
+                    <span class="badge {{ $statusMeta['class'] }}">
+                        <i class="{{ $statusMeta['icon'] }}"></i> {{ $statusMeta['text'] }}
+                    </span>
                 </p>
                 @if($qualityCertificate->replacesCertificate)
                     <p>
@@ -194,12 +191,28 @@
                                     </form>
                                 @endif
                             @else
+                                @if($canApproveForSigning)
+                                    <form action="{{ route('quality-certificates.approve-for-signing', $qualityCertificate) }}"
+                                          method="POST"
+                                          class="d-inline"
+                                          data-loading-lock
+                                          data-loading-message="Đang đưa phiếu vào danh sách chờ gửi ký. Vui lòng chờ..."
+                                          onsubmit="window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
+                                        @csrf
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-paper-plane"></i> Đưa vào chờ gửi ký
+                                        </button>
+                                    </form>
+                                @endif
+
                                 <form action="{{ route('quality-certificates.sign', $qualityCertificate) }}" method="POST"
                                       class="d-inline"
-                                      onsubmit="return confirm('{{ $smartCaCanResend ? 'Gửi lại yêu cầu ký phiếu này sang VNPT SmartCA?' : 'Gửi yêu cầu ký phiếu này sang VNPT SmartCA?' }}')">
+                                      data-loading-lock
+                                      data-loading-message="Đang gửi yêu cầu ký sang VNPT SmartCA. Vui lòng chờ..."
+                                      onsubmit="if (!confirm('{{ $qualityCertificate->isAwaitingManagerApproval() ? 'Gửi ký trực tiếp phiếu này? Thao tác này đồng thời xác nhận Trưởng PTN đã duyệt nội dung.' : ($smartCaCanResend ? 'Gửi lại yêu cầu ký phiếu này sang VNPT SmartCA?' : 'Gửi yêu cầu ký phiếu này sang VNPT SmartCA?') }}')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
                                     @csrf
-                                    <button type="submit" class="btn {{ $smartCaCanResend ? 'btn-warning' : 'btn-success' }}">
-                                        <i class="fas fa-file-signature"></i> {{ $smartCaCanResend ? 'Gửi lại yêu cầu ký' : 'Gửi yêu cầu ký SmartCA' }}
+                                    <button type="submit" class="btn {{ $smartCaCanResend ? 'btn-warning' : 'btn-success' }}" {{ $canSendSignature ? '' : 'disabled' }}>
+                                        <i class="fas fa-file-signature"></i> {{ $qualityCertificate->isAwaitingManagerApproval() ? 'Duyệt và gửi ký SmartCA' : ($smartCaCanResend ? 'Gửi lại yêu cầu ký' : 'Gửi yêu cầu ký SmartCA') }}
                                     </button>
                                 </form>
                             @endif

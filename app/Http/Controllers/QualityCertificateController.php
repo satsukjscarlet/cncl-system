@@ -74,7 +74,7 @@ class QualityCertificateController extends Controller
 
             if ($request->status === 'SIGN_READY') {
                 $query->whereNull('signed_at')
-                    ->where('status', 'DRAFT')
+                    ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL', 'READY_TO_SIGN'])
                     ->where(function ($q) {
                         $q->whereNull('smartca_status')
                             ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
@@ -136,9 +136,17 @@ class QualityCertificateController extends Controller
         ]);
 
         $metrics = [
+            'waiting_approval' => (clone $baseQuery)
+                ->whereNull('signed_at')
+                ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL'])
+                ->where(function ($q) {
+                    $q->whereNull('smartca_status')
+                        ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+                })
+                ->count(),
             'ready' => (clone $baseQuery)
                 ->whereNull('signed_at')
-                ->where('status', 'DRAFT')
+                ->where('status', 'READY_TO_SIGN')
                 ->where(function ($q) {
                     $q->whereNull('smartca_status')
                         ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
@@ -190,7 +198,13 @@ class QualityCertificateController extends Controller
 
         match ($request->get('status', 'ACTIONABLE')) {
             'READY' => $query->whereNull('signed_at')
-                ->where('status', 'DRAFT')
+                ->where('status', 'READY_TO_SIGN')
+                ->where(function ($q) {
+                    $q->whereNull('smartca_status')
+                        ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+                }),
+            'WAIT_APPROVAL' => $query->whereNull('signed_at')
+                ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL'])
                 ->where(function ($q) {
                     $q->whereNull('smartca_status')
                         ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
@@ -214,7 +228,7 @@ class QualityCertificateController extends Controller
             default => $query->whereNull('signed_at')
                 ->whereNotIn('status', ['ISSUED', 'REVOKED'])
                 ->where(function ($q) use ($expiredBefore) {
-                    $q->where('status', 'DRAFT')
+                    $q->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL'])
                         ->orWhere('smartca_status', 'PENDING')
                         ->orWhere('smartca_status', 'EXPIRED')
                         ->orWhere(function ($pending) use ($expiredBefore) {
@@ -230,6 +244,7 @@ class QualityCertificateController extends Controller
                     WHEN smartca_status = 'EXPIRED' THEN 0
                     WHEN smartca_status = 'PENDING' AND smartca_requested_at <= ? THEN 0
                     WHEN smartca_status = 'PENDING' THEN 1
+                    WHEN status = 'WAIT_PTN_MANAGER_APPROVAL' THEN 2
                     WHEN status = 'DRAFT' THEN 2
                     WHEN status = 'REJECTED' THEN 3
                     ELSE 4
@@ -241,6 +256,59 @@ class QualityCertificateController extends Controller
             ->withQueryString();
 
         return view('quality_certificates.signing_queue', compact('certificates', 'metrics'));
+    }
+
+    public function readyToSignQueue(Request $request)
+    {
+        $query = QualityCertificate::with([
+            'request.distributionCenter',
+            'request.customer',
+            'request.urgentReason',
+            'creator',
+        ])
+            ->whereNull('signed_at')
+            ->where('status', 'READY_TO_SIGN')
+            ->where(function ($q) {
+                $q->whereNull('smartca_status')
+                    ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+            });
+
+        if ($request->filled('keyword')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('certificate_no', 'like', '%' . $request->keyword . '%')
+                    ->orWhereHas('request', function ($r) use ($request) {
+                        $r->where('request_no', 'like', '%' . $request->keyword . '%')
+                            ->orWhere('invoice_no', 'like', '%' . $request->keyword . '%');
+                    })
+                    ->orWhereHas('request.customer', function ($c) use ($request) {
+                        $c->where('customer_name', 'like', '%' . $request->keyword . '%')
+                            ->orWhere('project_name', 'like', '%' . $request->keyword . '%');
+                    });
+            });
+        }
+
+        if ($request->filled('distribution_center_id')) {
+            $query->whereHas('request', function ($q) use ($request) {
+                $q->where('distribution_center_id', $request->distribution_center_id);
+            });
+        }
+
+        if ($request->boolean('urgent')) {
+            $query->whereHas('request', fn ($q) => $q->where('is_urgent', true));
+        }
+
+        $certificates = $query
+            ->oldest('created_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        $centers = DistributionCenter::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $readyCount = $certificates->total();
+
+        return view('quality_certificates.ready_to_sign', compact('certificates', 'centers', 'readyCount'));
     }
 
     public function show(QualityCertificate $qualityCertificate)
@@ -323,6 +391,37 @@ class QualityCertificateController extends Controller
         return view('quality_certificates.show', compact('qualityCertificate', 'certificateHistoryLogs', 'certificateWorkflowSteps'));
     }
 
+    public function approveForSigning(QualityCertificate $qualityCertificate)
+    {
+        $this->authorizeCenter($qualityCertificate);
+
+        if (!$qualityCertificate->canApproveForSigningQueue()) {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Chỉ đưa vào chờ gửi ký được phiếu đang chờ Trưởng PTN duyệt.');
+        }
+
+        $oldData = $qualityCertificate->toArray();
+
+        $qualityCertificate->update([
+            'status' => 'READY_TO_SIGN',
+            'smartca_status' => null,
+        ]);
+
+        ActivityLogger::log(
+            'Phiếu CNCL',
+            'approve_for_signing',
+            'Trưởng PTN duyệt nội dung và đưa vào danh sách chờ gửi ký: ' . $qualityCertificate->certificate_no,
+            $oldData,
+            $qualityCertificate->fresh()->toArray(),
+            $qualityCertificate
+        );
+
+        return redirect()
+            ->route('quality-certificates.show', $qualityCertificate)
+            ->with('success', 'Đã duyệt nội dung phiếu và đưa vào danh sách chờ gửi ký.');
+    }
+
     public function sign(
         Request $request,
         QualityCertificate $qualityCertificate,
@@ -344,10 +443,22 @@ class QualityCertificateController extends Controller
                 ->with('error', 'Phiếu này đã bị Trưởng PTN trả lại, không thể gửi ký số.');
         }
 
+        if ($qualityCertificate->status === 'REVOKED') {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Phiếu này đã hủy/thu hồi, không thể gửi ký số.');
+        }
+
         if ($qualityCertificate->smartca_status === 'PENDING' && !$this->smartCaPendingExpired($qualityCertificate)) {
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
                 ->with('error', 'Phiếu này đang chờ người ký xác nhận trên VNPT SmartCA. Vui lòng bấm kiểm tra kết quả ký.');
+        }
+
+        if (!$qualityCertificate->canSendSignatureRequest()) {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Chỉ gửi ký được phiếu đang chờ Trưởng PTN duyệt, đã đưa vào chờ gửi ký hoặc giao dịch ký đã quá hạn.');
         }
 
         $smartCaUserId = data_get(Auth::user(), config('services.smartca.user_id_field', 'smartca_user_id'))
@@ -367,6 +478,7 @@ class QualityCertificateController extends Controller
         ]);
 
         $oldData = $qualityCertificate->toArray();
+        $sendDirectFromApproval = $qualityCertificate->isAwaitingManagerApproval();
         $isResendAfterExpired = $qualityCertificate->smartca_status === 'PENDING'
             || $qualityCertificate->smartca_status === 'EXPIRED';
 
@@ -468,6 +580,7 @@ class QualityCertificateController extends Controller
             }
 
             $qualityCertificate->update([
+                'status' => 'SIGN_PENDING',
                 'pdf_path' => $pdfPath,
                 'smartca_status' => 'PENDING',
                 'smartca_transaction_id' => $smartCaResult['transaction_id'],
@@ -491,7 +604,9 @@ class QualityCertificateController extends Controller
             ActivityLogger::log(
                 'Phiếu CNCL',
                 $isResendAfterExpired ? 'smartca_request_resend' : 'smartca_request',
-                ($isResendAfterExpired ? 'Gửi lại yêu cầu ký VNPT SmartCA do giao dịch cũ hết hạn cho phiếu CNCL: ' : 'Gửi yêu cầu ký VNPT SmartCA cho phiếu CNCL: ') . $qualityCertificate->certificate_no,
+                $sendDirectFromApproval && !$isResendAfterExpired
+                    ? 'Trưởng PTN duyệt nội dung và gửi yêu cầu ký VNPT SmartCA cho phiếu CNCL: ' . $qualityCertificate->certificate_no
+                    : (($isResendAfterExpired ? 'Gửi lại yêu cầu ký VNPT SmartCA do giao dịch cũ hết hạn cho phiếu CNCL: ' : 'Gửi yêu cầu ký VNPT SmartCA cho phiếu CNCL: ') . $qualityCertificate->certificate_no),
                 $oldData,
                 $qualityCertificate->fresh()->toArray(),
                 $qualityCertificate
@@ -511,6 +626,80 @@ class QualityCertificateController extends Controller
                 ->route('quality-certificates.show', $qualityCertificate)
                 ->with('error', 'Gửi yêu cầu ký VNPT SmartCA thất bại: ' . $e->getMessage());
         }
+    }
+
+    public function bulkSign(
+        Request $request,
+        SmartCaService $smartCaService,
+        SmartCaPadesService $padesService
+    ) {
+        $data = $request->validate([
+            'certificate_ids' => ['required', 'array', 'min:1', 'max:10'],
+            'certificate_ids.*' => ['integer', 'distinct', 'exists:quality_certificates,id'],
+        ], [
+            'certificate_ids.required' => 'Vui lòng chọn ít nhất một phiếu để gửi ký.',
+            'certificate_ids.max' => 'Mỗi lần chỉ nên gửi tối đa 10 phiếu để kịp xác nhận trên app VNPT SmartCA.',
+        ]);
+
+        $certificates = QualityCertificate::with([
+            'request.distributionCenter',
+            'request.customer',
+            'details.product',
+            'creator',
+        ])
+            ->whereIn('id', $data['certificate_ids'])
+            ->orderBy('created_at')
+            ->get();
+
+        $summary = [
+            'sent' => 0,
+            'skipped' => 0,
+            'failed' => 0,
+        ];
+        $messages = [];
+
+        foreach ($certificates as $certificate) {
+            $this->authorizeCenter($certificate);
+
+            if (!$certificate->canSendSignatureRequest()) {
+                $summary['skipped']++;
+                $messages[] = $certificate->certificate_no . ': trạng thái không cho phép gửi ký.';
+                continue;
+            }
+
+            $beforeStatus = $certificate->fresh()->smartca_status;
+            $this->sign($request, $certificate, $smartCaService, $padesService);
+            $certificate->refresh();
+
+            if ($certificate->smartca_status === 'PENDING' && $certificate->smartca_status !== $beforeStatus) {
+                $summary['sent']++;
+            } elseif ($certificate->smartca_status === 'PENDING') {
+                $summary['sent']++;
+            } else {
+                $summary['failed']++;
+                $messages[] = $certificate->certificate_no . ': chưa gửi được sang VNPT SmartCA.';
+            }
+        }
+
+        $message = 'Gửi ký hàng loạt hoàn tất. Đã gửi: ' . $summary['sent']
+            . ', bỏ qua: ' . $summary['skipped']
+            . ', lỗi: ' . $summary['failed'] . '.';
+
+        if ($messages) {
+            $message .= ' Chi tiết: ' . implode(' | ', array_slice($messages, 0, 5));
+        }
+
+        ActivityLogger::log(
+            'Phiếu CNCL',
+            'bulk_smartca_request',
+            $message,
+            null,
+            $summary
+        );
+
+        return redirect()
+            ->route('quality-certificates.signing-queue', ['status' => 'PENDING'])
+            ->with($summary['failed'] > 0 ? 'error' : 'success', $message);
     }
 
     public function checkSmartCaStatus(
@@ -1134,11 +1323,11 @@ class QualityCertificateController extends Controller
                 'description' => 'Chờ PTN lập phiếu CNCL.',
             ],
             [
-                'title' => 'Trưởng PTN ký số',
+                'title' => 'Trưởng PTN duyệt / gửi ký',
                 'status' => 'pending',
                 'icon' => 'fas fa-file-signature',
-                'time' => $qualityCertificate->smartca_requested_at ?: $logTime(['smartca_request', 'smartca_request_resend']),
-                'description' => 'Chờ gửi yêu cầu ký VNPT SmartCA.',
+                'time' => $qualityCertificate->smartca_requested_at ?: $logTime(['approve_for_signing', 'smartca_request', 'smartca_request_resend']),
+                'description' => 'Chờ Trưởng PTN duyệt nội dung hoặc gửi yêu cầu ký VNPT SmartCA.',
             ],
             [
                 'title' => 'Phát hành / thu hồi',
@@ -1187,6 +1376,12 @@ class QualityCertificateController extends Controller
         } elseif ($qualityCertificate->smartca_status === 'PENDING') {
             $steps[3]['status'] = 'current';
             $steps[3]['description'] = 'Đang chờ Trưởng PTN xác nhận trên app VNPT SmartCA.';
+        } elseif ($qualityCertificate->status === 'READY_TO_SIGN') {
+            $steps[3]['status'] = 'current';
+            $steps[3]['description'] = 'Trưởng PTN đã duyệt nội dung, phiếu đang nằm trong danh sách chờ gửi ký.';
+        } elseif ($qualityCertificate->isAwaitingManagerApproval()) {
+            $steps[3]['status'] = 'current';
+            $steps[3]['description'] = 'Chờ Trưởng PTN kiểm tra nội dung phiếu.';
         } else {
             $steps[3]['status'] = 'current';
             $steps[3]['description'] = 'Chờ Trưởng PTN kiểm tra và gửi yêu cầu ký số.';
@@ -1207,7 +1402,7 @@ class QualityCertificateController extends Controller
         return $steps;
     }
 
-    private function processSmartCaStatus(
+    public function processSmartCaStatus(
         QualityCertificate $qualityCertificate,
         SmartCaService $smartCaService,
         SmartCaPadesService $padesService
@@ -1232,6 +1427,7 @@ class QualityCertificateController extends Controller
                     || $this->smartCaPendingExpired($qualityCertificate);
 
                 $qualityCertificate->update([
+                    'status' => $expired ? 'SIGN_EXPIRED' : 'SIGN_PENDING',
                     'smartca_status' => $expired ? 'EXPIRED' : 'PENDING',
                     'pades_status' => $expired && $qualityCertificate->pades_status === 'PENDING'
                         ? 'EXPIRED'
@@ -1332,7 +1528,7 @@ class QualityCertificateController extends Controller
             $qualityCertificate->update([
                 'signed_at' => now(),
                 'status' => 'ISSUED',
-                'signed_by' => Auth::user()->name,
+                'signed_by' => Auth::user()?->name ?: ($qualityCertificate->signed_by ?: 'VNPT SmartCA'),
                 'pdf_path' => $signedPdfPath,
                 'smartca_status' => 'SIGNED',
                 'smartca_signature_value' => $signType === 'file' ? null : data_get($signature, 'signature_value'),
@@ -1494,6 +1690,7 @@ class QualityCertificateController extends Controller
     private function markSmartCaExpired(QualityCertificate $qualityCertificate, array $oldData): void
     {
         $qualityCertificate->update([
+            'status' => 'SIGN_EXPIRED',
             'smartca_status' => 'EXPIRED',
             'pades_status' => $qualityCertificate->pades_status === 'PENDING'
                 ? 'EXPIRED'

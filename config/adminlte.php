@@ -406,9 +406,15 @@ return [
             'can'  => 'certificate.view',
         ],
         [
-            'text' => 'Trưởng PTN duyệt ký',
+            'text' => 'Trưởng PTN duyệt',
             'url'  => 'quality-certificates/signing-queue',
             'icon' => 'fas fa-user-check',
+            'can'  => 'certificate.sign',
+        ],
+        [
+            'text' => 'Phiếu chờ gửi ký',
+            'url'  => 'quality-certificates/ready-to-sign',
+            'icon' => 'fas fa-paper-plane',
             'can'  => 'certificate.sign',
         ],
         [

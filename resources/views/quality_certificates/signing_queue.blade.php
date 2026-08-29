@@ -157,9 +157,13 @@
 @endif
 
 <div class="signing-metric-grid">
-    <a class="signing-metric warning" href="{{ route('quality-certificates.signing-queue', ['status' => 'READY']) }}">
+    <a class="signing-metric warning" href="{{ route('quality-certificates.ready-to-sign') }}">
         <strong>{{ $metrics['ready'] ?? 0 }}</strong>
         <span>Chờ gửi ký</span>
+    </a>
+    <a class="signing-metric" href="{{ route('quality-certificates.signing-queue', ['status' => 'WAIT_APPROVAL']) }}">
+        <strong>{{ $metrics['waiting_approval'] ?? 0 }}</strong>
+        <span>Chờ Trưởng PTN duyệt</span>
     </a>
     <a class="signing-metric" href="{{ route('quality-certificates.signing-queue', ['status' => 'PENDING']) }}">
         <strong>{{ $metrics['pending'] ?? 0 }}</strong>
@@ -187,7 +191,7 @@
     $currentStatus = request('status', 'ACTIONABLE');
     $tabs = [
         'ACTIONABLE' => 'Cần xử lý',
-        'READY' => 'Chờ gửi ký',
+        'WAIT_APPROVAL' => 'Chờ duyệt',
         'PENDING' => 'Đang chờ app',
         'EXPIRED' => 'Hết hạn',
         'URGENT' => 'Yêu cầu gấp',
@@ -256,6 +260,9 @@
             <div class="text-muted small mt-1">Ưu tiên phiếu hết hạn, đang chờ app, yêu cầu gấp và phiếu cũ hơn.</div>
         </div>
         <div class="card-tools">
+            <a href="{{ route('quality-certificates.ready-to-sign') }}" class="btn btn-sm btn-outline-success mr-2">
+                <i class="fas fa-paper-plane"></i> Mở màn chờ gửi ký
+            </a>
             <span class="badge badge-info">Tổng số: {{ $certificates->total() }}</span>
         </div>
     </div>
@@ -284,7 +291,7 @@
                         $expired = $certificate->smartca_status === 'EXPIRED'
                             || ($certificate->smartca_status === 'PENDING' && $expiresAt && $expiresAt->lte(now()));
                         $statusClass = 'badge-warning';
-                        $statusIcon = 'fas fa-clock';
+                        $statusIcon = 'fas fa-paper-plane';
                         $statusText = 'Chờ gửi ký';
                         $rowClass = 'signing-row-ready';
 
@@ -297,6 +304,11 @@
                             $statusClass = 'badge-success';
                             $statusIcon = 'fas fa-check';
                             $statusText = 'Đã ký';
+                            $rowClass = '';
+                        } elseif ($certificate->isAwaitingManagerApproval()) {
+                            $statusClass = 'badge-info';
+                            $statusIcon = 'fas fa-user-check';
+                            $statusText = 'Chờ Trưởng PTN duyệt';
                             $rowClass = '';
                         } elseif ($expired) {
                             $statusClass = 'badge-danger';
@@ -384,12 +396,25 @@
                                             </form>
                                         @endif
                                     @else
+                                        @if($certificate->canApproveForSigningQueue())
+                                            <form action="{{ route('quality-certificates.approve-for-signing', $certificate) }}"
+                                                  method="POST"
+                                                  class="d-inline"
+                                                  data-loading-lock
+                                                  data-loading-message="Đang đưa phiếu vào danh sách chờ gửi ký. Vui lòng chờ..."
+                                                  onsubmit="window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
+                                                @csrf
+                                                <button class="btn btn-sm btn-primary" title="Duyệt đưa vào chờ gửi ký">
+                                                    <i class="fas fa-paper-plane"></i>
+                                                </button>
+                                            </form>
+                                        @endif
                                         <form action="{{ route('quality-certificates.sign', $certificate) }}"
                                               method="POST"
                                               class="d-inline"
                                               data-loading-lock
                                               data-loading-message="Đang gửi yêu cầu ký sang VNPT SmartCA. Vui lòng chờ..."
-                                              onsubmit="if (!confirm('Gửi yêu cầu ký phiếu này sang VNPT SmartCA?')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
+                                              onsubmit="if (!confirm('{{ $certificate->isAwaitingManagerApproval() ? 'Gửi ký trực tiếp phiếu này? Thao tác này đồng thời xác nhận Trưởng PTN đã duyệt nội dung.' : 'Gửi yêu cầu ký phiếu này sang VNPT SmartCA?' }}')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
                                             @csrf
                                             <button class="btn btn-sm btn-success" title="Gửi ký SmartCA">
                                                 <i class="fas fa-file-signature"></i>

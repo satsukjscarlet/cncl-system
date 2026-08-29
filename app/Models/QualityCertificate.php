@@ -9,6 +9,15 @@ class QualityCertificate extends Model
 {
     use SoftDeletes;
 
+    public const STATUS_DRAFT = 'DRAFT';
+    public const STATUS_WAIT_PTN_MANAGER_APPROVAL = 'WAIT_PTN_MANAGER_APPROVAL';
+    public const STATUS_READY_TO_SIGN = 'READY_TO_SIGN';
+    public const STATUS_SIGN_PENDING = 'SIGN_PENDING';
+    public const STATUS_SIGN_EXPIRED = 'SIGN_EXPIRED';
+    public const STATUS_ISSUED = 'ISSUED';
+    public const STATUS_REJECTED = 'REJECTED';
+    public const STATUS_REVOKED = 'REVOKED';
+
     protected $fillable = [
         'certificate_no',
         'status',
@@ -121,15 +130,15 @@ class QualityCertificate extends Model
 
     public function displayStatusMeta(): array
     {
-        if ($this->status === 'REVOKED') {
+        if ($this->status === self::STATUS_REVOKED) {
             return ['class' => 'badge-danger', 'text' => 'Đã hủy / thu hồi', 'icon' => 'fas fa-ban'];
         }
 
-        if ($this->status === 'REJECTED') {
+        if ($this->status === self::STATUS_REJECTED) {
             return ['class' => 'badge-secondary', 'text' => 'Trưởng PTN trả lại', 'icon' => 'fas fa-undo'];
         }
 
-        if ($this->signed_at || $this->status === 'ISSUED') {
+        if ($this->signed_at || $this->status === self::STATUS_ISSUED) {
             return ['class' => 'badge-success', 'text' => 'Đã ký / phát hành', 'icon' => 'fas fa-check'];
         }
 
@@ -141,11 +150,56 @@ class QualityCertificate extends Model
             return ['class' => 'badge-primary', 'text' => 'Đang chờ ký số', 'icon' => 'fas fa-mobile-alt'];
         }
 
-        if ($this->status === 'DRAFT') {
-            return ['class' => 'badge-warning', 'text' => 'Chờ Trưởng PTN ký', 'icon' => 'fas fa-pen-nib'];
+        if ($this->status === self::STATUS_READY_TO_SIGN) {
+            return ['class' => 'badge-warning', 'text' => 'Chờ gửi ký số', 'icon' => 'fas fa-paper-plane'];
+        }
+
+        if ($this->isAwaitingManagerApproval()) {
+            return ['class' => 'badge-info', 'text' => 'Chờ Trưởng PTN duyệt', 'icon' => 'fas fa-user-check'];
+        }
+
+        if ($this->status === self::STATUS_SIGN_PENDING) {
+            return ['class' => 'badge-primary', 'text' => 'Đang chờ ký số', 'icon' => 'fas fa-mobile-alt'];
+        }
+
+        if ($this->status === self::STATUS_SIGN_EXPIRED) {
+            return ['class' => 'badge-danger', 'text' => 'Quá hạn ký số', 'icon' => 'fas fa-hourglass-end'];
         }
 
         return ['class' => 'badge-light', 'text' => $this->status ?: '-', 'icon' => 'fas fa-circle'];
+    }
+
+    public function isAwaitingManagerApproval(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_WAIT_PTN_MANAGER_APPROVAL,
+            self::STATUS_DRAFT, // Trạng thái cũ của dữ liệu trước khi tách bước duyệt.
+        ], true)
+            && !$this->signed_at
+            && !in_array($this->smartca_status, ['PENDING', 'SIGNED'], true);
+    }
+
+    public function isReadyToSendSignature(): bool
+    {
+        return $this->status === self::STATUS_READY_TO_SIGN
+            && !$this->signed_at
+            && !in_array($this->smartca_status, ['PENDING', 'SIGNED'], true);
+    }
+
+    public function canSendSignatureRequest(): bool
+    {
+        return !$this->signed_at
+            && !in_array($this->status, [self::STATUS_REJECTED, self::STATUS_REVOKED, self::STATUS_ISSUED], true)
+            && (
+                $this->isAwaitingManagerApproval()
+                || $this->isReadyToSendSignature()
+                || $this->smartcaStatusExpired()
+            );
+    }
+
+    public function canApproveForSigningQueue(): bool
+    {
+        return $this->isAwaitingManagerApproval();
     }
 
     public function smartcaStatusExpired(): bool

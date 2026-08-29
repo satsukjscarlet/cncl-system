@@ -53,27 +53,27 @@ class RoleWorkspaceAccessTest extends TestCase
             ],
             'lanhdao' => [
                 'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/reports/summary', '/activity-logs'],
-                'deny' => ['/users', '/role-permissions', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue'],
+                'deny' => ['/users', '/role-permissions', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'trungtam_np' => [
                 'allow' => ['/dashboard', '/customers', '/certificate-requests', '/quality-certificates'],
-                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue'],
+                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'dvkh' => [
                 'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/dvkh/requests'],
-                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/ptn/requests', '/quality-certificates/signing-queue'],
+                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'ptn' => [
                 'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/ptn/requests', '/ptn/requests/direct-create'],
-                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/quality-certificates/signing-queue'],
+                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'truongptn' => [
-                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/quality-certificates/signing-queue', '/print-logs'],
+                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign', '/print-logs'],
                 'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/ptn/requests'],
             ],
             'viewer' => [
                 'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates'],
-                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue'],
+                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
         ];
 

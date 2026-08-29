@@ -73,7 +73,10 @@
 
         @can('certificate.sign')
             <a href="{{ route('quality-certificates.signing-queue') }}" class="btn btn-outline-dark">
-                <i class="fas fa-user-check"></i> Hàng đợi ký
+                <i class="fas fa-user-check"></i> Duyệt ký
+            </a>
+            <a href="{{ route('quality-certificates.ready-to-sign') }}" class="btn btn-outline-success">
+                <i class="fas fa-paper-plane"></i> Chờ gửi ký
             </a>
         @endcan
     </div>

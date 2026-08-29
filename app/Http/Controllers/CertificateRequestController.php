@@ -1120,7 +1120,7 @@ class CertificateRequestController extends Controller
             $query->whereHas('qualityCertificates', function ($certificate) {
                 $certificate
                     ->whereNull('signed_at')
-                    ->where('status', 'DRAFT')
+                    ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL', 'READY_TO_SIGN'])
                     ->where(function ($q) {
                         $q->whereNull('smartca_status')
                             ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
@@ -1188,7 +1188,7 @@ class CertificateRequestController extends Controller
                             ->whereNull('signed_at')
                             ->where(function ($statusQuery) use ($expiredBefore) {
                                 $statusQuery
-                                    ->where('status', 'DRAFT')
+                                    ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL', 'READY_TO_SIGN'])
                                     ->orWhere('smartca_status', 'PENDING')
                                     ->orWhere('smartca_status', 'EXPIRED')
                                     ->orWhere(function ($pending) use ($expiredBefore) {

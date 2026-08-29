@@ -43,7 +43,7 @@
             margin: 0;
             color: #000;
             font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
-            font-size: 12pt;
+            font-size: 13pt;
         }
 
         * {
@@ -57,11 +57,8 @@
 
         .page {
             width: 100%;
-            page-break-after: always;
-        }
-
-        .page:last-child {
-            page-break-after: auto;
+            height: 650pt;
+            position: relative;
         }
 
         .print-area {
@@ -70,7 +67,7 @@
 
         .cert-no {
             text-align: center;
-            font-size: 12pt;
+            font-size: 13pt;
             margin-top: 14pt;
             margin-bottom: 4pt;
         }
@@ -124,19 +121,19 @@
             font-weight: bold;
             text-align: center;
             vertical-align: middle;
-            padding: 5px 3px;
+            padding: 4px 3px;
             line-height: 1.15;
-            font-size: 12px;
+            font-size: 12pt;
         }
 
         .product-table td {
             border-left: 1pt solid #111;
             border-right: 1pt solid #111;
             border-bottom: 1px solid #d6d6d6;
-            height: 21px;
-            padding: 3px 4px;
+            height: 18pt;
+            padding: 2px 4px;
             line-height: 1.18;
-            font-size: 12px;
+            font-size: 12pt;
             vertical-align: top;
         }
 
@@ -169,9 +166,11 @@
         }
 
         .signer-name {
-            margin-top: 106pt;
-            margin-left: 86pt;
-            font-size: 12pt;
+            position: absolute;
+            left: 75pt;
+            top: 630pt;
+            margin: 0;
+            font-size: 13pt;
             font-weight: bold;
         }
     </style>
@@ -180,11 +179,51 @@
 <body>
     @php
         $details = $certificate->details->values();
-        $rowsPerPage = 13;
-        $pages = $details->chunk($rowsPerPage);
+        $pageCapacity = 10;
+        $pages = collect();
+        $pageUnits = [];
+        $currentPage = collect();
+        $currentUnits = 0;
+
+        $rowUnit = static function ($detail) {
+            $productNameLength = mb_strlen((string) ($detail->product->product_name ?? ''));
+            $technicalLength = mb_strlen((string) $detail->technical_requirements);
+            $standardLength = mb_strlen((string) $detail->quality_standard);
+            $nominalLength = mb_strlen((string) $detail->nominal_size);
+
+            $estimatedLines = max(
+                1,
+                (int) ceil($productNameLength / 52),
+                (int) ceil($technicalLength / 24),
+                (int) ceil($standardLength / 32),
+                (int) ceil($nominalLength / 18)
+            );
+
+            return min(3, $estimatedLines);
+        };
+
+        foreach ($details as $detail) {
+            $units = $rowUnit($detail);
+
+            if ($currentPage->isNotEmpty() && ($currentUnits + $units) > $pageCapacity) {
+                $pages->push($currentPage);
+                $pageUnits[] = $currentUnits;
+                $currentPage = collect();
+                $currentUnits = 0;
+            }
+
+            $currentPage->push($detail);
+            $currentUnits += $units;
+        }
+
+        if ($currentPage->isNotEmpty()) {
+            $pages->push($currentPage);
+            $pageUnits[] = $currentUnits;
+        }
 
         if ($pages->isEmpty()) {
             $pages = collect([collect()]);
+            $pageUnits[] = 0;
         }
 
         $customer = $certificate->request->customer ?? null;
@@ -193,17 +232,24 @@
             : '';
         $signerName = 'Vũ Thị Diệu Thúy';
 
-        $formatQuantity = static function ($quantity) {
+        $formatQuantity = static function ($quantity, $unit = null) {
             if ($quantity === null || $quantity === '') {
                 return '';
             }
 
-            return rtrim(rtrim(number_format((float) $quantity, 2, '.', ''), '0'), '.');
+            $formatted = rtrim(rtrim(number_format((float) $quantity, 2, '.', ''), '0'), '.');
+            $unit = trim((string) $unit);
+
+            return $unit !== '' ? $formatted . ' (' . $unit . ')' : $formatted;
         };
     @endphp
 
     @foreach ($pages as $pageIndex => $pageDetails)
-        <div class="page">
+        @php
+            $rowOffset = $pages->take($pageIndex)->sum(fn ($page) => $page->count());
+        @endphp
+
+        <div class="page" style="{{ $loop->last ? '' : 'page-break-after: always;' }}">
             <div class="print-area">
                 <div class="cert-no">Số {{ $certificate->certificate_no }}</div>
 
@@ -246,25 +292,15 @@
                     <tbody>
                         @foreach ($pageDetails as $detail)
                             <tr>
-                                <td class="text-center">{{ $pageIndex * $rowsPerPage + $loop->iteration }}</td>
+                                <td class="text-center">{{ $rowOffset + $loop->iteration }}</td>
                                 <td>{{ $detail->product->product_name ?? '' }}</td>
-                                <td class="text-center">{{ $formatQuantity($detail->quantity) }}</td>
+                                <td class="text-center">{{ $formatQuantity($detail->quantity, $detail->product->unit ?? null) }}</td>
                                 <td class="text-center">{{ $detail->nominal_size }}</td>
                                 <td class="text-center">{{ $detail->technical_requirements }}</td>
                                 <td class="text-center">{{ $detail->quality_standard }}</td>
                             </tr>
                         @endforeach
 
-                        @for ($i = $pageDetails->count(); $i < $rowsPerPage; $i++)
-                            <tr>
-                                <td>&nbsp;</td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                            </tr>
-                        @endfor
                     </tbody>
                 </table>
 

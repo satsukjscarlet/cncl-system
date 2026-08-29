@@ -304,9 +304,17 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:certificate.sign')
         ->name('quality-certificates.signing-queue');
 
+    Route::get('quality-certificates/ready-to-sign', [QualityCertificateController::class, 'readyToSignQueue'])
+        ->middleware('permission:certificate.sign')
+        ->name('quality-certificates.ready-to-sign');
+
     Route::post('quality-certificates/bulk-smartca-status', [QualityCertificateController::class, 'bulkCheckSmartCaStatus'])
         ->middleware('permission:certificate.sign')
         ->name('quality-certificates.bulk-smartca-status');
+
+    Route::post('quality-certificates/bulk-sign', [QualityCertificateController::class, 'bulkSign'])
+        ->middleware('permission:certificate.sign')
+        ->name('quality-certificates.bulk-sign');
 
     Route::post('quality-certificates/bulk-request-reissue', [QualityCertificateController::class, 'bulkRequestReissue'])
         ->middleware('permission:request.create')
@@ -323,6 +331,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('quality-certificates/{qualityCertificate}/sign', [QualityCertificateController::class, 'sign'])
         ->middleware('permission:certificate.sign')
         ->name('quality-certificates.sign');
+
+    Route::post('quality-certificates/{qualityCertificate}/approve-for-signing', [QualityCertificateController::class, 'approveForSigning'])
+        ->middleware('permission:certificate.sign')
+        ->name('quality-certificates.approve-for-signing');
 
     Route::post('quality-certificates/{qualityCertificate}/smartca-status', [QualityCertificateController::class, 'checkSmartCaStatus'])
         ->middleware('permission:certificate.sign')

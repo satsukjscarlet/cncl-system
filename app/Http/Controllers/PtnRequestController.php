@@ -366,7 +366,7 @@ class PtnRequestController extends Controller
         $certificate = QualityCertificate::create([
             'certificate_no' => $this->generateCertificateNo(),
             'certificate_request_id' => $certificateRequest->id,
-            'status' => 'DRAFT',
+            'status' => 'WAIT_PTN_MANAGER_APPROVAL',
             'replaces_certificate_id' => $certificateRequest->request_type === 'REISSUE'
                 ? $certificateRequest->reissue_of_certificate_id
                 : null,

@@ -65,26 +65,26 @@
         }
 
         .logo-cell {
-            width: 18%;
+            width: 16%;
         }
 
         .logo {
-            width: 112px;
+            width: 108px;
             margin-top: 3px;
         }
 
         .brand-cell {
-            width: 64%;
+            width: 68%;
             text-align: center;
-            padding-top: 7px;
+            padding-top: 5px;
         }
 
         .company-title {
             color: #d71920;
             font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
-            font-size: 15.7px;
-            font-weight: bold;
-            line-height: 1.18;
+            font-size: 17.2px;
+            font-weight: 700;
+            line-height: 1.12;
             text-transform: uppercase;
             white-space: nowrap;
         }
@@ -92,15 +92,16 @@
         .company-subtitle {
             color: #d71920;
             font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
-            font-size: 13.5px;
-            font-weight: bold;
-            line-height: 1.18;
+            font-size: 14.7px;
+            font-weight: 700;
+            line-height: 1.12;
             text-transform: uppercase;
             margin-top: 3px;
+            white-space: nowrap;
         }
 
         .iso-cell {
-            width: 18%;
+            width: 16%;
             text-align: center;
             color: #0069b4;
             font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
@@ -333,18 +334,62 @@
             white-space: nowrap;
             font-size: 9.5px;
         }
+
+        .certificate-page {
+            page-break-after: auto;
+        }
+
+        .continued-note {
+            margin-top: 8px;
+            color: #666;
+            font-size: 10.5px;
+            font-style: italic;
+            text-align: right;
+        }
+
+        .page-number {
+            color: #555;
+            font-size: 10px;
+            text-align: right;
+            margin-top: 5px;
+        }
     </style>
 </head>
 
 <body>
 @php
     $pcnNo = str_pad((string) $certificate->id, 7, '0', STR_PAD_LEFT);
-    $detailsCount = $certificate->details->count();
-    $minimumRows = 9;
-    $blankRows = max(0, $minimumRows - $detailsCount);
+    $details = $certificate->details->values();
+    $rowsPerPage = 13;
+    $pages = $details->chunk($rowsPerPage);
+
+    if ($pages->isEmpty()) {
+        $pages = collect([collect()]);
+    }
+
+    $totalPages = $pages->count();
     $signedBy = $certificate->signed_by ?: 'VNPT SmartCA';
     $electronicLookupUrl = route('quality-certificates.show', $certificate);
+    $formatQuantity = static function ($quantity, $unit = null) {
+        if ($quantity === null || $quantity === '') {
+            return '';
+        }
+
+        $formatted = rtrim(rtrim(number_format((float) $quantity, 2, '.', ''), '0'), '.');
+        $unit = trim((string) $unit);
+
+        return $unit !== '' ? $formatted . ' (' . $unit . ')' : $formatted;
+    };
 @endphp
+
+@foreach ($pages as $pageIndex => $pageDetails)
+    @php
+        $isLastPage = $loop->last;
+        $blankRows = max(0, $rowsPerPage - $pageDetails->count());
+        $rowOffset = $pages->take($pageIndex)->sum(fn ($page) => $page->count());
+    @endphp
+
+    <div class="certificate-page" style="{{ $isLastPage ? '' : 'page-break-after: always;' }}">
 
     <table class="header-table">
         <tr>
@@ -405,11 +450,11 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($certificate->details as $detail)
+            @foreach ($pageDetails as $detail)
                 <tr>
-                    <td>{{ $loop->iteration }}</td>
+                    <td>{{ $rowOffset + $loop->iteration }}</td>
                     <td>{{ $detail->product->product_name ?? '' }}</td>
-                    <td>{{ rtrim(rtrim(number_format($detail->quantity, 2, '.', ''), '0'), '.') }}</td>
+                    <td>{{ $formatQuantity($detail->quantity, $detail->product->unit ?? null) }}</td>
                     <td>{{ $detail->nominal_size }}</td>
                     <td>{{ $detail->technical_requirements }}</td>
                     <td>{{ $detail->quality_standard }}</td>
@@ -429,13 +474,19 @@
         </tbody>
     </table>
 
+    @if ($isLastPage)
     <div class="note">
         <strong>Ghi chú:</strong> Phiếu này thay thế cho phiếu chứng nhận xuất xưởng hàng hóa
         <br>
         <span class="note-indent">Sản phẩm đạt yêu cầu theo tiêu chuẩn sản phẩm công ty đã công bố</span>
     </div>
+    @else
+        <div class="continued-note">Còn tiếp trang sau</div>
+    @endif
 
-    @if ($certificate->signed_at && !($hardCopy ?? false))
+    <div class="page-number">{{ $pageIndex + 1 }}/{{ $totalPages }}</div>
+
+    @if ($isLastPage && $certificate->signed_at && !($hardCopy ?? false))
         <div class="signature-area">
             <div class="digital-signature">
                 <div class="signature-title">Phi&#7871;u &#273;&#432;&#7907;c k&#253; &#273;i&#7879;n t&#7917;</div>
@@ -451,6 +502,9 @@
             </div>
         </div>
     @endif
+
+    </div>
+@endforeach
 
     @if (!($hardCopy ?? false))
         <div class="electronic-trace">

@@ -112,13 +112,13 @@ class CertificateWorkflowTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame('PTN_PROCESSING', $certificateRequest->status);
-        $this->assertSame('DRAFT', $certificate->status);
+        $this->assertSame('WAIT_PTN_MANAGER_APPROVAL', $certificate->status);
         $this->assertNull($certificate->signed_at);
         $this->assertCount(1, $certificate->details);
         $this->assertSame('DN110', $certificate->details->first()->nominal_size);
         $this->assertSame('AC-TCVN-PVC', $certificate->details->first()->quality_standard);
         $this->assertSame(
-            'Chờ Trưởng PTN ký',
+            'Chờ Trưởng PTN duyệt',
             $certificateRequest->fresh('qualityCertificate')->displayStatusMeta()['text']
         );
         $this->assertSame(1, UserNotification::where('user_id', $truongPtn->id)
@@ -137,7 +137,18 @@ class CertificateWorkflowTest extends TestCase
             ->assertSee($certificate->certificate_no);
 
         $this->actingAs($truongPtn)
-            ->get(route('quality-certificates.signing-queue', ['status' => 'READY']))
+            ->get(route('quality-certificates.signing-queue', ['status' => 'WAIT_APPROVAL']))
+            ->assertOk()
+            ->assertSee($certificate->certificate_no);
+
+        $this->actingAs($truongPtn)
+            ->post(route('quality-certificates.approve-for-signing', $certificate))
+            ->assertRedirect(route('quality-certificates.show', $certificate));
+
+        $this->assertSame('READY_TO_SIGN', $certificate->fresh()->status);
+
+        $this->actingAs($truongPtn)
+            ->get(route('quality-certificates.ready-to-sign'))
             ->assertOk()
             ->assertSee($certificate->certificate_no);
     }

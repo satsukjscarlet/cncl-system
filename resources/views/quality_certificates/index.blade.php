@@ -70,7 +70,7 @@
                 <div class="form-group">
                     <label>Trạng thái ký</label>
                     <select name="status" class="form-control select2">
-                        <option value="SIGN_READY" {{ request('status') == 'SIGN_READY' ? 'selected' : '' }}>Chờ Trưởng PTN ký</option>
+                        <option value="SIGN_READY" {{ request('status') == 'SIGN_READY' ? 'selected' : '' }}>Chờ duyệt / chờ gửi ký</option>
                         <option value="SMARTCA_PENDING" {{ request('status') == 'SMARTCA_PENDING' ? 'selected' : '' }}>Đang chờ ký số</option>
                         <option value="">Tất cả</option>
                         <option value="UNSIGNED" {{ request('status') == 'UNSIGNED' ? 'selected' : '' }}>Chưa ký</option>
@@ -140,6 +140,9 @@
 
             <tbody>
                 @forelse($certificates as $certificate)
+                    @php
+                        $statusMeta = $certificate->displayStatusMeta();
+                    @endphp
                     <tr>
                         @can('request.create')
                             <td class="text-center">
@@ -199,31 +202,9 @@
                         <td>{{ $certificate->signed_at ? $certificate->signed_at->format('d/m/Y H:i') : '-' }}</td>
 
                         <td>
-                            @if($certificate->status === 'REVOKED')
-                                <span class="badge badge-danger">
-                                    <i class="fas fa-ban"></i> Đã hủy/thu hồi
-                                </span>
-                            @elseif($certificate->status === 'REJECTED')
-                                <span class="badge badge-secondary">
-                                    <i class="fas fa-undo"></i> Đã trả lại
-                                </span>
-                            @elseif($certificate->smartca_status === 'EXPIRED' || ($certificate->smartca_status === 'PENDING' && $certificate->smartca_requested_at && $certificate->smartca_requested_at->copy()->addMinutes(max(1, (int) config('services.smartca.pending_ttl_minutes', 5)))->lte(now())))
-                                <span class="badge badge-danger">
-                                    <i class="fas fa-hourglass-end"></i> Hết hạn ký
-                                </span>
-                            @elseif($certificate->smartca_status === 'PENDING')
-                                <span class="badge badge-primary">
-                                    <i class="fas fa-hourglass-half"></i> Chờ ký
-                                </span>
-                            @elseif($certificate->signed_at)
-                                <span class="badge badge-success">
-                                    <i class="fas fa-check"></i> Đã ký/phát hành
-                                </span>
-                            @else
-                                <span class="badge badge-warning">
-                                    <i class="fas fa-clock"></i> Chưa ký
-                                </span>
-                            @endif
+                            <span class="badge {{ $statusMeta['class'] }}">
+                                <i class="{{ $statusMeta['icon'] }}"></i> {{ $statusMeta['text'] }}
+                            </span>
                         </td>
 
                         <td class="text-center">
