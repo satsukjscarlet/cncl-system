@@ -3,6 +3,19 @@
 @section('title', 'Phân quyền')
 @section('css')
     <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260611-3') }}">
+    <style>
+        .permission-label {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .permission-code {
+            color: #8a96a3;
+            font-size: 11px;
+            line-height: 1.1;
+        }
+    </style>
 @stop
 
 @section('content_header')
@@ -43,10 +56,11 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h3 class="card-title mb-0">
-                                <i class="fas fa-user-shield"></i> {{ $role->name }}
+                                <i class="fas fa-user-shield"></i> {{ $roleLabels[$role->name] ?? $role->name }}
                             </h3>
                             <div class="text-muted small mt-1">
                                 {{ count($assigned) }} quyền đang gán
+                                <span class="ml-1">({{ $role->name }})</span>
                             </div>
                         </div>
 
@@ -123,9 +137,12 @@
                                                         {{ in_array($permission['name'], $assigned, true) ? 'checked' : '' }}
                                                         {{ $isAdmin ? 'disabled' : '' }}>
                                                     <label class="custom-control-label"
-                                                        for="role-{{ $role->id }}-permission-{{ $permission['name'] }}">
-                                                        {{ $permission['label'] }}
-                                                        <span class="text-muted small">({{ $permission['name'] }})</span>
+                                                        for="role-{{ $role->id }}-permission-{{ $permission['name'] }}"
+                                                        title="Mã quyền hệ thống: {{ $permission['name'] }}">
+                                                        <span class="permission-label">
+                                                            <span>{{ $permission['label'] }}</span>
+                                                            <span class="permission-code">Mã quyền: {{ $permission['name'] }}</span>
+                                                        </span>
                                                     </label>
                                                 </div>
                                             @endforeach

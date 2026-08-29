@@ -14,8 +14,9 @@ class RolePermissionController extends Controller
         $roles = Role::with('permissions')->orderBy('name')->get();
         $permissions = Permission::orderBy('name')->get();
         $permissionGroups = $this->permissionGroups($permissions);
+        $roleLabels = $this->roleLabels();
 
-        return view('role_permissions.index', compact('roles', 'permissionGroups'));
+        return view('role_permissions.index', compact('roles', 'permissionGroups', 'roleLabels'));
     }
 
     public function update(Request $request, Role $role)
@@ -75,6 +76,7 @@ class RolePermissionController extends Controller
             'product_group' => 'Nhóm sản phẩm',
             'product' => 'Sản phẩm',
             'quality_standard' => 'Tiêu chuẩn chất lượng',
+            'urgent_reason' => 'Lý do yêu cầu gấp',
             'customer' => 'Khách hàng - Công trình',
             'request' => 'Yêu cầu cấp phiếu',
             'dvkh' => 'DVKH',
@@ -120,6 +122,11 @@ class RolePermissionController extends Controller
             'quality_standard.import' => 'Import tiêu chuẩn chất lượng',
             'quality_standard.export' => 'Export tiêu chuẩn chất lượng',
 
+            'urgent_reason.view' => 'Xem danh mục lý do gấp',
+            'urgent_reason.create' => 'Thêm lý do gấp',
+            'urgent_reason.update' => 'Sửa lý do gấp',
+            'urgent_reason.delete' => 'Ngừng sử dụng lý do gấp',
+
             'customer.view' => 'Xem khách hàng - công trình',
             'customer.create' => 'Thêm khách hàng - công trình',
             'customer.update' => 'Sửa khách hàng - công trình',
@@ -164,6 +171,19 @@ class RolePermissionController extends Controller
 
             'role_permission.manage' => 'Quản lý phân quyền',
             'log.view' => 'Xem nhật ký',
+        ];
+    }
+
+    private function roleLabels(): array
+    {
+        return [
+            'Admin' => 'Quản trị viên',
+            'LanhDao' => 'Lãnh đạo',
+            'TrungTam' => 'Trung tâm phân phối',
+            'DVKH' => 'Dịch vụ khách hàng',
+            'PTN' => 'Phòng thử nghiệm',
+            'TruongPTN' => 'Trưởng phòng thử nghiệm',
+            'Viewer' => 'Chỉ xem',
         ];
     }
 }

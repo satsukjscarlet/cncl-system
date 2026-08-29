@@ -10,6 +10,23 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-08-29
 
+### Phân quyền - Việt hóa tên quyền trên giao diện
+
+File chính:
+- `app/Http/Controllers/RolePermissionController.php`
+- `resources/views/role_permissions/index.blade.php`
+
+Nội dung:
+- Bổ sung tên tiếng Việt cho nhóm quyền `Lý do yêu cầu gấp`.
+- Bổ sung tên tiếng Việt cho các quyền xem/thêm/sửa/ngừng sử dụng lý do gấp.
+- Bổ sung tên tiếng Việt cho các vai trò: Quản trị viên, Lãnh đạo, Trung tâm phân phối, DVKH, PTN, Trưởng PTN, Chỉ xem.
+- Màn phân quyền hiển thị nhãn tiếng Việt làm chính, mã quyền kỹ thuật chỉ còn là dòng nhỏ để phục vụ kiểm tra khi cần.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
 ### Windows scheduler - file gọi Laravel schedule
 
 File chính:
