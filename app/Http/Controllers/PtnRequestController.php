@@ -218,6 +218,51 @@ class PtnRequestController extends Controller
             ->with('error', 'Luồng hiện tại không dùng bước trung gian riêng. Vui lòng bấm Lập phiếu CNCL để tạo phiếu từ yêu cầu này.');
     }
 
+    public function returnToDvkh(Request $request, CertificateRequest $certificateRequest)
+    {
+        $this->authorizePtnRequest($certificateRequest);
+
+        if ($certificateRequest->status !== 'WAIT_PTN') {
+            return redirect()
+                ->route('ptn.requests.show', $certificateRequest)
+                ->with('error', 'Chỉ trả lại DVKH khi yêu cầu đang ở trạng thái Chờ PTN lập phiếu.');
+        }
+
+        if ($this->hasActiveQualityCertificate($certificateRequest)) {
+            return redirect()
+                ->route('ptn.requests.show', $certificateRequest)
+                ->with('error', 'Yêu cầu đã có phiếu CNCL đang hiệu lực. Vui lòng xử lý theo luồng trả lại phiếu.');
+        }
+
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $oldData = $certificateRequest->toArray();
+
+        $certificateRequest->update([
+            'status' => 'WAIT_DVKH',
+            'note' => trim(($certificateRequest->note ? $certificateRequest->note . "\n" : '') . '[PTN trả lại DVKH]: ' . $data['reason']),
+        ]);
+
+        ActivityLogger::log(
+            'PTN lập phiếu',
+            'return_to_dvkh',
+            'PTN trả lại DVKH yêu cầu: ' . $certificateRequest->request_no . '. Lý do: ' . $data['reason'],
+            $oldData,
+            $certificateRequest->fresh()->toArray(),
+            $certificateRequest
+        );
+
+        app(NotificationService::class)->notifyRequestReturnedToDvkhByPtn(
+            $certificateRequest->fresh(['distributionCenter', 'customer'])
+        );
+
+        return redirect()
+            ->route('ptn.requests.index')
+            ->with('success', 'Đã trả lại yêu cầu cho DVKH kiểm tra lại.');
+    }
+
     public function receiveAndCreateCertificate(CertificateRequest $certificateRequest)
     {
         $this->authorizePtnRequest($certificateRequest);

@@ -105,6 +105,25 @@ class NotificationService
         ]);
     }
 
+    public function notifyRequestReturnedToDvkhByPtn(CertificateRequest $request): void
+    {
+        $this->sendToRole('DVKH', [
+            'type' => 'request_returned_to_dvkh_by_ptn',
+            'title' => 'PTN trả lại yêu cầu',
+            'message' => 'Yêu cầu ' . $request->request_no . ' đã được PTN trả lại để DVKH kiểm tra lại.',
+            'url' => route('dvkh.requests.show', $request),
+            'data' => $this->requestData($request),
+        ]);
+
+        $this->sendToCenter($request->distribution_center_id, [
+            'type' => 'request_returned_to_dvkh_by_ptn_for_center',
+            'title' => 'Yêu cầu được trả lại DVKH',
+            'message' => 'Yêu cầu ' . $request->request_no . ' đã được PTN trả lại DVKH để kiểm tra lại.',
+            'url' => route('certificate-requests.show', $request),
+            'data' => $this->requestData($request),
+        ]);
+    }
+
     public function notifyCertificateCreated(QualityCertificate $certificate): void
     {
         $certificate->loadMissing('request');

@@ -153,6 +153,104 @@ class CertificateWorkflowTest extends TestCase
             ->assertSee($certificate->certificate_no);
     }
 
+    public function test_ptn_can_return_waiting_request_to_dvkh(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $ptn = User::where('username', 'ptn')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-PTN-RETURN');
+
+        $certificateRequest = CertificateRequest::create([
+            'request_no' => 'YC-PTN-RETURN-0001',
+            'request_type' => 'NORMAL',
+            'distribution_center_id' => $centerUser->distribution_center_id,
+            'customer_id' => $customer->id,
+            'delivery_date' => '2026-08-08',
+            'invoice_no' => 'INV-PTN-RETURN',
+            'require_hard_copy' => false,
+            'hard_copy_quantity' => 0,
+            'is_urgent' => false,
+            'requester_name' => 'Nguoi tao NP',
+            'note' => 'Can PTN kiem tra.',
+            'status' => 'WAIT_PTN',
+            'submitted_at' => now(),
+            'submitted_by' => $centerUser->id,
+            'created_by' => $centerUser->id,
+        ]);
+
+        $certificateRequest->details()->create([
+            'product_id' => $this->product->id,
+            'quantity' => 5,
+        ]);
+
+        $this->actingAs($ptn)
+            ->get(route('ptn.requests.show', $certificateRequest))
+            ->assertOk()
+            ->assertSee('Trả lại DVKH');
+
+        $this->actingAs($ptn)
+            ->post(route('ptn.requests.return-to-dvkh', $certificateRequest), [
+                'reason' => 'Can DVKH xac nhan lai thong tin cong trinh.',
+            ])
+            ->assertRedirect(route('ptn.requests.index'));
+
+        $certificateRequest->refresh();
+
+        $this->assertSame('WAIT_DVKH', $certificateRequest->status);
+        $this->assertStringContainsString('PTN trả lại DVKH', $certificateRequest->note);
+        $this->assertStringContainsString('Can DVKH xac nhan lai thong tin cong trinh.', $certificateRequest->note);
+        $this->assertNotNull($certificateRequest->submitted_at);
+        $this->assertSame($centerUser->id, $certificateRequest->submitted_by);
+
+        $this->assertSame(1, UserNotification::where('user_id', $dvkh->id)
+            ->where('type', 'request_returned_to_dvkh_by_ptn')
+            ->where('url', route('dvkh.requests.show', $certificateRequest))
+            ->count());
+        $this->assertSame(1, UserNotification::where('user_id', $centerUser->id)
+            ->where('type', 'request_returned_to_dvkh_by_ptn_for_center')
+            ->where('url', route('certificate-requests.show', $certificateRequest))
+            ->count());
+    }
+
+    public function test_ptn_cannot_return_request_to_dvkh_after_certificate_exists(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $ptn = User::where('username', 'ptn')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-PTN-RETURN-BLOCKED');
+
+        $certificateRequest = CertificateRequest::create([
+            'request_no' => 'YC-PTN-RETURN-0002',
+            'request_type' => 'NORMAL',
+            'distribution_center_id' => $centerUser->distribution_center_id,
+            'customer_id' => $customer->id,
+            'delivery_date' => '2026-08-08',
+            'invoice_no' => 'INV-PTN-RETURN-BLOCKED',
+            'require_hard_copy' => false,
+            'hard_copy_quantity' => 0,
+            'is_urgent' => false,
+            'requester_name' => 'Nguoi tao NP',
+            'note' => 'Da co phieu.',
+            'status' => 'WAIT_PTN',
+            'created_by' => $centerUser->id,
+        ]);
+
+        QualityCertificate::create([
+            'certificate_no' => 'CNCL-PTN-RETURN-BLOCKED',
+            'certificate_request_id' => $certificateRequest->id,
+            'status' => 'WAIT_PTN_MANAGER_APPROVAL',
+            'created_by' => $ptn->id,
+            'print_count' => 0,
+        ]);
+
+        $this->actingAs($ptn)
+            ->post(route('ptn.requests.return-to-dvkh', $certificateRequest), [
+                'reason' => 'Thu tra lai sai luong.',
+            ])
+            ->assertRedirect(route('ptn.requests.show', $certificateRequest));
+
+        $this->assertSame('WAIT_PTN', $certificateRequest->fresh()->status);
+    }
+
     public function test_quality_certificate_list_can_filter_by_distribution_center_for_internal_users(): void
     {
         $admin = User::where('username', 'admin')->firstOrFail();

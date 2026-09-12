@@ -10,6 +10,47 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-08-29
 
+### PTN - căn lại nút thao tác chi tiết yêu cầu
+
+File chính:
+- `resources/views/ptn_requests/show.blade.php`
+
+Nội dung:
+- Đưa nút `Lập phiếu CNCL` và `Trả lại DVKH` vào cùng một hàng flex.
+- Bỏ khoảng cách `mt-2` làm nút trả lại bị tụt dòng so với nút lập phiếu.
+- Các nút vẫn tự xuống dòng gọn khi màn hình hẹp.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php -l app\Http\Controllers\PtnRequestController.php`: pass.
+
+### PTN - trả lại yêu cầu về DVKH
+
+File chính:
+- `routes/web.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `app/Services/NotificationService.php`
+- `resources/views/ptn_requests/show.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+
+Nội dung:
+- Thêm route `ptn.requests.return-to-dvkh` để PTN trả lại yêu cầu về DVKH.
+- Chỉ cho phép trả lại khi yêu cầu đang ở trạng thái `WAIT_PTN` và chưa có phiếu CNCL đang hiệu lực.
+- Khi trả lại, yêu cầu chuyển về `WAIT_DVKH`, giữ thông tin đã gửi quy trình, thêm lý do vào ghi chú và ghi nhật ký thao tác.
+- Gửi thông báo cho tài khoản DVKH và tài khoản Trung tâm liên quan.
+- Bổ sung nút `Trả lại DVKH` và modal nhập lý do trên màn chi tiết PTN.
+- Nếu nhập thiếu lý do, modal tự mở lại để người dùng thấy lỗi.
+- Bổ sung test cho luồng PTN trả lại DVKH và chặn trả lại khi yêu cầu đã có phiếu CNCL.
+
+Kiểm tra:
+- `php artisan route:list --name=ptn.requests.return-to-dvkh`: pass.
+- `php -l app\Http\Controllers\PtnRequestController.php`: pass.
+- `php -l app\Services\NotificationService.php`: pass.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ### Báo cáo tổng hợp - làm rõ KPI yêu cầu và phiếu
 
 File chính:

@@ -96,13 +96,21 @@
                             <i class="fas fa-file-signature"></i> Xem phiếu đã lập
                         </a>
                     @elseif(in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING']))
-                        <form action="{{ route('ptn.requests.receive-and-create-certificate', $certificateRequest) }}" method="POST"
-                              class="d-inline" onsubmit="return confirm('Lập phiếu CNCL từ yêu cầu này?')">
-                            @csrf
-                            <button class="btn btn-primary">
-                                <i class="fas fa-file-signature"></i> Lập phiếu CNCL
-                            </button>
-                        </form>
+                        <div class="d-flex flex-wrap align-items-center" style="gap: 8px;">
+                            <form action="{{ route('ptn.requests.receive-and-create-certificate', $certificateRequest) }}" method="POST"
+                                  class="m-0" onsubmit="return confirm('Lập phiếu CNCL từ yêu cầu này?')">
+                                @csrf
+                                <button class="btn btn-primary">
+                                    <i class="fas fa-file-signature"></i> Lập phiếu CNCL
+                                </button>
+                            </form>
+
+                            @if($certificateRequest->status === 'WAIT_PTN')
+                                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnToDvkhModal">
+                                    <i class="fas fa-undo"></i> Trả lại DVKH
+                                </button>
+                            @endif
+                        </div>
                     @endif
                 </div>
             @endcan
@@ -162,4 +170,58 @@
         </table>
     </div>
 </div>
+
+@can('ptn.process')
+    @if($certificateRequest->status === 'WAIT_PTN' && !$certificateRequest->qualityCertificate)
+        <div class="modal fade" id="returnToDvkhModal" tabindex="-1" role="dialog" aria-labelledby="returnToDvkhModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <form method="POST" action="{{ route('ptn.requests.return-to-dvkh', $certificateRequest) }}" class="modal-content cncl-form">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="returnToDvkhModalLabel">
+                            <i class="fas fa-undo"></i> Trả lại DVKH
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">
+                            Yêu cầu sẽ quay về màn DVKH kiểm tra. Vui lòng nhập rõ nội dung cần DVKH xử lý lại.
+                        </p>
+                        <div class="form-group">
+                            <label>Lý do trả lại <span class="text-danger">*</span></label>
+                            <textarea name="reason"
+                                      class="form-control @error('reason') is-invalid @enderror"
+                                      rows="4"
+                                      required
+                                      placeholder="Ví dụ: Thiếu thông tin công trình, cần xác nhận lại tiêu chuẩn sản phẩm...">{{ old('reason') }}</textarea>
+                            @error('reason')
+                                <span class="invalid-feedback">{{ $message }}</span>
+                            @enderror
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-paper-plane"></i> Trả lại DVKH
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+@endcan
+@stop
+
+@section('js')
+@if($errors->has('reason'))
+    <script>
+        $(function () {
+            $('#returnToDvkhModal').modal('show');
+        });
+    </script>
+@endif
 @stop

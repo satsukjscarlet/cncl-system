@@ -292,6 +292,9 @@ Route::middleware(['auth'])->group(function () {
             Route::post('requests/{certificateRequest}/receive-and-create-certificate', [PtnRequestController::class, 'receiveAndCreateCertificate'])
                 ->name('requests.receive-and-create-certificate');
 
+            Route::post('requests/{certificateRequest}/return-to-dvkh', [PtnRequestController::class, 'returnToDvkh'])
+                ->name('requests.return-to-dvkh');
+
             Route::post('requests/{certificateRequest}/create-certificate', [PtnRequestController::class, 'createCertificate'])
                 ->name('requests.create-certificate');
         });
