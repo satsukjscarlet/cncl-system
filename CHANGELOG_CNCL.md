@@ -10,6 +10,24 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-14
 
+### PDF in ký tươi - cố định ghi chú, số trang và người ký trên từng phôi
+
+File chính:
+- `resources/views/quality_certificates/hard_copy_print.blade.php`
+
+Nội dung:
+- Thêm cột `ĐVT` riêng trong bảng sản phẩm in ký tươi.
+- Cột `Số lượng` chỉ hiển thị số, không gộp đơn vị tính.
+- Cố định vị trí `Ghi chú`, `Trang x/y` và tên `Vũ Thị Diệu Thúy` trên tất cả các trang để phù hợp giấy phôi in sẵn.
+- Chỉnh phân trang theo vùng bảng an toàn chung cho mọi trang, tránh bảng đè xuống phần ghi chú/chữ ký của phôi.
+- Bổ sung xử lý ngắt chữ trong ô bảng, đặc biệt với tiêu chuẩn dài như `DIN 8077:2008&DIN8078:2008`.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- Render thử phiếu in ký tươi 100 dòng sản phẩm: pass, phân trang dự kiến 20 trang và PDF sinh ra 20 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ### PDF phiếu CNCL - thêm cột ĐVT và phân trang động theo chiều cao dòng
 
 File chính:

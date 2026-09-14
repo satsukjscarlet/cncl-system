@@ -135,13 +135,18 @@
             line-height: 1.18;
             font-size: 12pt;
             vertical-align: top;
+            white-space: normal;
+            word-break: break-word;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .product-table td:nth-child(1),
         .product-table td:nth-child(3),
         .product-table td:nth-child(4),
         .product-table td:nth-child(5),
-        .product-table td:nth-child(6) {
+        .product-table td:nth-child(6),
+        .product-table td:nth-child(7) {
             text-align: center;
             vertical-align: middle;
         }
@@ -155,7 +160,11 @@
         }
 
         .note {
-            margin-top: 3pt;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 430pt;
+            margin: 0;
             font-size: 11pt;
             line-height: 1.35;
         }
@@ -173,75 +182,94 @@
             font-size: 13pt;
             font-weight: bold;
         }
+
+        .page-number {
+            position: absolute;
+            right: 0;
+            top: 474pt;
+            margin: 0;
+            font-size: 10pt;
+            color: #000;
+        }
     </style>
 </head>
 
 <body>
     @php
         $details = $certificate->details->values();
-        $pageCapacity = 10;
+        $pageCapacity = 9;
         $pages = collect();
-        $pageUnits = [];
-        $currentPage = collect();
+        $currentRows = [];
         $currentUnits = 0;
 
-        $rowUnit = static function ($detail) {
-            $productNameLength = mb_strlen((string) ($detail->product->product_name ?? ''));
-            $technicalLength = mb_strlen((string) $detail->technical_requirements);
-            $standardLength = mb_strlen((string) $detail->quality_standard);
-            $nominalLength = mb_strlen((string) $detail->nominal_size);
+        $formatNumber = static function ($quantity) {
+            if ($quantity === null || $quantity === '') {
+                return '';
+            }
+
+            return rtrim(rtrim(number_format((float) $quantity, 2, '.', ''), '0'), '.');
+        };
+
+        $breakableText = static function ($value): string {
+            $value = trim(preg_replace('/\s+/u', ' ', (string) $value));
+
+            return preg_replace('/([&\/;,:\-])(?=\S)/u', '$1 ', $value) ?? $value;
+        };
+
+        $estimateLines = static function ($value, int $charsPerLine) use ($breakableText): int {
+            $value = $breakableText($value);
+
+            if ($value === '') {
+                return 1;
+            }
+
+            return max(1, (int) ceil(mb_strlen($value) / max(1, $charsPerLine)));
+        };
+
+        $rowUnit = static function ($detail) use ($estimateLines, $formatNumber) {
+            $product = $detail->product;
 
             $estimatedLines = max(
                 1,
-                (int) ceil($productNameLength / 52),
-                (int) ceil($technicalLength / 24),
-                (int) ceil($standardLength / 32),
-                (int) ceil($nominalLength / 18)
+                $estimateLines($product->product_name ?? '', 42),
+                $estimateLines($product->unit ?? '', 8),
+                $estimateLines($formatNumber($detail->quantity), 8),
+                $estimateLines($detail->nominal_size, 15),
+                $estimateLines($detail->technical_requirements, 15),
+                $estimateLines($detail->quality_standard, 22)
             );
 
-            return min(3, $estimatedLines);
+            return min(5, $estimatedLines);
         };
 
         foreach ($details as $detail) {
             $units = $rowUnit($detail);
 
-            if ($currentPage->isNotEmpty() && ($currentUnits + $units) > $pageCapacity) {
-                $pages->push($currentPage);
-                $pageUnits[] = $currentUnits;
-                $currentPage = collect();
+            if (!empty($currentRows) && ($currentUnits + $units) > $pageCapacity) {
+                $pages->push(collect($currentRows));
+                $currentRows = [];
                 $currentUnits = 0;
             }
 
-            $currentPage->push($detail);
+            $currentRows[] = $detail;
             $currentUnits += $units;
         }
 
-        if ($currentPage->isNotEmpty()) {
-            $pages->push($currentPage);
-            $pageUnits[] = $currentUnits;
+        if (!empty($currentRows)) {
+            $pages->push(collect($currentRows));
         }
 
         if ($pages->isEmpty()) {
             $pages = collect([collect()]);
-            $pageUnits[] = 0;
         }
+
+        $totalPages = $pages->count();
 
         $customer = $certificate->request->customer ?? null;
         $deliveryDate = $certificate->request?->delivery_date
             ? $certificate->request->delivery_date->format('d/m/Y')
             : '';
         $signerName = 'Vũ Thị Diệu Thúy';
-
-        $formatQuantity = static function ($quantity, $unit = null) {
-            if ($quantity === null || $quantity === '') {
-                return '';
-            }
-
-            $formatted = rtrim(rtrim(number_format((float) $quantity, 2, '.', ''), '0'), '.');
-            $unit = trim((string) $unit);
-
-            return $unit !== '' ? $formatted . ' (' . $unit . ')' : $formatted;
-        };
     @endphp
 
     @foreach ($pages as $pageIndex => $pageDetails)
@@ -282,8 +310,9 @@
                     <thead>
                         <tr>
                             <th style="width: 5%;">TT</th>
-                            <th style="width: 35%;">Tên sản phẩm</th>
-                            <th style="width: 10%;">Số lượng</th>
+                            <th style="width: 31%;">Tên sản phẩm</th>
+                            <th style="width: 6%;">ĐVT</th>
+                            <th style="width: 8%;">Số lượng</th>
                             <th style="width: 14%;">Kích thước<br>danh nghĩa</th>
                             <th style="width: 14%;">Yêu cầu kỹ<br>thuật</th>
                             <th style="width: 22%;">Tiêu chuẩn sản phẩm</th>
@@ -293,11 +322,12 @@
                         @foreach ($pageDetails as $detail)
                             <tr>
                                 <td class="text-center">{{ $rowOffset + $loop->iteration }}</td>
-                                <td>{{ $detail->product->product_name ?? '' }}</td>
-                                <td class="text-center">{{ $formatQuantity($detail->quantity, $detail->product->unit ?? null) }}</td>
-                                <td class="text-center">{{ $detail->nominal_size }}</td>
-                                <td class="text-center">{{ $detail->technical_requirements }}</td>
-                                <td class="text-center">{{ $detail->quality_standard }}</td>
+                                <td>{{ $breakableText($detail->product->product_name ?? '') }}</td>
+                                <td class="text-center">{{ $breakableText($detail->product->unit ?? '') }}</td>
+                                <td class="text-center">{{ $formatNumber($detail->quantity) }}</td>
+                                <td class="text-center">{{ $breakableText($detail->nominal_size) }}</td>
+                                <td class="text-center">{{ $breakableText($detail->technical_requirements) }}</td>
+                                <td class="text-center">{{ $breakableText($detail->quality_standard) }}</td>
                             </tr>
                         @endforeach
 
@@ -309,9 +339,8 @@
                     <span class="second-line">Sản phẩm đạt yêu cầu theo tiêu chuẩn sản phẩm công ty đã công bố</span>
                 </div>
 
-                @if ($loop->last)
-                    <div class="signer-name">{{ $signerName }}</div>
-                @endif
+                <div class="page-number">Trang {{ $pageIndex + 1 }}/{{ $totalPages }}</div>
+                <div class="signer-name">{{ $signerName }}</div>
             </div>
         </div>
     @endforeach
