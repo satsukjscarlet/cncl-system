@@ -61,6 +61,7 @@ class CertificateWorkflowTest extends TestCase
                 'hard_copy_quantity' => 0,
                 'is_urgent' => '0',
                 'requester_name' => 'Nguoi tao NP',
+                'customer_commitment_confirmed' => '1',
                 'note' => 'Yeu cau test e2e',
                 'product_id' => [$this->product->id],
                 'quantity' => [12],
@@ -297,6 +298,7 @@ class CertificateWorkflowTest extends TestCase
             'hard_copy_quantity' => 0,
             'is_urgent' => '0',
             'requester_name' => 'Nguoi tao NP',
+            'customer_commitment_confirmed' => '1',
             'note' => 'Yeu cau test tra lai',
             'product_id' => [$this->product->id],
             'quantity' => [5],
@@ -483,6 +485,7 @@ class CertificateWorkflowTest extends TestCase
                 'hard_copy_quantity' => 0,
                 'is_urgent' => '0',
                 'requester_name' => 'Nguoi gui DVKH',
+                'customer_commitment_confirmed' => '1',
                 'note' => 'Gui DVKH sau khi kiem tra',
                 'product_id' => [$this->product->id],
                 'quantity' => [15],
@@ -530,7 +533,9 @@ class CertificateWorkflowTest extends TestCase
             ->assertSee('Gửi DVKH');
 
         $this->actingAs($centerUser)
-            ->post(route('certificate-requests.submit-draft', $certificateRequest))
+            ->post(route('certificate-requests.submit-draft', $certificateRequest), [
+                'customer_commitment_confirmed' => '1',
+            ])
             ->assertRedirect(route('certificate-requests.show', $certificateRequest));
 
         $certificateRequest->refresh();
@@ -559,6 +564,7 @@ class CertificateWorkflowTest extends TestCase
                 'hard_copy_quantity' => 0,
                 'is_urgent' => '0',
                 'requester_name' => 'Nguoi tao NP',
+                'customer_commitment_confirmed' => '1',
                 'note' => 'Tao khach hang moi co ma khach hang',
                 'product_id' => [$this->product->id],
                 'quantity' => [12],
@@ -800,6 +806,7 @@ class CertificateWorkflowTest extends TestCase
                 'hard_copy_quantity' => 0,
                 'is_urgent' => '0',
                 'requester_name' => 'Nguoi sua cap lai',
+                'customer_commitment_confirmed' => '1',
                 'note' => 'Da sua du lieu truoc khi DVKH xac nhan.',
                 'product_id' => [$this->product->id],
                 'quantity' => [15],
@@ -890,6 +897,7 @@ class CertificateWorkflowTest extends TestCase
                 'is_urgent' => $reissueRequest->is_urgent ? '1' : '0',
                 'urgent_reason_id' => $reissueRequest->urgent_reason_id,
                 'requester_name' => $reissueRequest->requester_name,
+                'customer_commitment_confirmed' => '1',
                 'note' => $reissueRequest->note,
                 'product_id' => $reissueRequest->details->pluck('product_id')->all(),
                 'quantity' => $reissueRequest->details->pluck('quantity')->all(),

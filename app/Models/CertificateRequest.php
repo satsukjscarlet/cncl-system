@@ -25,6 +25,7 @@ class CertificateRequest extends Model
         'is_urgent',
         'urgent_reason_id',
         'requester_name',
+        'customer_commitment_confirmed',
         'note',
         'status',
         'submitted_at',
@@ -36,6 +37,7 @@ class CertificateRequest extends Model
         'delivery_date' => 'date',
         'require_hard_copy' => 'boolean',
         'is_urgent' => 'boolean',
+        'customer_commitment_confirmed' => 'boolean',
         'submitted_at' => 'datetime',
     ];
 

@@ -411,6 +411,7 @@ class CertificateRequestController extends Controller
     }
     public function store(Request $request)
     {
+        $isSubmitting = $this->requestStatusFromAction($request) === 'WAIT_DVKH';
         $rules = [
             'customer_mode' => ['required', 'in:existing,new'],
             'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
@@ -423,13 +424,14 @@ class CertificateRequestController extends Controller
             'new_email' => ['nullable', 'email', 'max:255'],
             'new_project_name' => ['nullable', 'string', 'max:500'],
             'new_project_address' => ['nullable', 'string'],
-            'delivery_date' => ['nullable', 'date'],
+            'delivery_date' => ['required', 'date'],
             'invoice_no' => ['nullable', 'string', 'max:255'],
             'require_hard_copy' => ['nullable'],
             'hard_copy_quantity' => ['nullable', 'integer', 'min:0'],
             'is_urgent' => ['nullable', 'boolean'],
             'urgent_reason_id' => ['nullable', 'required_if:is_urgent,1', 'exists:urgent_reasons,id'],
             'requester_name' => ['nullable', 'string', 'max:255'],
+            'customer_commitment_confirmed' => $isSubmitting ? ['accepted'] : ['nullable', 'boolean'],
             'note' => ['nullable', 'string'],
             'product_id' => ['required', 'array', 'min:1'],
             'product_id.*' => ['required', 'exists:products,id'],
@@ -442,7 +444,7 @@ class CertificateRequestController extends Controller
             $rules['distribution_center_id'] = ['required', 'exists:distribution_centers,id'];
         }
 
-        $data = $request->validate($rules);
+        $data = $request->validate($rules, $this->requestValidationMessages());
 
         $distributionCenterId = Auth::user()->hasRole('TrungTam')
             ? Auth::user()->distribution_center_id
@@ -475,6 +477,7 @@ class CertificateRequestController extends Controller
                     ? ($data['urgent_reason_id'] ?? null)
                     : null,
                 'requester_name' => $data['requester_name'] ?? null,
+                'customer_commitment_confirmed' => $request->boolean('customer_commitment_confirmed'),
                 'note' => $data['note'] ?? null,
                 'status' => $requestStatus,
                 'submitted_at' => $requestStatus === 'WAIT_DVKH' ? now() : null,
@@ -585,6 +588,7 @@ class CertificateRequestController extends Controller
                 ->with('error', 'Chỉ được sửa yêu cầu đang ở trạng thái Nháp. Yêu cầu đã gửi DVKH không còn được sửa trực tiếp.');
         }
 
+        $isSubmitting = $this->requestStatusFromAction($request) === 'WAIT_DVKH';
         $rules = [
             'customer_mode' => ['required', 'in:existing,new'],
             'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
@@ -597,13 +601,14 @@ class CertificateRequestController extends Controller
             'new_email' => ['nullable', 'email', 'max:255'],
             'new_project_name' => ['nullable', 'string', 'max:500'],
             'new_project_address' => ['nullable', 'string'],
-            'delivery_date' => ['nullable', 'date'],
+            'delivery_date' => ['required', 'date'],
             'invoice_no' => ['nullable', 'string', 'max:255'],
             'require_hard_copy' => ['nullable'],
             'hard_copy_quantity' => ['nullable', 'integer', 'min:0'],
             'is_urgent' => ['nullable', 'boolean'],
             'urgent_reason_id' => ['nullable', 'required_if:is_urgent,1', 'exists:urgent_reasons,id'],
             'requester_name' => ['nullable', 'string', 'max:255'],
+            'customer_commitment_confirmed' => $isSubmitting ? ['accepted'] : ['nullable', 'boolean'],
             'note' => ['nullable', 'string'],
             'product_id' => ['required', 'array', 'min:1'],
             'product_id.*' => ['required', 'exists:products,id'],
@@ -616,7 +621,7 @@ class CertificateRequestController extends Controller
             $rules['distribution_center_id'] = ['required', 'exists:distribution_centers,id'];
         }
 
-        $data = $request->validate($rules);
+        $data = $request->validate($rules, $this->requestValidationMessages());
 
         $distributionCenterId = Auth::user()->hasRole('TrungTam')
             ? Auth::user()->distribution_center_id
@@ -643,6 +648,7 @@ class CertificateRequestController extends Controller
                     ? ($data['urgent_reason_id'] ?? null)
                     : null,
                 'requester_name' => $data['requester_name'] ?? null,
+                'customer_commitment_confirmed' => $isSubmitting || $request->boolean('customer_commitment_confirmed'),
                 'note' => $data['note'] ?? null,
                 'status' => $requestStatus,
                 'submitted_at' => $requestStatus === 'WAIT_DVKH' ? now() : null,
@@ -719,7 +725,7 @@ class CertificateRequestController extends Controller
             ->with('success', 'Xóa yêu cầu cấp phiếu thành công.');
     }
 
-    public function submitDraft(CertificateRequest $certificateRequest)
+    public function submitDraft(Request $request, CertificateRequest $certificateRequest)
     {
         $this->authorizeCenter($certificateRequest);
 
@@ -735,12 +741,25 @@ class CertificateRequestController extends Controller
                 ->with('error', 'Yêu cầu chưa có sản phẩm, vui lòng cập nhật trước khi gửi DVKH.');
         }
 
+        if (!$certificateRequest->delivery_date) {
+            return redirect()
+                ->route('certificate-requests.edit', $certificateRequest)
+                ->with('error', 'Vui lòng nhập ngày xuất hàng trước khi gửi DVKH.');
+        }
+
+        $request->validate([
+            'customer_commitment_confirmed' => ['accepted'],
+        ], [
+            'customer_commitment_confirmed.accepted' => 'Bạn phải xác nhận cam kết trước khi gửi yêu cầu sang DVKH.',
+        ]);
+
         $oldData = $certificateRequest->toArray();
 
         $certificateRequest->update([
             'status' => 'WAIT_DVKH',
             'submitted_at' => now(),
             'submitted_by' => Auth::id(),
+            'customer_commitment_confirmed' => true,
         ]);
 
         $this->logDuplicateInvoiceWarning($certificateRequest);
@@ -1266,6 +1285,15 @@ class CertificateRequestController extends Controller
         return $request->input('request_action', 'submit') === 'draft'
             ? 'DRAFT'
             : 'WAIT_DVKH';
+    }
+
+    private function requestValidationMessages(): array
+    {
+        return [
+            'delivery_date.required' => 'Vui lòng nhập ngày xuất hàng.',
+            'delivery_date.date' => 'Ngày xuất hàng không hợp lệ.',
+            'customer_commitment_confirmed.accepted' => 'Bạn phải xác nhận cam kết trước khi gửi yêu cầu sang DVKH.',
+        ];
     }
 }
 

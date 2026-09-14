@@ -180,9 +180,15 @@
 <div class="row">
     <div class="col-md-4">
         <div class="form-group">
-            <label>Ngày xuất hàng</label>
-            <input type="date" name="delivery_date" class="form-control"
+            <label>Ngày xuất hàng <span class="text-danger">*</span></label>
+            <input type="date"
+                   name="delivery_date"
+                   class="form-control @error('delivery_date') is-invalid @enderror"
+                   required
                    value="{{ old('delivery_date', isset($certificateRequest) && $certificateRequest->delivery_date ? $certificateRequest->delivery_date->format('Y-m-d') : '') }}">
+            @error('delivery_date')
+                <span class="invalid-feedback">{{ $message }}</span>
+            @enderror
         </div>
     </div>
 
@@ -485,6 +491,23 @@
 
 <hr>
 
+<div class="alert alert-light border">
+    <div class="custom-control custom-checkbox">
+        <input type="checkbox"
+               name="customer_commitment_confirmed"
+               value="1"
+               class="custom-control-input @error('customer_commitment_confirmed') is-invalid @enderror"
+               id="customer_commitment_confirmed"
+               {{ old('customer_commitment_confirmed', $certificateRequest->customer_commitment_confirmed ?? false) ? 'checked' : '' }}>
+        <label class="custom-control-label font-weight-bold" for="customer_commitment_confirmed">
+            Chúng tôi cam kết đã nhận và lấy hàng trong yêu cầu cấp phiếu này tại Công ty. Trường hợp thông tin trên không đúng sự thật, chúng tôi xin chịu hoàn toàn trách nhiệm và chấp nhận các hình thức xử phạt theo quy chế của công ty.
+        </label>
+        @error('customer_commitment_confirmed')
+            <div class="text-danger small mt-1">{{ $message }}</div>
+        @enderror
+    </div>
+</div>
+
 <div class="d-flex justify-content-end">
     <a href="{{ $formBackUrl }}" class="btn btn-default mr-2">
         <i class="fas fa-arrow-left"></i> Quay lại
@@ -494,7 +517,7 @@
         <i class="fas fa-save"></i> Lưu nháp
     </button>
 
-    <button type="submit" name="request_action" value="submit" class="btn btn-primary">
+    <button type="submit" name="request_action" value="submit" class="btn btn-primary" id="request-submit-button">
         <i class="fas fa-paper-plane"></i> Gửi DVKH
     </button>
 </div>
@@ -521,8 +544,21 @@
             const pasteProductsSubmit = document.getElementById('paste-products-submit');
             const pasteProductsText = document.getElementById('paste_products_text');
             const pasteProductsErrors = document.getElementById('paste-products-errors');
+            const commitmentCheckbox = document.getElementById('customer_commitment_confirmed');
+            const submitRequestButton = document.getElementById('request-submit-button');
             const productRowTemplate = tableBody.querySelector('tr').cloneNode(true);
             let invoiceCheckTimer = null;
+
+            function syncSubmitButtonState() {
+                if (!commitmentCheckbox || !submitRequestButton) {
+                    return;
+                }
+
+                submitRequestButton.disabled = !commitmentCheckbox.checked;
+                submitRequestButton.title = commitmentCheckbox.checked
+                    ? ''
+                    : 'Vui lòng tích xác nhận cam kết trước khi gửi DVKH';
+            }
 
             function syncCustomerMode() {
                 const mode = document.querySelector('input[name="customer_mode"]:checked').value;
@@ -534,6 +570,11 @@
                 input.addEventListener('change', syncCustomerMode);
             });
             syncCustomerMode();
+
+            if (commitmentCheckbox) {
+                commitmentCheckbox.addEventListener('change', syncSubmitButtonState);
+                syncSubmitButtonState();
+            }
 
             if (distributionCenterSelect && customerSelect) {
                 distributionCenterSelect.addEventListener('change', function() {

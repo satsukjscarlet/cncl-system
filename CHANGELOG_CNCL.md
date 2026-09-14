@@ -8,6 +8,54 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 - Ghi rõ ngày, nhóm chức năng, file chính đã sửa, nội dung thay đổi và kết quả kiểm tra.
 - Nếu có lỗi chưa xử lý xong, ghi vào phần "Ghi chú".
 
+## 2026-09-14
+
+### PDF phiếu CNCL - thêm cột ĐVT và phân trang động theo chiều cao dòng
+
+File chính:
+- `resources/views/quality_certificates/pdf.blade.php`
+
+Nội dung:
+- Thêm cột `ĐVT` riêng trong bảng sản phẩm của mẫu PDF ký số.
+- Cột `Số lượng` chỉ còn hiển thị số, không gộp dạng `số lượng (đơn vị tính)`.
+- Thay cơ chế chia trang cứng `13 dòng/trang` bằng cơ chế ước lượng chiều cao từng dòng theo độ dài nội dung các cột.
+- Trang thường có sức chứa lớn hơn để tận dụng khoảng trống; trang cuối chừa vùng an toàn cho ghi chú và chữ ký điện tử.
+- Nếu trang cuối không đủ vùng ký, hệ thống tự tách dòng cuối sang trang mới để tránh chữ ký đè bảng sản phẩm.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- Render thử phiếu 100 dòng sản phẩm: pass, phân trang dự kiến 9 trang và PDF sinh ra 9 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### Yêu cầu cấp phiếu - bắt buộc ngày xuất hàng và cam kết nhận/lấy hàng
+
+File chính:
+- `database/migrations/2026_09_14_000001_add_commitment_to_certificate_requests_table.php`
+- `app/Models/CertificateRequest.php`
+- `app/Http/Controllers/CertificateRequestController.php`
+- `resources/views/certificate_requests/_form.blade.php`
+- `resources/views/certificate_requests/show.blade.php`
+- `resources/views/dvkh_requests/show.blade.php`
+- `resources/views/ptn_requests/show.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+
+Nội dung:
+- Thêm cột `customer_commitment_confirmed` để lưu xác nhận cam kết của bên tạo yêu cầu.
+- Bắt buộc nhập `delivery_date` khi tạo/cập nhật yêu cầu cấp phiếu.
+- Thêm checkbox cam kết trên form tạo/sửa yêu cầu; chỉ khi gửi DVKH mới bắt buộc tích, còn lưu nháp vẫn được phép chưa tích.
+- Khóa nút `Gửi DVKH` trên form cho đến khi người dùng tích xác nhận cam kết.
+- Khi gửi phiếu nháp từ màn chi tiết, hiển thị modal xác nhận cam kết và chặn gửi nếu chưa tích hoặc chưa có ngày xuất hàng.
+- Hiển thị trạng thái đã/chưa xác nhận cam kết tại màn chi tiết yêu cầu, màn DVKH và màn PTN.
+
+Kiểm tra:
+- `php artisan migrate`: pass.
+- `php -l app/Http/Controllers/CertificateRequestController.php`: pass.
+- `php -l app/Models/CertificateRequest.php`: pass.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ## 2026-08-29
 
 ### PTN - căn lại nút thao tác chi tiết yêu cầu

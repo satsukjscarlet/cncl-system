@@ -15,15 +15,9 @@
                 <a href="{{ route('certificate-requests.edit', $certificateRequest) }}" class="btn btn-warning mr-2">
                     <i class="fas fa-edit"></i> Sửa yêu cầu
                 </a>
-                <form action="{{ route('certificate-requests.submit-draft', $certificateRequest) }}"
-                      method="POST"
-                      class="d-inline mr-2"
-                      onsubmit="return confirm('Gửi yêu cầu này sang DVKH? Sau khi gửi, yêu cầu sẽ không còn được sửa trực tiếp.')">
-                    @csrf
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-paper-plane"></i> Gửi DVKH
-                    </button>
-                </form>
+                <button type="button" class="btn btn-primary mr-2" data-toggle="modal" data-target="#submitDraftModal">
+                    <i class="fas fa-paper-plane"></i> Gửi DVKH
+                </button>
             @endcan
         @endif
 
@@ -35,6 +29,12 @@
 @stop
 
 @section('content')
+
+@if($errors->has('customer_commitment_confirmed'))
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-circle"></i> {{ $errors->first('customer_commitment_confirmed') }}
+    </div>
+@endif
 
 @include('quality_certificates.partials.workflow_steps', ['steps' => $requestWorkflowSteps])
 
@@ -135,6 +135,14 @@
                     @endif
                 </p>
                 <p><strong>Tên người tạo yêu cầu:</strong> {{ $certificateRequest->requester_name ?: '—' }}</p>
+                <p>
+                    <strong>Cam kết nhận/lấy hàng:</strong>
+                    @if($certificateRequest->customer_commitment_confirmed)
+                        <span class="badge badge-success"><i class="fas fa-check"></i> Đã xác nhận</span>
+                    @else
+                        <span class="badge badge-secondary">Chưa xác nhận</span>
+                    @endif
+                </p>
                 <p><strong>Người tạo:</strong> {{ $certificateRequest->creator->name ?? '—' }}</p>
                 <p><strong>Ngày tạo:</strong> {{ optional($certificateRequest->created_at)->format('d/m/Y H:i') }}</p>
             </div>
@@ -254,4 +262,61 @@
     @endif
 @endcan
 
+@if($certificateRequest->status === 'DRAFT')
+    @can('request.update')
+        <div class="modal fade" id="submitDraftModal" tabindex="-1" role="dialog" aria-labelledby="submitDraftModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <form action="{{ route('certificate-requests.submit-draft', $certificateRequest) }}" method="POST" class="modal-content cncl-form">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="submitDraftModalLabel">
+                            <i class="fas fa-paper-plane"></i> Gửi yêu cầu sang DVKH
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">
+                            Sau khi gửi sang DVKH, yêu cầu sẽ không còn được sửa trực tiếp.
+                        </p>
+                        <div class="alert alert-light border mb-0">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox"
+                                       name="customer_commitment_confirmed"
+                                       value="1"
+                                       class="custom-control-input @error('customer_commitment_confirmed') is-invalid @enderror"
+                                       id="submit_customer_commitment_confirmed"
+                                       {{ old('customer_commitment_confirmed', $certificateRequest->customer_commitment_confirmed ?? false) ? 'checked' : '' }}>
+                                <label class="custom-control-label font-weight-bold" for="submit_customer_commitment_confirmed">
+                                    Chúng tôi cam kết đã nhận và lấy hàng trong yêu cầu cấp phiếu này tại Công ty. Trường hợp thông tin trên không đúng sự thật, chúng tôi xin chịu hoàn toàn trách nhiệm và chấp nhận các hình thức xử phạt theo quy chế của công ty.
+                                </label>
+                                @error('customer_commitment_confirmed')
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Xác nhận gửi DVKH
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endcan
+@endif
+
+@stop
+
+@section('js')
+@if($errors->has('customer_commitment_confirmed'))
+    <script>
+        $(function () {
+            $('#submitDraftModal').modal('show');
+        });
+    </script>
+@endif
 @stop

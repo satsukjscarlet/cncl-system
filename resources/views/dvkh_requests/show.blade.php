@@ -317,6 +317,15 @@
                         <div class="dvkh-info-label">Người tạo yêu cầu</div>
                         <div class="dvkh-info-value">{{ $certificateRequest->requester_name ?: '-' }}</div>
 
+                        <div class="dvkh-info-label">Cam kết nhận/lấy hàng</div>
+                        <div class="dvkh-info-value">
+                            @if($certificateRequest->customer_commitment_confirmed)
+                                <span class="badge badge-success"><i class="fas fa-check"></i> Đã xác nhận</span>
+                            @else
+                                <span class="badge badge-secondary">Chưa xác nhận</span>
+                            @endif
+                        </div>
+
                         <div class="dvkh-info-label">Tài khoản tạo</div>
                         <div class="dvkh-info-value">{{ $certificateRequest->creator->name ?? '-' }}</div>
 

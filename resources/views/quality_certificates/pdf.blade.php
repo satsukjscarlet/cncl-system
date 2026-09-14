@@ -213,7 +213,8 @@
         .product-table td:nth-child(3),
         .product-table td:nth-child(4),
         .product-table td:nth-child(5),
-        .product-table td:nth-child(6) {
+        .product-table td:nth-child(6),
+        .product-table td:nth-child(7) {
             text-align: center;
             vertical-align: middle;
         }
@@ -360,33 +361,100 @@
 @php
     $pcnNo = str_pad((string) $certificate->id, 7, '0', STR_PAD_LEFT);
     $details = $certificate->details->values();
-    $rowsPerPage = 13;
-    $pages = $details->chunk($rowsPerPage);
-
-    if ($pages->isEmpty()) {
-        $pages = collect([collect()]);
-    }
-
-    $totalPages = $pages->count();
     $signedBy = $certificate->signed_by ?: 'VNPT SmartCA';
     $electronicLookupUrl = route('quality-certificates.show', $certificate);
-    $formatQuantity = static function ($quantity, $unit = null) {
+    $formatNumber = static function ($quantity) {
         if ($quantity === null || $quantity === '') {
             return '';
         }
 
-        $formatted = rtrim(rtrim(number_format((float) $quantity, 2, '.', ''), '0'), '.');
-        $unit = trim((string) $unit);
-
-        return $unit !== '' ? $formatted . ' (' . $unit . ')' : $formatted;
+        return rtrim(rtrim(number_format((float) $quantity, 2, '.', ''), '0'), '.');
     };
+
+    $estimateLines = static function ($value, int $charsPerLine): int {
+        $value = trim(preg_replace('/\s+/u', ' ', (string) $value));
+
+        if ($value === '') {
+            return 1;
+        }
+
+        return max(1, (int) ceil(mb_strlen($value) / max(1, $charsPerLine)));
+    };
+
+    $estimateRowUnits = static function ($detail) use ($estimateLines, $formatNumber): int {
+        $product = $detail->product;
+
+        return max(
+            1,
+            $estimateLines($product->product_name ?? '', 38),
+            $estimateLines($product->unit ?? '', 8),
+            $estimateLines($formatNumber($detail->quantity), 9),
+            $estimateLines($detail->nominal_size, 15),
+            $estimateLines($detail->technical_requirements, 15),
+            $estimateLines($detail->quality_standard, 24)
+        );
+    };
+
+    $normalPageCapacity = 22;
+    $lastPageCapacity = 14;
+    $pages = collect();
+    $currentRows = [];
+    $currentHeight = 0;
+
+    foreach ($details as $detail) {
+        $rowHeight = $estimateRowUnits($detail);
+
+        if (!empty($currentRows) && $currentHeight + $rowHeight > $normalPageCapacity) {
+            $pages->push([
+                'details' => collect($currentRows),
+                'height' => $currentHeight,
+            ]);
+
+            $currentRows = [];
+            $currentHeight = 0;
+        }
+
+        $currentRows[] = [
+            'detail' => $detail,
+            'height' => $rowHeight,
+        ];
+        $currentHeight += $rowHeight;
+    }
+
+    if (!empty($currentRows) || $pages->isEmpty()) {
+        $pages->push([
+            'details' => collect($currentRows),
+            'height' => $currentHeight,
+        ]);
+    }
+
+    $lastPage = $pages->last();
+
+    if ($lastPage && $lastPage['height'] > $lastPageCapacity && $lastPage['details']->count() > 1) {
+        $lastRows = $lastPage['details']->values();
+        $movedRow = $lastRows->pop();
+
+        $pages->pop();
+        $pages->push([
+            'details' => $lastRows,
+            'height' => max(0, $lastPage['height'] - $movedRow['height']),
+        ]);
+        $pages->push([
+            'details' => collect([$movedRow]),
+            'height' => $movedRow['height'],
+        ]);
+    }
+
+    $totalPages = $pages->count();
 @endphp
 
-@foreach ($pages as $pageIndex => $pageDetails)
+@foreach ($pages as $pageIndex => $page)
     @php
         $isLastPage = $loop->last;
-        $blankRows = max(0, $rowsPerPage - $pageDetails->count());
-        $rowOffset = $pages->take($pageIndex)->sum(fn ($page) => $page->count());
+        $pageDetails = $page['details'];
+        $pageCapacity = $isLastPage ? $lastPageCapacity : $normalPageCapacity;
+        $blankRows = max(0, (int) floor($pageCapacity - $page['height']));
+        $rowOffset = $pages->take($pageIndex)->sum(fn ($item) => $item['details']->count());
     @endphp
 
     <div class="certificate-page" style="{{ $isLastPage ? '' : 'page-break-after: always;' }}">
@@ -442,19 +510,22 @@
         <thead>
             <tr>
                 <th style="width: 5%;">TT</th>
-                <th style="width: 35%;">Tên sản phẩm</th>
-                <th style="width: 10%;">Số lượng</th>
+                <th style="width: 32%;">Tên sản phẩm</th>
+                <th style="width: 7%;">ĐVT</th>
+                <th style="width: 9%;">Số lượng</th>
                 <th style="width: 14%;">Kích thước<br>danh nghĩa</th>
-                <th style="width: 14%;">Yêu cầu kỹ<br>thuật</th>
-                <th style="width: 22%;">Tiêu chuẩn sản phẩm</th>
+                <th style="width: 13%;">Yêu cầu kỹ<br>thuật</th>
+                <th style="width: 20%;">Tiêu chuẩn sản phẩm</th>
             </tr>
         </thead>
         <tbody>
-            @foreach ($pageDetails as $detail)
+            @foreach ($pageDetails as $row)
+                @php($detail = $row['detail'])
                 <tr>
                     <td>{{ $rowOffset + $loop->iteration }}</td>
                     <td>{{ $detail->product->product_name ?? '' }}</td>
-                    <td>{{ $formatQuantity($detail->quantity, $detail->product->unit ?? null) }}</td>
+                    <td>{{ $detail->product->unit ?? '' }}</td>
+                    <td>{{ $formatNumber($detail->quantity) }}</td>
                     <td>{{ $detail->nominal_size }}</td>
                     <td>{{ $detail->technical_requirements }}</td>
                     <td>{{ $detail->quality_standard }}</td>
@@ -464,6 +535,7 @@
             @for ($i = 0; $i < $blankRows; $i++)
                 <tr>
                     <td>&nbsp;</td>
+                    <td></td>
                     <td></td>
                     <td></td>
                     <td></td>

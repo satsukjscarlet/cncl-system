@@ -85,6 +85,14 @@
                     @endif
                 </p>
                 <p><strong>Tên người tạo yêu cầu:</strong> {{ $certificateRequest->requester_name ?: '-' }}</p>
+                <p>
+                    <strong>Cam kết nhận/lấy hàng:</strong>
+                    @if($certificateRequest->customer_commitment_confirmed)
+                        <span class="badge badge-success"><i class="fas fa-check"></i> Đã xác nhận</span>
+                    @else
+                        <span class="badge badge-secondary">Chưa xác nhận</span>
+                    @endif
+                </p>
                 <p><strong>Người tạo:</strong> {{ $certificateRequest->creator->name ?? '-' }}</p>
                 <p><strong>Ngày tạo:</strong> {{ optional($certificateRequest->created_at)->format('d/m/Y H:i') }}</p>
             </div>
