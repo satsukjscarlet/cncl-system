@@ -45,7 +45,7 @@
 
         body {
             font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
-            font-size: 13px;
+            font-size: 13pt;
             color: #111;
             margin: 0;
         }
@@ -126,7 +126,7 @@
 
         .cert-title {
             text-align: center;
-            font-size: 23px;
+            font-size: 18pt;
             font-weight: bold;
             line-height: 1.15;
             margin: 8px 0 5px;
@@ -135,7 +135,7 @@
 
         .cert-no {
             text-align: center;
-            font-size: 14px;
+            font-size: 13pt;
             margin-bottom: 8px;
         }
 
@@ -147,7 +147,7 @@
             border: none;
             padding: 2px 3px;
             vertical-align: top;
-            font-size: 14px;
+            font-size: 13pt;
             line-height: 1.25;
         }
 
@@ -190,10 +190,10 @@
         .product-table th {
             border: 1px solid #222;
             background: #d9f8f7;
-            padding: 5px 3px;
+            padding: 4px 3px;
             text-align: center;
             vertical-align: middle;
-            font-size: 12px;
+            font-size: 12pt;
             font-weight: bold;
             line-height: 1.15;
         }
@@ -202,11 +202,15 @@
             border-left: 1px solid #222;
             border-right: 1px solid #222;
             border-bottom: 1px solid #d6d6d6;
-            padding: 3px 4px;
-            height: 21px;
+            padding: 2px 3px;
+            height: 20pt;
             vertical-align: top;
-            font-size: 12px;
-            line-height: 1.18;
+            font-size: 12pt;
+            line-height: 1.08;
+            white-space: normal;
+            word-break: break-word;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .product-table td:nth-child(1),
@@ -229,7 +233,7 @@
 
         .note {
             margin-top: 7px;
-            font-size: 12.5px;
+            font-size: 12pt;
             line-height: 1.32;
         }
 
@@ -371,8 +375,14 @@
         return rtrim(rtrim(number_format((float) $quantity, 2, '.', ''), '0'), '.');
     };
 
-    $estimateLines = static function ($value, int $charsPerLine): int {
+    $breakableText = static function ($value): string {
         $value = trim(preg_replace('/\s+/u', ' ', (string) $value));
+
+        return preg_replace('/([&\/;,:\-])(?=\S)/u', '$1 ', $value) ?? $value;
+    };
+
+    $estimateLines = static function ($value, int $charsPerLine) use ($breakableText): int {
+        $value = $breakableText($value);
 
         if ($value === '') {
             return 1;
@@ -386,17 +396,17 @@
 
         return max(
             1,
-            $estimateLines($product->product_name ?? '', 38),
-            $estimateLines($product->unit ?? '', 8),
-            $estimateLines($formatNumber($detail->quantity), 9),
-            $estimateLines($detail->nominal_size, 15),
-            $estimateLines($detail->technical_requirements, 15),
-            $estimateLines($detail->quality_standard, 24)
+            $estimateLines($product->product_name ?? '', 31),
+            $estimateLines($product->unit ?? '', 6),
+            $estimateLines($formatNumber($detail->quantity), 7),
+            $estimateLines($detail->nominal_size, 12),
+            $estimateLines($detail->technical_requirements, 12),
+            $estimateLines($detail->quality_standard, 18)
         );
     };
 
-    $normalPageCapacity = 22;
-    $lastPageCapacity = 14;
+    $normalPageCapacity = 21;
+    $lastPageCapacity = 10;
     $pages = collect();
     $currentRows = [];
     $currentHeight = 0;
@@ -523,12 +533,12 @@
                 @php($detail = $row['detail'])
                 <tr>
                     <td>{{ $rowOffset + $loop->iteration }}</td>
-                    <td>{{ $detail->product->product_name ?? '' }}</td>
-                    <td>{{ $detail->product->unit ?? '' }}</td>
+                    <td>{{ $breakableText($detail->product->product_name ?? '') }}</td>
+                    <td>{{ $breakableText($detail->product->unit ?? '') }}</td>
                     <td>{{ $formatNumber($detail->quantity) }}</td>
-                    <td>{{ $detail->nominal_size }}</td>
-                    <td>{{ $detail->technical_requirements }}</td>
-                    <td>{{ $detail->quality_standard }}</td>
+                    <td>{{ $breakableText($detail->nominal_size) }}</td>
+                    <td>{{ $breakableText($detail->technical_requirements) }}</td>
+                    <td>{{ $breakableText($detail->quality_standard) }}</td>
                 </tr>
             @endforeach
 

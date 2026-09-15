@@ -10,6 +10,44 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-14
 
+### PDF ký số - tăng dòng bảng trên các trang không phải trang cuối
+
+File chính:
+- `resources/views/quality_certificates/pdf.blade.php`
+
+Nội dung:
+- Tăng sức chứa ước lượng của các trang thường từ `17` lên `19` unit để giảm khoảng trắng dưới bảng.
+- Giữ trang cuối ở `10` unit để vẫn chừa vùng chữ ký điện tử phía trên footer xanh.
+- Không đổi logic trang cuối, tránh bảng sản phẩm che chữ ký số.
+
+Kiểm tra:
+- `php -l resources/views/quality_certificates/pdf.blade.php`: pass.
+- Render thử phiếu `238`: pass, PDF giảm từ 12 còn 11 trang.
+- Render thử phiếu `248`: pass, PDF giảm từ 14 còn 13 trang.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF ký số - tăng cỡ chữ theo cỡ Excel và cân lại phân trang
+
+File chính:
+- `resources/views/quality_certificates/pdf.blade.php`
+
+Nội dung:
+- Tăng số phiếu, phần thông tin `1.`, `2.`, `3.` và thông tin khách hàng lên `13pt`.
+- Tăng tiêu đề/header bảng và dữ liệu bảng sản phẩm lên `12pt`.
+- Giữ tiêu đề `PHIẾU CHỨNG NHẬN CHẤT LƯỢNG` ở `18pt` để đủ nổi bật nhưng không làm vỡ bố cục A4.
+- Thêm xử lý ngắt chữ tại các ký tự `/`, `&`, `;`, `,`, `:`, `-` để tiêu chuẩn dài không lồi khỏi ô.
+- Giảm sức chứa ước lượng của trang thường từ `22` xuống `17` unit và trang cuối từ `14` xuống `10` unit để chừa vùng chữ ký/footer khi font lớn hơn.
+
+Kiểm tra:
+- `php -l resources/views/quality_certificates/pdf.blade.php`: pass.
+- Render thử phiếu `238`: pass, PDF 12 trang.
+- Render thử phiếu `248`: pass, PDF 14 trang.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ### PDF in ký tươi - căn lại số mục thông tin với nhãn
 
 File chính:
