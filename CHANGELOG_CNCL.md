@@ -10,6 +10,49 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-14
 
+### PDF ký số - đổi sức chứa trang thường sang công thức có buffer
+
+File chính:
+- `resources/views/quality_certificates/pdf.blade.php`
+
+Nội dung:
+- Thay cách tính trang thường từ `21 - customerInfoPenalty` sang công thức rõ ràng:
+  `basePageCapacity - customerInfoPenalty - footerPenalty - safetyBuffer`.
+- Đặt `basePageCapacity = 21`, `footerPenalty = 1`, `safetyBuffer = 1`, giới hạn thấp nhất `17`.
+- Mục tiêu là chừa vùng thực tế cho dòng tiếp trang/số trang và sai số render của Dompdf, giảm nguy cơ sinh trang trắng.
+- Giữ trang cuối `10` unit để bảo vệ vùng chữ ký điện tử.
+
+Kiểm tra:
+- `php -l resources/views/quality_certificates/pdf.blade.php`: pass.
+- Render thử phiếu `146`: pass, PDF 2 trang.
+- Render thử phiếu `150`: pass, PDF 4 trang.
+- Render thử phiếu `238`: pass, PDF 11 trang.
+- Render thử phiếu `248`: pass, PDF 13 trang, số trang logic khớp số trang Dompdf.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF ký số - cân bằng phân trang theo thông tin khách hàng
+
+File chính:
+- `resources/views/quality_certificates/pdf.blade.php`
+
+Nội dung:
+- Thêm ước lượng độ dài phần thông tin khách hàng/công trình/địa điểm để tự giảm sức chứa bảng khi phần đầu phiếu dài.
+- Giữ sức chứa nền của trang thường là `21` unit, nhưng tự giảm về tối thiểu `18` unit nếu thông tin khách hàng dài.
+- Sửa logic tách trang cuối: nếu trang cuối vượt vùng chữ ký thì chuyển đủ số dòng sang trang mới, không chỉ chuyển 1 dòng như trước.
+- Thêm bước cân bằng để hạn chế trang kế tiếp/trang cuối chỉ có 1 dòng sản phẩm khi còn có thể kéo thêm dòng từ trang trước.
+
+Kiểm tra:
+- `php -l resources/views/quality_certificates/pdf.blade.php`: pass.
+- Render thử phiếu `146`: pass, logic chia dữ liệu 5 dòng + 2 dòng.
+- Render thử phiếu `150`: pass, logic chia dữ liệu 9 + 9 + 5 + 3 dòng.
+- Render thử phiếu `238`: pass, không còn trang logic 1 dòng.
+- Render thử phiếu `248`: pass, không còn trang logic 1 dòng.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ### PDF ký số - tăng dòng bảng trên các trang không phải trang cuối
 
 File chính:

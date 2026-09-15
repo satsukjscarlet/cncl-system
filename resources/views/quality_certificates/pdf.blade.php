@@ -405,7 +405,18 @@
         );
     };
 
-    $normalPageCapacity = 21;
+    $customerInfoUnits = max(
+        3,
+        $estimateLines($certificate->request->customer->customer_name ?? '', 62)
+            + $estimateLines($certificate->request->customer->project_name ?? '', 62)
+            + $estimateLines($certificate->request->customer->project_address ?? '', 62)
+    );
+    $basePageCapacity = 21;
+    $customerInfoPenalty = min(3, max(0, $customerInfoUnits - 4));
+    $footerPenalty = 1;
+    $safetyBuffer = 1;
+
+    $normalPageCapacity = max(17, $basePageCapacity - $customerInfoPenalty - $footerPenalty - $safetyBuffer);
     $lastPageCapacity = 10;
     $pages = collect();
     $currentRows = [];
@@ -442,17 +453,66 @@
 
     if ($lastPage && $lastPage['height'] > $lastPageCapacity && $lastPage['details']->count() > 1) {
         $lastRows = $lastPage['details']->values();
-        $movedRow = $lastRows->pop();
+        $nextRows = collect();
+        $lastHeight = $lastPage['height'];
+        $nextHeight = 0;
+
+        while ($lastHeight > $lastPageCapacity && $lastRows->count() > 1) {
+            $movedRow = $lastRows->pop();
+            $nextRows->prepend($movedRow);
+            $lastHeight -= $movedRow['height'];
+            $nextHeight += $movedRow['height'];
+        }
 
         $pages->pop();
         $pages->push([
             'details' => $lastRows,
-            'height' => max(0, $lastPage['height'] - $movedRow['height']),
+            'height' => max(0, $lastHeight),
         ]);
         $pages->push([
-            'details' => collect([$movedRow]),
-            'height' => $movedRow['height'],
+            'details' => $nextRows,
+            'height' => $nextHeight,
         ]);
+    }
+
+    for ($pageIndex = 1; $pageIndex < $pages->count(); $pageIndex++) {
+        $page = $pages[$pageIndex];
+
+        if ($page['details']->count() !== 1) {
+            continue;
+        }
+
+        $previousPage = $pages[$pageIndex - 1];
+
+        if ($previousPage['details']->count() <= 1) {
+            continue;
+        }
+
+        $targetCapacity = $pageIndex === $pages->count() - 1 ? $lastPageCapacity : $normalPageCapacity;
+        $previousRows = $previousPage['details']->values();
+        $pageRows = $page['details']->values();
+
+        while ($pageRows->count() < 2 && $previousRows->count() > 1) {
+            $candidate = $previousRows->last();
+
+            if ($page['height'] + $candidate['height'] > $targetCapacity) {
+                break;
+            }
+
+            $previousRows->pop();
+            $pageRows->prepend($candidate);
+            $previousPage['height'] -= $candidate['height'];
+            $page['height'] += $candidate['height'];
+        }
+
+        $pages[$pageIndex - 1] = [
+            'details' => $previousRows,
+            'height' => max(0, $previousPage['height']),
+        ];
+        $pages[$pageIndex] = [
+            'details' => $pageRows,
+            'height' => $page['height'],
+        ];
     }
 
     $totalPages = $pages->count();
