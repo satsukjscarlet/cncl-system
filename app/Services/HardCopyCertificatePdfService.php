@@ -148,8 +148,8 @@ class HardCopyCertificatePdfService
 
         $rows[] = ['3.', 'Ngày xuất hàng:', $deliveryDate];
 
-        $indexW = 14.0;
-        $labelW = 100.0;
+        $indexW = 20.0;
+        $labelW = 94.0;
         $valueW = $this->contentWidth() - $indexW - $labelW;
         $x = self::LEFT;
         $y = self::CONTENT_TOP + 38;
@@ -160,13 +160,13 @@ class HardCopyCertificatePdfService
             $this->pdf->SetFont($this->fontRegular, '', 13);
             $this->pdf->SetTextColor(0, 0, 0);
             $this->pdf->SetXY($x, $y);
-            $this->pdf->MultiCell($indexW, $height, $index, 0, 'R', false, 0);
+            $this->pdf->MultiCell($indexW, $height, $index, 0, 'R', false, 0, '', '', true, 0, false, true, $height, 'T');
             $this->pdf->SetXY($x + $indexW, $y);
-            $this->pdf->MultiCell($labelW, $height, $label, 0, 'L', false, 0);
+            $this->pdf->MultiCell($labelW, $height, $label, 0, 'L', false, 0, '', '', true, 0, false, true, $height, 'T');
 
             $this->pdf->SetTextColor(255, 0, 0);
             $this->pdf->SetXY($x + $indexW + $labelW, $y);
-            $this->pdf->MultiCell($valueW, $height, $value, 0, 'L', false, 1);
+            $this->pdf->MultiCell($valueW, $height, $value, 0, 'L', false, 1, '', '', true, 0, false, true, $height, 'T');
 
             $y += $height;
         }
@@ -266,7 +266,7 @@ class HardCopyCertificatePdfService
             ? $certificate->request->delivery_date->format('d/m/Y')
             : '';
 
-        $valueW = $this->contentWidth() - 14.0 - 100.0;
+        $valueW = $this->contentWidth() - 20.0 - 94.0;
         $height = $this->infoRowHeight($customer->customer_name ?? '', $valueW)
             + $this->infoRowHeight($customer->project_name ?? '', $valueW)
             + ($customer?->project_address ? $this->infoRowHeight('Địa điểm công trình: ' . $customer->project_address, $valueW) : 0)

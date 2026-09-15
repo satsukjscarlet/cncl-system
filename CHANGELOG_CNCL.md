@@ -10,6 +10,63 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-14
 
+### PDF in ký tươi - căn lại số mục thông tin với nhãn
+
+File chính:
+- `app/Services/HardCopyCertificatePdfService.php`
+
+Nội dung:
+- Đổi phần vẽ số `1.`, `2.`, `3.` về cùng cơ chế `MultiCell()` với nhãn và giá trị.
+- Giữ cột số thứ tự rộng `20pt` để dấu chấm không bị xuống dòng.
+- Đặt `valign = T` cho số, nhãn và giá trị để cùng bám đỉnh dòng, tránh lệch baseline giữa `Cell()` và `MultiCell()`.
+
+Kiểm tra:
+- `php -l app/Services/HardCopyCertificatePdfService.php`: pass.
+- Render thử phiếu `238`: pass, PDF 13 trang.
+- `php artisan test --filter=hard_copy_print_returns_tcpdf_pdf`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+
+### PDF in ký tươi - sửa số mục thông tin bị tách dấu chấm
+
+File chính:
+- `app/Services/HardCopyCertificatePdfService.php`
+
+Nội dung:
+- Tăng cột số thứ tự phần thông tin khách hàng từ `14pt` lên `20pt`.
+- Giảm cột nhãn từ `100pt` xuống `94pt` để tổng chiều rộng không đổi.
+- Đổi cách vẽ số `1.`, `2.`, `3.` từ `MultiCell()` sang `Cell()` để TCPDF không tự wrap dấu chấm xuống dòng.
+- Đồng bộ lại phần tính chiều cao dry-run với kích thước cột mới.
+
+Kiểm tra:
+- `php -l app/Services/HardCopyCertificatePdfService.php`: pass.
+- Render thử phiếu `238`: pass, PDF 13 trang.
+- `php artisan test --filter=hard_copy_print_returns_tcpdf_pdf`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+
+### Chữ ký số PDF - thu nhỏ dấu tích xanh và đồng bộ màu footer
+
+File chính:
+- `app/Services/SmartCaService.php`
+- `resources/views/system_settings/index.blade.php`
+
+Nội dung:
+- Giảm kích thước dấu tích xanh trong ảnh chữ ký số từ `118px` xuống `86px`.
+- Giảm độ dày nét dấu tích để không tràn khỏi khung chữ ký.
+- Đổi màu dấu tích sang `#77BF35`, cùng màu với khung footer xanh của mẫu phiếu CNCL.
+- Căn lại vị trí dấu tích trong canvas để chữ vẫn nằm phía trên và dấu không vượt khung.
+- Đồng bộ preview màn cấu hình chữ ký số với màu/kích thước mới.
+
+Kiểm tra:
+- `php -l app/Services/SmartCaService.php`: pass.
+- Tạo thử ảnh chữ ký có dấu tích: pass, PNG `260x96`.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ### PDF in ký tươi - sửa lỗi TCPDF dùng nhầm core font Times
 
 File chính:

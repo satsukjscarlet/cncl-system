@@ -67,7 +67,7 @@
             right: 18px;
             bottom: 16px;
             height: 62px;
-            background: #86c844;
+            background: #77bf35;
             color: #fff;
             font-size: 8px;
             padding: 8px 14px;
@@ -102,18 +102,18 @@
         .signature-preview-check {
             position: absolute;
             left: 50%;
-            bottom: -7px;
-            width: 96px;
-            height: 72px;
+            bottom: 0;
+            width: 78px;
+            height: 58px;
             background: transparent;
-            color: #18a957;
+            color: #77bf35;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 74px;
+            font-size: 58px;
             font-weight: 900;
             line-height: 1;
-            text-shadow: 0 1px 2px rgba(24, 169, 87, .25);
+            text-shadow: 0 1px 2px rgba(119, 191, 53, .25);
             transform: translateX(-50%) rotate(-7deg);
             z-index: 1;
             pointer-events: none;

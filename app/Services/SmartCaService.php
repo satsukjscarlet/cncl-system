@@ -352,7 +352,7 @@ class SmartCaService
         $source = $imageContent ? @imagecreatefromstring($imageContent) : null;
         $sourceWidth = $source ? imagesx($source) : 0;
         $sourceHeight = $source ? imagesy($source) : 0;
-        $checkSize = 118;
+        $checkSize = 86;
         $maxSourceWidth = 220;
         $maxSourceHeight = 86;
         $scale = $source
@@ -386,7 +386,7 @@ class SmartCaService
         $this->drawGreenCheck(
             $canvas,
             (int) floor(($canvasWidth - $checkSize) / 2),
-            $canvasHeight - $checkSize + 20,
+            $canvasHeight - $checkSize + 12,
             $checkSize
         );
 
@@ -400,9 +400,9 @@ class SmartCaService
 
     private function drawGreenCheck($canvas, int $x, int $y, int $size): void
     {
-        $green = imagecolorallocate($canvas, 24, 169, 87);
+        $green = imagecolorallocate($canvas, 119, 191, 53);
 
-        imagesetthickness($canvas, max(8, (int) floor($size / 9)));
+        imagesetthickness($canvas, max(6, (int) floor($size / 10)));
         imageline(
             $canvas,
             $x + (int) floor($size * .12),

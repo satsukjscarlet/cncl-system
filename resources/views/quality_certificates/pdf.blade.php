@@ -485,12 +485,12 @@
 
     <table class="info-table">
         <tr>
-            <td class="index">1</td>
+            <td class="index">1.</td>
             <td class="label">Tên khách hàng:</td>
             <td class="value">{{ $certificate->request->customer->customer_name ?? '' }}</td>
         </tr>
         <tr>
-            <td class="index">2</td>
+            <td class="index">2.</td>
             <td class="label">Tên công trình:</td>
             <td class="value">{{ $certificate->request->customer->project_name ?? '' }}</td>
         </tr>
@@ -500,7 +500,7 @@
             <td class="sub-value">Địa điểm công trình: {{ $certificate->request->customer->project_address ?? '' }}</td>
         </tr>
         <tr>
-            <td class="index">3</td>
+            <td class="index">3.</td>
             <td class="label">Ngày xuất hàng:</td>
             <td class="value">{{ $certificate->request->delivery_date ? $certificate->request->delivery_date->format('d/m/Y') : '' }}</td>
         </tr>
