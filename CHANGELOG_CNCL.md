@@ -10,6 +10,156 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-14
 
+### PDF in ký tươi - sửa lỗi TCPDF dùng nhầm core font Times
+
+File chính:
+- `app/Services/HardCopyCertificatePdfService.php`
+
+Nội dung:
+- Sửa cách nạp font Times New Roman cho TCPDF.
+- Không dùng trực tiếp `public/fonts/times.ttf` nữa vì TCPDF lấy tên file thành `times`, bị trùng với core font `times` không hỗ trợ Unicode tiếng Việt đầy đủ.
+- Tạo alias font riêng trong `storage/app/tcpdf-font-source` trước khi đưa vào TCPDF.
+- Font TCPDF sau khi nạp là `timesnewromanpdfnormal` và `timesnewromanpdfb`, tránh fallback về core font.
+
+Kiểm tra:
+- `php -l app/Services/HardCopyCertificatePdfService.php`: pass.
+- Render thử phiếu `238`: pass, PDF sinh 13 trang và có nhúng font Times New Roman Unicode.
+- `php artisan test --filter=hard_copy_print_returns_tcpdf_pdf`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+- `composer validate --no-check-publish`: pass.
+
+### PDF in ký tươi - chuyển sang TCPDF để đo dòng và vẽ theo tọa độ
+
+File chính:
+- `composer.json`
+- `composer.lock`
+- `app/Services/HardCopyCertificatePdfService.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+
+Nội dung:
+- Cài thêm `tecnickcom/tcpdf` để sinh riêng bản in ký tươi trên phôi bằng tọa độ point.
+- Thêm service `HardCopyCertificatePdfService` vẽ trực tiếp số phiếu, thông tin khách hàng, bảng sản phẩm, ghi chú, số trang và tên người ký.
+- Dùng TCPDF `getStringHeight()` để tính chiều cao dòng theo font và chiều rộng cột thực tế, thay cho ước lượng số ký tự trong Blade/Dompdf.
+- Khóa vị trí ghi chú tại `top = 490pt` theo phôi, bảng chỉ được vẽ trong vùng phía trên ghi chú.
+- Đổi `printHardCopy()` sang trả file PDF từ service TCPDF mới, vẫn giữ nguyên logic ghi nhận số lần in và lịch sử thao tác.
+- Bổ sung test route in ký tươi trả về PDF hợp lệ và tăng số lần in.
+
+Kiểm tra:
+- Render thử phiếu `238`: pass, 90 sản phẩm, PDF 13 trang.
+- Render thử phiếu test `248`: pass, 100 sản phẩm, PDF 15 trang.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=hard_copy_print_returns_tcpdf_pdf`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF in ký tươi - cân lại trang nhiều sản phẩm theo chiều rộng cột thật
+
+File chính:
+- `resources/views/quality_certificates/hard_copy_print.blade.php`
+
+Nội dung:
+- Tăng khoảng an toàn trước ghi chú cố định từ `10pt` lên `14pt`.
+- Tăng chiều cao header bảng dự kiến từ `38pt` lên `44pt`.
+- Giảm số ký tự ước lượng trên mỗi dòng theo đúng bề rộng cột thực tế, đặc biệt cột `Tên sản phẩm` và `Tiêu chuẩn sản phẩm`.
+- Không kẻ dòng trống ở các trang trung gian, chỉ kẻ tối đa `4` dòng trống ở trang cuối.
+- Mục tiêu là tránh trường hợp trang trước bị chừa khoảng trắng bất thường còn trang sau bị kéo dài đè vào ghi chú.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- Render thử phiếu `238`: pass, 90 sản phẩm, PDF 18 trang.
+- Render thử phiếu test `248`: pass, 100 sản phẩm, PDF 20 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF in ký tươi - tính bảng theo mốc ghi chú cố định 490pt
+
+File chính:
+- `resources/views/quality_certificates/hard_copy_print.blade.php`
+
+Nội dung:
+- Đặt `top = 490pt` của phần ghi chú làm ranh giới cứng cho bảng sản phẩm.
+- Tính chiều cao thân bảng theo công thức: vị trí ghi chú - khoảng an toàn - vị trí bắt đầu bảng - chiều cao header bảng.
+- Tự tính vị trí bắt đầu bảng theo chiều cao số phiếu và thông tin khách hàng/công trình/ngày xuất hàng.
+- Thêm mốc bắt đầu bảng tối thiểu `214pt` theo phôi in sẵn để tránh trường hợp thông tin ngắn làm bảng kéo xuống sát ghi chú.
+- Giữ dòng trống kẻ thêm trong phạm vi chiều cao bảng cho phép.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- Render thử phiếu `146`: pass, 7 sản phẩm, PDF 1 trang.
+- Render thử phiếu test `248`: pass, 100 sản phẩm, PDF 15 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF in ký tươi - chặn bảng đè vùng ghi chú phôi
+
+File chính:
+- `resources/views/quality_certificates/hard_copy_print.blade.php`
+
+Nội dung:
+- Giảm vùng chiều cao bảng tối đa còn `220pt` để dừng bảng trước vùng ghi chú cố định của giấy phôi.
+- Tự trừ thêm chiều cao bảng khi thông tin khách hàng/công trình/địa điểm dài nhiều dòng.
+- Giới hạn số dòng trống kẻ thêm tối đa `4` dòng/trang để không kéo bảng đè xuống ghi chú.
+- Giữ ghi chú, số trang và tên người ký ở vị trí cố định trên mọi trang phôi.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- Render thử phiếu test đã ký 100 dòng sản phẩm: pass, PDF in ký tươi sinh 14 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF in ký tươi - phân trang theo chiều cao point và kẻ dòng trống
+
+File chính:
+- `resources/views/quality_certificates/hard_copy_print.blade.php`
+
+Nội dung:
+- Thay phân trang theo `unit/trang` bằng phân trang theo chiều cao ước lượng dạng point.
+- Mỗi dòng sản phẩm được tính chiều cao theo số dòng chữ ước lượng của từng cột.
+- Mỗi trang dùng tối đa `272pt` cho vùng bảng để không đè lên ghi chú cố định.
+- Tự thêm dòng trống trong bảng theo khoảng trống còn lại, giúp bảng kéo gần tới ghi chú và form nhìn cân bằng hơn.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- Render thử phiếu in ký tươi 100 dòng sản phẩm: pass, thuật toán dự kiến 11 trang và PDF sinh 11 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF in ký tươi - giảm chữ bảng và chừa vùng ghi chú rộng hơn
+
+File chính:
+- `resources/views/quality_certificates/hard_copy_print.blade.php`
+
+Nội dung:
+- Đặt rõ cỡ chữ dữ liệu trong bảng sản phẩm là `12pt`.
+- Giảm padding và line-height của ô dữ liệu để nội dung gọn hơn.
+- Giảm sức chứa phân trang ký tươi xuống `7` unit/trang để bảng dừng sớm hơn, tránh đè lên vùng ghi chú cố định trên phôi.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- Render thử phiếu test ký tươi 100 dòng sản phẩm: pass, PDF sinh 26 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### Data test - thêm phiếu đã ký số nhiều sản phẩm để test in lại
+
+File chính:
+- `database/seeders/WorkflowReportTestDataSeeder.php`
+
+Nội dung:
+- Bổ sung 5 phiếu CNCL test đã ký số/phát hành, mỗi trung tâm NP/TP/HP/HD/TH có 1 phiếu.
+- Số dòng sản phẩm lần lượt khoảng 45, 60, 75, 90, 100 để test in ký tươi/in lại với phiếu nhiều trang.
+- Các phiếu có trạng thái `ISSUED`, `smartca_status = SIGNED`, có `signed_at`, `signed_by` và thông tin SmartCA test.
+- Bổ sung một số dòng tiêu chuẩn dài như `DIN 8077:2008&DIN8078:2008` để test chống tràn cột.
+- Khi dọn data test, xóa thêm `print_logs` và liên kết cấp lại liên quan trước khi xóa phiếu test.
+
+Kiểm tra:
+- `php -l database/seeders/WorkflowReportTestDataSeeder.php`: pass.
+- `php artisan db:seed --class=WorkflowReportTestDataSeeder`: pass.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- Render thử phiếu test đã ký 100 dòng sản phẩm: pass, PDF in ký tươi sinh 20 trang.
+
 ### PDF in ký tươi - cố định ghi chú, số trang và người ký trên từng phôi
 
 File chính:

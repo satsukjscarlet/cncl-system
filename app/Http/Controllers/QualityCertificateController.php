@@ -10,6 +10,7 @@ use App\Models\PrintLog;
 use App\Models\QualityCertificate;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\HardCopyCertificatePdfService;
 use App\Services\NotificationService;
 use App\Services\SmartCaPadesService;
 use App\Services\SmartCaService;
@@ -1161,16 +1162,19 @@ class QualityCertificateController extends Controller
             $qualityCertificate
         );
 
-        $pdf = Pdf::loadView('quality_certificates.hard_copy_print', [
-            'certificate' => $qualityCertificate->fresh()->load([
+        $pdfContent = app(HardCopyCertificatePdfService::class)->render(
+            $qualityCertificate->fresh()->load([
                 'request.distributionCenter',
                 'request.customer',
                 'details.product',
                 'creator',
-            ]),
-        ])->setPaper('a4', 'portrait');
+            ])
+        );
 
-        return $pdf->stream($qualityCertificate->certificate_no . '_ky_tuoi_lan_' . $printNo . '.pdf');
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $qualityCertificate->certificate_no . '_ky_tuoi_lan_' . $printNo . '.pdf"',
+        ]);
     }
 
     public function resendEmail(QualityCertificate $qualityCertificate)

@@ -131,8 +131,8 @@
             border-right: 1pt solid #111;
             border-bottom: 1px solid #d6d6d6;
             height: 18pt;
-            padding: 2px 4px;
-            line-height: 1.18;
+            padding: 1.5px 3px;
+            line-height: 1.1;
             font-size: 12pt;
             vertical-align: top;
             white-space: normal;
@@ -163,7 +163,7 @@
             position: absolute;
             left: 0;
             right: 0;
-            top: 430pt;
+            top: 490pt;
             margin: 0;
             font-size: 11pt;
             line-height: 1.35;
@@ -186,7 +186,7 @@
         .page-number {
             position: absolute;
             right: 0;
-            top: 474pt;
+            top: 490pt;
             margin: 0;
             font-size: 10pt;
             color: #000;
@@ -197,10 +197,24 @@
 <body>
     @php
         $details = $certificate->details->values();
-        $pageCapacity = 9;
+        // Point coordinates are matched to the pre-printed hard-copy stock.
+        $noteTop = 490;
+        $safeGapBeforeNote = 14;
+        $certNoBlockHeight = 34;
+        $infoLineHeight = 15.6;
+        $infoVerticalPadding = 3;
+        $infoMarginBottom = 11;
+        $tableMarginTop = 3;
+        $tableHeaderHeight = 44;
+        $blankRowHeight = 18;
         $pages = collect();
         $currentRows = [];
-        $currentUnits = 0;
+        $currentHeight = 0;
+        $customer = $certificate->request->customer ?? null;
+        $deliveryDate = $certificate->request?->delivery_date
+            ? $certificate->request->delivery_date->format('d/m/Y')
+            : '';
+        $signerName = 'Vũ Thị Diệu Thúy';
 
         $formatNumber = static function ($quantity) {
             if ($quantity === null || $quantity === '') {
@@ -226,55 +240,75 @@
             return max(1, (int) ceil(mb_strlen($value) / max(1, $charsPerLine)));
         };
 
-        $rowUnit = static function ($detail) use ($estimateLines, $formatNumber) {
+        $estimateInfoRowHeight = static function ($value) use ($estimateLines, $infoLineHeight, $infoVerticalPadding): float {
+            return max(18.6, ($estimateLines($value, 62) * $infoLineHeight) + $infoVerticalPadding);
+        };
+
+        $infoRowsHeight = $estimateInfoRowHeight($customer->customer_name ?? '')
+            + $estimateInfoRowHeight($customer->project_name ?? '')
+            + ($customer?->project_address ? $estimateInfoRowHeight('Dia diem cong trinh: ' . $customer->project_address) : 0)
+            + $estimateInfoRowHeight($deliveryDate);
+
+        $calculatedTableStartY = $certNoBlockHeight + $infoRowsHeight + $infoMarginBottom + $tableMarginTop;
+        $tableStartY = max(214, $calculatedTableStartY);
+        $tableMaxHeight = max(110, $noteTop - $safeGapBeforeNote - $tableStartY - $tableHeaderHeight);
+
+        $estimateRowHeight = static function ($detail) use ($estimateLines, $formatNumber) {
             $product = $detail->product;
 
             $estimatedLines = max(
                 1,
-                $estimateLines($product->product_name ?? '', 42),
-                $estimateLines($product->unit ?? '', 8),
-                $estimateLines($formatNumber($detail->quantity), 8),
-                $estimateLines($detail->nominal_size, 15),
-                $estimateLines($detail->technical_requirements, 15),
-                $estimateLines($detail->quality_standard, 22)
+                $estimateLines($product->product_name ?? '', 30),
+                $estimateLines($product->unit ?? '', 5),
+                $estimateLines($formatNumber($detail->quantity), 5),
+                $estimateLines($detail->nominal_size, 10),
+                $estimateLines($detail->technical_requirements, 10),
+                $estimateLines($detail->quality_standard, 16)
             );
 
-            return min(5, $estimatedLines);
+            return max(18, min(86, 20 + (($estimatedLines - 1) * 16)));
         };
 
         foreach ($details as $detail) {
-            $units = $rowUnit($detail);
+            $rowHeight = $estimateRowHeight($detail);
 
-            if (!empty($currentRows) && ($currentUnits + $units) > $pageCapacity) {
-                $pages->push(collect($currentRows));
+            if (!empty($currentRows) && ($currentHeight + $rowHeight) > $tableMaxHeight) {
+                $pages->push([
+                    'details' => collect($currentRows),
+                    'height' => $currentHeight,
+                ]);
                 $currentRows = [];
-                $currentUnits = 0;
+                $currentHeight = 0;
             }
 
             $currentRows[] = $detail;
-            $currentUnits += $units;
+            $currentHeight += $rowHeight;
         }
 
         if (!empty($currentRows)) {
-            $pages->push(collect($currentRows));
+            $pages->push([
+                'details' => collect($currentRows),
+                'height' => $currentHeight,
+            ]);
         }
 
         if ($pages->isEmpty()) {
-            $pages = collect([collect()]);
+            $pages = collect([[
+                'details' => collect(),
+                'height' => 0,
+            ]]);
         }
 
         $totalPages = $pages->count();
-
-        $customer = $certificate->request->customer ?? null;
-        $deliveryDate = $certificate->request?->delivery_date
-            ? $certificate->request->delivery_date->format('d/m/Y')
-            : '';
-        $signerName = 'Vũ Thị Diệu Thúy';
     @endphp
 
-    @foreach ($pages as $pageIndex => $pageDetails)
+    @foreach ($pages as $pageIndex => $page)
         @php
-            $rowOffset = $pages->take($pageIndex)->sum(fn ($page) => $page->count());
+            $pageDetails = $page['details'];
+            $blankRows = $loop->last
+                ? min(4, max(0, (int) floor(($tableMaxHeight - $page['height']) / $blankRowHeight)))
+                : 0;
+            $rowOffset = $pages->take($pageIndex)->sum(fn ($item) => $item['details']->count());
         @endphp
 
         <div class="page" style="{{ $loop->last ? '' : 'page-break-after: always;' }}">
@@ -330,6 +364,18 @@
                                 <td class="text-center">{{ $breakableText($detail->quality_standard) }}</td>
                             </tr>
                         @endforeach
+
+                        @for ($i = 0; $i < $blankRows; $i++)
+                            <tr>
+                                <td>&nbsp;</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        @endfor
 
                     </tbody>
                 </table>

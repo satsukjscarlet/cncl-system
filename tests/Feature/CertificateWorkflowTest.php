@@ -925,6 +925,28 @@ class CertificateWorkflowTest extends TestCase
         $this->assertSame($newCertificate->id, $secondOldCertificate->fresh()->replaced_by_certificate_id);
     }
 
+    public function test_hard_copy_print_returns_tcpdf_pdf(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-HARD-COPY-PRINT');
+        $certificate = $this->createIssuedCertificate($centerUser, $customer, 'INV-HARD-COPY-PRINT', [
+            [$this->product, 12],
+            [$this->createProductVariant('PVC-DN200-LONG', 'Ong PVC-U DN200 PN10 dai 6m cap cho cong trinh test in phoi nhieu dong', 'DN200'), 25],
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->post(route('quality-certificates.print-hard-copy', $certificate), [
+                'reason' => 'Test in phoi bang TCPDF.',
+            ]);
+
+        $response->assertOk();
+        $content = $response->getContent();
+
+        $this->assertStringStartsWith('%PDF', $content);
+        $this->assertSame(1, $certificate->fresh()->print_count);
+    }
+
     private function createProduct(): Product
     {
         $group = ProductGroup::create([

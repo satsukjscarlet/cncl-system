@@ -58,11 +58,13 @@ class WorkflowReportTestDataSeeder extends Seeder
                         $this->createDraftCertificate($request, $details, $ptnUserId, $createdAt->copy()->addHours(2));
                     }
                 }
+
+                $this->createSignedHardCopyTestCertificate($center, $centerUserId, $ptnUserId, $products);
             }
             });
         });
 
-        $this->command?->info('Đã tạo dữ liệu test workflow/báo cáo: 5 trung tâm x 15 đề nghị, mỗi đề nghị 20-100 sản phẩm. Phần lớn dừng ở bước Chờ Trưởng PTN ký.');
+        $this->command?->info('Đã tạo dữ liệu test workflow/báo cáo: 5 trung tâm x 15 đề nghị, mỗi đề nghị 20-100 sản phẩm. Có thêm 5 phiếu đã ký số, mỗi phiếu nhiều sản phẩm để test in ký tươi/in lại.');
     }
 
     private function centers(): Collection
@@ -90,6 +92,8 @@ class WorkflowReportTestDataSeeder extends Seeder
             ->pluck('id');
 
         if ($certificateIds->isNotEmpty()) {
+            DB::table('print_logs')->whereIn('quality_certificate_id', $certificateIds)->delete();
+            DB::table('certificate_request_reissue_certificates')->whereIn('quality_certificate_id', $certificateIds)->delete();
             DB::table('quality_certificate_details')->whereIn('quality_certificate_id', $certificateIds)->delete();
             DB::table('quality_certificates')->whereIn('id', $certificateIds)->delete();
         }
@@ -255,6 +259,101 @@ class WorkflowReportTestDataSeeder extends Seeder
         })->all();
 
         DB::table('quality_certificate_details')->insert($rows);
+    }
+
+    private function createSignedHardCopyTestCertificate(DistributionCenter $center, ?int $centerUserId, ?int $ptnUserId, Collection $products): void
+    {
+        $sequence = ['NP' => 1, 'TP' => 2, 'HP' => 3, 'HD' => 4, 'TH' => 5][$center->code] ?? 1;
+        $createdAt = now()->subDays(20 - $sequence)->subHours($sequence);
+        $signedAt = $createdAt->copy()->addHours(8);
+        $customer = $this->createCustomer($center, 100 + $sequence, $createdAt);
+        $requestNo = self::PREFIX . '-SIGNED-YC-' . $center->code . '-' . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+
+        $request = CertificateRequest::create([
+            'request_no' => $requestNo,
+            'request_type' => 'NORMAL',
+            'distribution_center_id' => $center->id,
+            'customer_id' => $customer->id,
+            'delivery_date' => $createdAt->copy()->addDays(2)->toDateString(),
+            'invoice_no' => self::PREFIX . '-SIGNED-HD-' . $center->code . '-' . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT),
+            'require_hard_copy' => true,
+            'hard_copy_quantity' => 2,
+            'is_urgent' => false,
+            'urgent_reason_id' => null,
+            'requester_name' => 'Người tạo test phiếu đã ký ' . $center->code,
+            'customer_commitment_confirmed' => true,
+            'note' => self::PREFIX . ' - Phiếu đã ký số để test in ký tươi/in lại, có nhiều dòng sản phẩm.',
+            'status' => 'COMPLETED',
+            'submitted_at' => $createdAt->copy()->addMinutes(30),
+            'submitted_by' => $centerUserId,
+            'created_by' => $centerUserId,
+            'created_at' => $createdAt,
+            'updated_at' => $signedAt,
+        ]);
+
+        $count = [45, 60, 75, 90, 100][$sequence - 1] ?? 60;
+        $selectedProducts = $products->shuffle()->take(min($count, $products->count()))->values();
+        $requestDetailRows = [];
+        $certificateDetailRows = [];
+
+        foreach ($selectedProducts as $index => $product) {
+            /** @var Product $product */
+            $quantity = mt_rand(1, 500);
+            $qualityStandard = ($index + 1) % 7 === 0
+                ? 'DIN 8077:2008&DIN8078:2008'
+                : ($product->qualityStandard->code ?? $product->qualityStandard->name ?? 'TCVN-TEST');
+
+            $requestDetailRows[] = [
+                'certificate_request_id' => $request->id,
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'created_at' => $createdAt,
+                'updated_at' => $signedAt,
+            ];
+
+            $certificateDetailRows[] = [
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'nominal_size' => $product->nominal_size,
+                'technical_requirements' => $product->technical_requirements,
+                'quality_standard' => $qualityStandard,
+                'created_at' => $createdAt,
+                'updated_at' => $signedAt,
+            ];
+        }
+
+        DB::table('certificate_request_details')->insert($requestDetailRows);
+
+        $certificateId = DB::table('quality_certificates')->insertGetId([
+            'certificate_no' => self::PREFIX . '-SIGNED-CNCL-' . $center->code . '-' . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT),
+            'status' => 'ISSUED',
+            'certificate_request_id' => $request->id,
+            'created_by' => $ptnUserId ?: $centerUserId,
+            'signed_at' => $signedAt,
+            'signed_by' => 'VNPT SmartCA Test',
+            'pdf_path' => null,
+            'print_count' => 0,
+            'smartca_status' => 'SIGNED',
+            'smartca_transaction_id' => self::PREFIX . '-SIGNED-TRAN-' . $center->code . '-' . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT),
+            'smartca_tran_code' => self::PREFIX . '-SIGNED-CODE-' . $center->code,
+            'smartca_doc_id' => self::PREFIX . '-SIGNED-DOC-' . $center->code,
+            'smartca_data_hash' => hash('sha256', $requestNo),
+            'smartca_certificate_serial' => config('services.smartca.serial_number'),
+            'smartca_signature_value' => 'TEST_SIGNATURE_VALUE',
+            'smartca_timestamp_signature' => $signedAt->format('YmdHis'),
+            'smartca_requested_at' => $signedAt->copy()->subMinutes(5),
+            'smartca_completed_at' => $signedAt,
+            'pades_status' => 'SIGNED_PDF',
+            'pades_error' => null,
+            'created_at' => $createdAt->copy()->addHours(3),
+            'updated_at' => $signedAt,
+        ]);
+
+        DB::table('quality_certificate_details')->insert(collect($certificateDetailRows)
+            ->map(fn (array $row) => array_merge($row, [
+                'quality_certificate_id' => $certificateId,
+            ]))
+            ->all());
     }
 
     private function scenario(int $index): array
