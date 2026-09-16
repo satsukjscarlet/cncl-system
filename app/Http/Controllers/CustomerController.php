@@ -64,7 +64,7 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate($this->customerRules($request));
+        $data = $request->validate($this->customerRules($request), $this->customerValidationMessages());
         $data['is_active'] = $request->boolean('is_active');
         $data['distribution_center_id'] = $this->resolveDistributionCenterId($data);
 
@@ -104,7 +104,7 @@ class CustomerController extends Controller
     {
         $this->authorizeCustomerCenter($customer);
 
-        $data = $request->validate($this->customerRules($request, $customer));
+        $data = $request->validate($this->customerRules($request, $customer), $this->customerValidationMessages());
         $oldData = $customer->toArray();
 
         $data['is_active'] = $request->boolean('is_active');
@@ -285,8 +285,8 @@ class CustomerController extends Controller
             'contact_person' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:100'],
             'email' => ['nullable', 'email', 'max:255'],
-            'project_name' => ['nullable', 'string', 'max:500'],
-            'project_address' => ['nullable', 'string'],
+            'project_name' => ['required', 'string', 'max:500'],
+            'project_address' => ['required', 'string'],
             'is_active' => ['nullable'],
         ];
     }
@@ -493,6 +493,15 @@ class CustomerController extends Controller
         }
 
         return $data['distribution_center_id'] ?? $customer?->distribution_center_id;
+    }
+
+    private function customerValidationMessages(): array
+    {
+        return [
+            'customer_name.required' => 'Vui lòng nhập tên khách hàng.',
+            'project_name.required' => 'Vui lòng nhập tên công trình.',
+            'project_address.required' => 'Vui lòng nhập địa điểm công trình.',
+        ];
     }
 
     private function authorizeCustomerCenter(Customer $customer): void

@@ -107,19 +107,25 @@
             <div class="col-md-4">
                 <div class="form-group">
                     <label>Tên khách hàng <span class="text-danger">*</span></label>
-                    <input type="text" name="new_customer_name" class="form-control"
+                    <input type="text" name="new_customer_name" class="form-control @error('new_customer_name') is-invalid @enderror"
                            value="{{ old('new_customer_name') }}">
                     @error('new_customer_name')
-                        <span class="text-danger small">{{ $message }}</span>
+                        <span class="invalid-feedback">{{ $message }}</span>
                     @enderror
                 </div>
             </div>
 
             <div class="col-md-4">
                 <div class="form-group">
-                    <label>Tên công trình</label>
-                    <input type="text" name="new_project_name" class="form-control"
-                           value="{{ old('new_project_name') }}">
+                    <label>Tên công trình <span class="text-danger">*</span></label>
+                    <input type="text"
+                           name="new_project_name"
+                           class="form-control @error('new_project_name') is-invalid @enderror"
+                           value="{{ old('new_project_name') }}"
+                           required>
+                    @error('new_project_name')
+                        <span class="invalid-feedback">{{ $message }}</span>
+                    @enderror
                 </div>
             </div>
         </div>
@@ -135,9 +141,15 @@
 
             <div class="col-md-6">
                 <div class="form-group">
-                    <label>Địa điểm công trình</label>
-                    <input type="text" name="new_project_address" class="form-control"
-                           value="{{ old('new_project_address') }}">
+                    <label>Địa điểm công trình <span class="text-danger">*</span></label>
+                    <input type="text"
+                           name="new_project_address"
+                           class="form-control @error('new_project_address') is-invalid @enderror"
+                           value="{{ old('new_project_address') }}"
+                           required>
+                    @error('new_project_address')
+                        <span class="invalid-feedback">{{ $message }}</span>
+                    @enderror
                 </div>
             </div>
         </div>
@@ -237,14 +249,15 @@
 <div class="row">
     <div class="col-md-4">
         <div class="form-group">
-            <label>Tên người tạo yêu cầu</label>
+            <label>Tên người tạo yêu cầu <span class="text-danger">*</span></label>
             <input type="text"
                    name="requester_name"
-                   class="form-control"
+                   class="form-control @error('requester_name') is-invalid @enderror"
                    value="{{ old('requester_name', $certificateRequest->requester_name ?? '') }}"
-                   placeholder="Nhập tên người tạo yêu cầu">
+                   placeholder="Nhập tên người tạo yêu cầu"
+                   required>
             @error('requester_name')
-                <span class="text-danger small">{{ $message }}</span>
+                <span class="invalid-feedback">{{ $message }}</span>
             @enderror
         </div>
     </div>
@@ -529,6 +542,7 @@
             const addRowBtn = document.getElementById('add-row');
             const existingBox = document.getElementById('existing-customer-box');
             const newBox = document.getElementById('new-customer-box');
+            const newCustomerRequiredInputs = newBox.querySelectorAll('[name="new_customer_name"], [name="new_project_name"], [name="new_project_address"]');
             const distributionCenterSelect = document.querySelector('[name="distribution_center_id"]');
             const customerSelect = document.querySelector('select[name="customer_id"]');
             const customerModeInputs = document.querySelectorAll('input[name="customer_mode"]');
@@ -562,8 +576,15 @@
 
             function syncCustomerMode() {
                 const mode = document.querySelector('input[name="customer_mode"]:checked').value;
+                const isNewCustomer = mode === 'new';
+
                 existingBox.style.display = mode === 'existing' ? '' : 'none';
-                newBox.style.display = mode === 'new' ? '' : 'none';
+                newBox.style.display = isNewCustomer ? '' : 'none';
+
+                newCustomerRequiredInputs.forEach(function(input) {
+                    input.required = isNewCustomer;
+                    input.disabled = !isNewCustomer;
+                });
             }
 
             customerModeInputs.forEach(function(input) {

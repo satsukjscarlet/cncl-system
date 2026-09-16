@@ -108,18 +108,26 @@
 <hr>
 
 <div class="form-group">
-    <label>Tên công trình</label>
+    <label>Tên công trình <span class="text-danger">*</span></label>
     <input type="text"
            name="project_name"
-           class="form-control"
-           value="{{ old('project_name', $customer->project_name ?? '') }}">
+           class="form-control @error('project_name') is-invalid @enderror"
+           value="{{ old('project_name', $customer->project_name ?? '') }}"
+           required>
+    @error('project_name')
+        <span class="invalid-feedback">{{ $message }}</span>
+    @enderror
 </div>
 
 <div class="form-group">
-    <label>Địa điểm công trình</label>
+    <label>Địa điểm công trình <span class="text-danger">*</span></label>
     <textarea name="project_address"
-              class="form-control"
-              rows="2">{{ old('project_address', $customer->project_address ?? '') }}</textarea>
+              class="form-control @error('project_address') is-invalid @enderror"
+              rows="2"
+              required>{{ old('project_address', $customer->project_address ?? '') }}</textarea>
+    @error('project_address')
+        <span class="invalid-feedback">{{ $message }}</span>
+    @enderror
 </div>
 
 <div class="form-group">

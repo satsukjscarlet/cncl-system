@@ -106,20 +106,24 @@ class PtnRequestController extends Controller
             'new_contact_person' => ['nullable', 'string', 'max:255'],
             'new_phone' => ['nullable', 'string', 'max:100'],
             'new_email' => ['nullable', 'email', 'max:255'],
-            'new_project_name' => ['nullable', 'string', 'max:500'],
-            'new_project_address' => ['nullable', 'string'],
+            'new_project_name' => ['required_if:customer_mode,new', 'nullable', 'string', 'max:500'],
+            'new_project_address' => ['required_if:customer_mode,new', 'nullable', 'string'],
             'delivery_date' => ['nullable', 'date'],
             'invoice_no' => ['nullable', 'string', 'max:255'],
             'require_hard_copy' => ['nullable'],
             'hard_copy_quantity' => ['nullable', 'integer', 'min:0'],
             'is_urgent' => ['nullable', 'boolean'],
             'urgent_reason_id' => ['nullable', 'required_if:is_urgent,1', 'exists:urgent_reasons,id'],
-            'requester_name' => ['nullable', 'string', 'max:255'],
+            'requester_name' => ['required', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
             'product_id' => ['required', 'array', 'min:1'],
             'product_id.*' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'array', 'min:1'],
             'quantity.*' => ['required', 'numeric', 'min:0.01'],
+        ], [
+            'new_project_name.required_if' => 'Vui lòng nhập tên công trình khi tạo khách hàng mới.',
+            'new_project_address.required_if' => 'Vui lòng nhập địa điểm công trình khi tạo khách hàng mới.',
+            'requester_name.required' => 'Vui lòng nhập tên người tạo yêu cầu.',
         ]);
 
         DB::beginTransaction();

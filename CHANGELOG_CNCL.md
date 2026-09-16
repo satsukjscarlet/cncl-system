@@ -10,6 +10,28 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-16
 
+### Yêu cầu cấp phiếu - bắt buộc công trình và tên người tạo yêu cầu
+
+File chính:
+- `app/Http/Controllers/CertificateRequestController.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `app/Http/Controllers/CustomerController.php`
+- `resources/views/certificate_requests/_form.blade.php`
+- `resources/views/customers/_form.blade.php`
+
+Nội dung:
+- Khi nhập khách hàng mới trong màn tạo/sửa yêu cầu cấp phiếu, bắt buộc nhập `Tên công trình` và `Địa điểm công trình`.
+- Khi tạo/sửa yêu cầu cấp phiếu, bắt buộc nhập `Tên người tạo yêu cầu`.
+- Danh mục khách hàng - công trình cũng bắt buộc `Tên công trình` và `Địa điểm công trình`.
+- Luồng PTN lập phiếu trực tiếp dùng chung form cũng được áp dụng ràng buộc tương ứng.
+- Form tự bật/tắt `required` cho các ô khách hàng mới theo lựa chọn `Chọn khách hàng có sẵn` hoặc `Nhập khách hàng mới`, tránh lỗi trình duyệt chặn submit khi khối nhập mới đang ẩn.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/CertificateRequestController.php`: pass.
+- `php -l app/Http/Controllers/CustomerController.php`: pass.
+- `php -l app/Http/Controllers/PtnRequestController.php`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ### Phiếu in ký tươi - bỏ kẻ dòng trống dưới bảng sản phẩm
 
 File chính:
