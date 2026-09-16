@@ -82,7 +82,7 @@
         .company-title {
             color: #d71920;
             font-family: "TimesNewRomanPdf", "Times New Roman", Times, serif;
-            font-size: 17.2px;
+            font-size: 14.2px;
             font-weight: 700;
             line-height: 1.12;
             text-transform: uppercase;
@@ -414,7 +414,7 @@
     $basePageCapacity = 21;
     $customerInfoPenalty = min(3, max(0, $customerInfoUnits - 4));
     $footerPenalty = 1;
-    $safetyBuffer = 1;
+    $safetyBuffer = 3;
 
     $normalPageCapacity = max(17, $basePageCapacity - $customerInfoPenalty - $footerPenalty - $safetyBuffer);
     $lastPageCapacity = 10;
@@ -518,12 +518,41 @@
     $totalPages = $pages->count();
 @endphp
 
+    @if (!($hardCopy ?? false))
+        <div class="electronic-trace">
+            Phi&#7871;u k&#253; s&#7889; &#273;i&#7879;n t&#7917; - M&#227; phi&#7871;u: {{ $certificate->certificate_no }} - Tra c&#7913;u: {{ $electronicLookupUrl }}
+        </div>
+    @endif
+
+    <div class="footer-wrap">
+        <div class="footer-website">Website: www.nhuatienphong.vn</div>
+
+        <table class="footer-band">
+            <tr>
+                <td>
+                    <strong>- Tr&#7909; s&#7903; ch&#237;nh:</strong><br>
+                    S&#7889; 2 An &#272;&#224;, Gia Vi&#234;n, TP. H&#7843;i Ph&#242;ng, Vi&#7879;t Nam<br>
+                    <strong>- V&#259;n ph&#242;ng giao d&#7883;ch &amp; Nh&#224; m&#225;y:</strong><br>
+                    <span class="footer-nowrap">S&#7889; 222 M&#7841;c &#272;&#259;ng Doanh, P. H&#432;ng &#272;&#7841;o, TP. H&#7843;i Ph&#242;ng, Vi&#7879;t Nam</span><br>
+                    &#272;T: (0225) 3813979 * Fax: (0225) 3813989
+                </td>
+                <td>
+                    <strong>- Head office:</strong><br>
+                    No 2 An Da St., Gia Vien Ward, Hai Phong City, Viet Nam<br>
+                    <strong>- Liaison office &amp; Factory:</strong><br>
+                    <span class="footer-nowrap">No 222 Mac Dang Doanh St., Hung Dao Ward, Hai Phong City, Viet Nam</span><br>
+                    Tel: (0225) 3813979 * Fax: (0225) 3813989
+                </td>
+            </tr>
+        </table>
+    </div>
+
 @foreach ($pages as $pageIndex => $page)
     @php
         $isLastPage = $loop->last;
         $pageDetails = $page['details'];
         $pageCapacity = $isLastPage ? $lastPageCapacity : $normalPageCapacity;
-        $blankRows = max(0, (int) floor($pageCapacity - $page['height']));
+        $blankRows = $isLastPage ? max(0, (int) floor($pageCapacity - $page['height'])) : 0;
         $rowOffset = $pages->take($pageIndex)->sum(fn ($item) => $item['details']->count());
     @endphp
 
@@ -647,35 +676,6 @@
 
     </div>
 @endforeach
-
-    @if (!($hardCopy ?? false))
-        <div class="electronic-trace">
-            Phi&#7871;u k&#253; s&#7889; &#273;i&#7879;n t&#7917; - M&#227; phi&#7871;u: {{ $certificate->certificate_no }} - Tra c&#7913;u: {{ $electronicLookupUrl }}
-        </div>
-    @endif
-
-    <div class="footer-wrap">
-        <div class="footer-website">Website: www.nhuatienphong.vn</div>
-
-        <table class="footer-band">
-            <tr>
-                <td>
-                    <strong>- Trụ sở chính:</strong><br>
-                    Số 2 An Đà, Gia Viên, TP. Hải Phòng, Việt Nam<br>
-                    <strong>- Văn phòng giao dịch &amp; Nhà máy:</strong><br>
-                    <span class="footer-nowrap">Số 222 Mạc Đăng Doanh, P. Hưng Đạo, TP. Hải Phòng, Việt Nam</span><br>
-                    ĐT: (0225) 3813979 * Fax: (0225) 3813989
-                </td>
-                <td>
-                    <strong>- Head office:</strong><br>
-                    No 2 An Da St., Gia Vien Ward, Hai Phong City, Viet Nam<br>
-                    <strong>- Liaison office &amp; Factory:</strong><br>
-                    <span class="footer-nowrap">No 222 Mac Dang Doanh St., Hung Dao Ward, Hai Phong City, Viet Nam</span><br>
-                    Tel: (0225) 3813979 * Fax: (0225) 3813989
-                </td>
-            </tr>
-        </table>
-    </div>
 </body>
 
 </html>

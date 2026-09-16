@@ -3,7 +3,7 @@
 namespace App\Mail;
 
 use App\Models\QualityCertificate;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\SignedCertificatePdfService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -43,13 +43,10 @@ class QualityCertificateIssuedMail extends Mailable
             );
         }
 
-        $pdf = Pdf::loadView('quality_certificates.pdf', [
-            'certificate' => $this->certificate,
-            'hardCopy' => false,
-        ])->setPaper('a4', 'portrait');
+        $pdfContent = app(SignedCertificatePdfService::class)->render($this->certificate);
 
         return $mail->attachData(
-            $pdf->output(),
+            $pdfContent,
             $this->certificate->certificate_no . '.pdf',
             [
                 'mime' => 'application/pdf',

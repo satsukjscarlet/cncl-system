@@ -8,7 +8,146 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 - Ghi rõ ngày, nhóm chức năng, file chính đã sửa, nội dung thay đổi và kết quả kiểm tra.
 - Nếu có lỗi chưa xử lý xong, ghi vào phần "Ghi chú".
 
+## 2026-09-16
+
+### PDF ký số TCPDF - tách vùng "Còn tiếp trang sau" và số trang khỏi bảng sản phẩm
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+
+Nội dung:
+- Giảm giới hạn đáy bảng ở các trang chưa phải trang cuối từ `724pt` xuống `690pt`.
+- Thêm tọa độ riêng cho dòng `Còn tiếp trang sau` tại `702pt`.
+- Thêm tọa độ riêng cho số trang tại `722pt`.
+- Mục tiêu là tránh dòng tiếp trang và số trang bị chồng vào vùng bảng sản phẩm khi phiếu có nhiều dòng hoặc tên sản phẩm dài.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- Render thử phiếu `248`: pass, PDF 11 trang.
+- Render thử phiếu `234`: pass, PDF 8 trang.
+- Render thử phiếu `210`: pass, PDF 10 trang.
+- Render thử phiếu `238`: pass, PDF 10 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF ký số TCPDF - bổ sung dòng TIENPHONG theo năm dưới ảnh ISO/QUACERT
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+- `public/images/quacert-jas-anz-iso.png`
+
+Nội dung:
+- Khi dùng ảnh PNG ISO/QUACERT chính thức, hệ thống vẫn tự vẽ thêm dòng `TIENPHONG : {năm hiện tại}` bên dưới ảnh để không bị mất thông tin `TIENPHONG: năm`.
+- Giảm chiều cao vùng ảnh ISO xuống `58pt` để chừa khoảng cho dòng năm và mã `PCN`.
+- Căn lại vị trí `PCN` thấp hơn để tránh chồng lên dòng `TIENPHONG : năm`.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- Render thử phiếu `248`: pass, PDF 10 trang.
+- Render thử phiếu `234`: pass, PDF 7 trang.
+- Render thử phiếu `210`: pass, PDF 9 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ## 2026-09-14
+
+### PDF ký số TCPDF - dùng ảnh ISO/QUACERT và thêm chú thích căn chỉnh
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+- `public/images/quacert-jas-anz-iso.svg`
+
+Nội dung:
+- Thêm ảnh vector `quacert-jas-anz-iso.svg` làm ảnh ISO/QUACERT/JAS-ANZ ở header.
+- Service ưu tiên dùng `public/images/quacert-jas-anz-iso.png` nếu có, để sau này thay bằng ảnh PNG chính thức dễ dàng.
+- Thêm chú thích trong code về đơn vị `point`, cách chỉnh X/Y/kích thước logo, ảnh ISO, footer, vùng bảng và vùng chữ ký.
+- Đưa footer xanh sát đáy A4 hơn bằng cách đặt `FOOTER_BAND_Y + FOOTER_BAND_H` gần đúng chiều cao trang A4.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- Render thử phiếu `248`: pass, PDF 10 trang.
+- Render thử phiếu `234`: pass, PDF 7 trang.
+- Render thử phiếu `210`: pass, PDF 9 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF ký số TCPDF - giảm cỡ header/footer theo đúng đơn vị point
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+
+Nội dung:
+- Giảm cỡ chữ header vì TCPDF dùng `pt`, không tương đương trực tiếp với `px` của template Dompdf cũ.
+- Giảm logo từ `108pt` về `82pt` để sát kích thước render cũ hơn.
+- Giảm font khối ISO/PCN và căn lại PCN để không đè chữ.
+- Giảm chiều cao footer xanh từ `106pt` về `78pt`.
+- Giảm font trong footer về khoảng `7.9-8.3pt`, tránh các dòng địa chỉ bị chồng lên nhau.
+- Đưa footer xanh xuống thấp hơn để giống mẫu cũ và không chiếm quá nhiều chiều cao trang.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- Render thử phiếu `248`: pass, PDF 11 trang.
+- Render thử phiếu `234`: pass, PDF 7 trang.
+- Render thử phiếu `210`: pass, PDF 10 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF ký số TCPDF - căn lại header/footer theo mẫu cũ
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+
+Nội dung:
+- Căn lại logo lên `108pt`, tương ứng kích thước trong template PDF cũ.
+- Căn lại vùng tên công ty, tên tiếng Anh và khối ISO/PCN theo tỷ lệ header cũ.
+- Đưa footer xanh sát đáy A4 hơn, website nằm ngay phía trên khung xanh.
+- Tách chữ footer thành nhãn đậm và nội dung thường để giống mẫu cũ hơn.
+- Giữ cơ chế render TCPDF để tránh lỗi trang trắng của Dompdf.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- Render thử phiếu `248`: pass, PDF 11 trang.
+- Render thử phiếu `234`: pass, PDF 8 trang.
+- Render thử phiếu `210`: pass, PDF 10 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF ký số - chuyển render từ Dompdf sang TCPDF
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+- `app/Mail/QualityCertificateIssuedMail.php`
+
+Nội dung:
+- Tạo service TCPDF riêng cho PDF phiếu CNCL ký số để tự kiểm soát phân trang, tránh Dompdf sinh trang trắng xen giữa.
+- Route xem PDF chưa có file ký lưu sẵn chuyển sang render bằng `SignedCertificatePdfService`.
+- Luồng gửi ký VNPT SmartCA chuyển sang lấy PDF gốc từ TCPDF trước khi calculate hash/PAdES.
+- Mail fallback khi chưa có file PDF đã ký lưu sẵn cũng dùng TCPDF.
+- TCPDF tự đo chiều cao dòng sản phẩm bằng `getStringHeight()`, phân trang theo chiều cao thật thay vì ước lượng unit của Blade/Dompdf.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- `php -l app/Http/Controllers/QualityCertificateController.php`: pass.
+- `php -l app/Mail/QualityCertificateIssuedMail.php`: pass.
+- Render thử phiếu giả 55 dòng sản phẩm bằng TCPDF: pass, PDF 9 trang.
+- Render thử các phiếu từng lỗi `210`, `234`, `248`, `242`, `238`, `216`, `227`, `229`: pass.
+- Quét 40 phiếu gần nhất có dữ liệu sản phẩm: pass, 40/40 render thành công, tổng 297 trang, không lỗi runtime.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### PDF ký số - kiểm tra nguyên nhân trang trắng xen giữa
+
+File chính:
+- `resources/views/quality_certificates/pdf.blade.php`
+
+Nội dung:
+- Quét thử 40 phiếu gần nhất có dữ liệu sản phẩm để so sánh số trang logic với số trang Dompdf render thực tế.
+- Xác định nguyên nhân chính: Dompdf render chiều cao thực tế của một số trang lớn hơn ước lượng, nên sinh thêm trang phụ dù logic không tạo trang rỗng.
+- Bỏ kẻ dòng trống tự động ở các trang không phải trang cuối để giảm nguy cơ tràn giả.
+- Chuyển khối footer/electronic-trace cố định lên trước nội dung trang, tránh để fixed element nằm cuối body.
+- Giữ cấu hình an toàn nhất đã test: trang thường dùng công thức buffer `3`, trang cuối giữ `10` unit.
+
+Kiểm tra:
+- `php -l resources/views/quality_certificates/pdf.blade.php`: pass.
+- Quét 40 phiếu gần nhất: còn 2 phiếu có Dompdf render nhiều hơn logic 1 trang (`234`, `210`), nguyên nhân còn lại là sai số render thực tế của Dompdf.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
 
 ### PDF ký số - đổi sức chứa trang thường sang công thức có buffer
 

@@ -12,9 +12,9 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\HardCopyCertificatePdfService;
 use App\Services\NotificationService;
+use App\Services\SignedCertificatePdfService;
 use App\Services\SmartCaPadesService;
 use App\Services\SmartCaService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -501,12 +501,7 @@ class QualityCertificateController extends Controller
         }
 
         try {
-            $pdf = Pdf::loadView('quality_certificates.pdf', [
-                'certificate' => $qualityCertificate,
-                'hardCopy' => false,
-            ])->setPaper('a4', 'portrait');
-
-            $pdfContent = $pdf->output();
+            $pdfContent = app(SignedCertificatePdfService::class)->render($qualityCertificate, false);
             $serialNumber = config('services.smartca.serial_number');
             $certificateResult = $smartCaService->getCertificate($smartCaUserId, $serialNumber);
             $smartCaCertificate = $certificateResult['certificate'];
@@ -841,12 +836,12 @@ class QualityCertificateController extends Controller
             ]);
         }
 
-        $pdf = Pdf::loadView('quality_certificates.pdf', [
-            'certificate' => $qualityCertificate,
-            'hardCopy' => false,
-        ])->setPaper('a4', 'portrait');
+        $pdfContent = app(SignedCertificatePdfService::class)->render($qualityCertificate);
 
-        return $pdf->stream($qualityCertificate->certificate_no . '.pdf');
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $qualityCertificate->certificate_no . '.pdf"',
+        ]);
     }
 
     public function requestReissue(Request $request, QualityCertificate $qualityCertificate)

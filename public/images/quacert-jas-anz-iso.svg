@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="160" viewBox="0 0 200 160">
+  <rect width="200" height="160" fill="none"/>
+  <g fill="#0079b8" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    <path d="M56 28c-26 0-48 22-48 49s22 49 48 49c15 0 28-6 37-16l-14-13c-6 6-14 10-23 10-16 0-29-13-29-30s13-30 29-30c9 0 17 4 23 10l14-13c-9-10-22-16-37-16z"/>
+    <path d="M53 41v72h10V41z"/>
+    <text x="24" y="88" font-size="24">QUACERT</text>
+    <text x="114" y="32" font-size="18">JAS-ANZ</text>
+    <path d="M148 47c-24 0-44 20-44 44s20 44 44 44c16 0 30-9 38-22h-23c-4 3-9 5-15 5-15 0-27-12-27-27s12-27 27-27c6 0 11 2 15 5h23c-8-13-22-22-38-22z"/>
+    <path d="M112 88h82v6h-82z" fill="#ed1c24"/>
+    <text x="2" y="154" font-size="25" letter-spacing="1">ISO 9001:2015</text>
+  </g>
+</svg>
