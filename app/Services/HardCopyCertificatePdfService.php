@@ -126,7 +126,7 @@ class HardCopyCertificatePdfService
     {
         $this->pdf->SetTextColor(0, 0, 0);
         $this->pdf->SetFont($this->fontRegular, '', 13);
-        $this->pdf->SetXY(self::LEFT, self::CONTENT_TOP + 14);
+        $this->pdf->SetXY(self::LEFT, self::CONTENT_TOP + 20);
         $this->pdf->Cell($this->contentWidth(), 16, 'Số ' . $certificate->certificate_no, 0, 1, 'C');
     }
 
