@@ -10,6 +10,20 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-16
 
+### DVKH chi tiết yêu cầu - hiển thị đầy đủ nội dung cam kết nhận/lấy hàng
+
+File chính:
+- `resources/views/dvkh_requests/show.blade.php`
+
+Nội dung:
+- Bổ sung khung nội dung cam kết ngay dưới trạng thái `Cam kết nhận/lấy hàng` trên màn chi tiết DVKH.
+- Nội dung hiển thị nguyên văn: `Chúng tôi cam kết đã nhận và lấy hàng trong yêu cầu cấp phiếu này tại Công ty...`.
+- Giữ badge `Đã xác nhận` / `Chưa xác nhận` để DVKH vẫn nhìn nhanh được trạng thái tick cam kết.
+
+Kiểm tra:
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+
 ### Yêu cầu cấp phiếu - bắt buộc công trình và tên người tạo yêu cầu
 
 File chính:

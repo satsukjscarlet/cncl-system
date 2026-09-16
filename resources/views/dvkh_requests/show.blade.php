@@ -77,6 +77,15 @@
             min-width: 260px;
         }
 
+        .dvkh-commitment-box {
+            border: 1px solid #d7ead9;
+            border-left: 4px solid #28a745;
+            border-radius: 6px;
+            background: #f7fff8;
+            padding: 10px 12px;
+            line-height: 1.45;
+        }
+
         @media (max-width: 1199.98px) {
             .dvkh-summary {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -324,6 +333,11 @@
                             @else
                                 <span class="badge badge-secondary">Chưa xác nhận</span>
                             @endif
+                            <div class="dvkh-commitment-box mt-2">
+                                Chúng tôi cam kết đã nhận và lấy hàng trong yêu cầu cấp phiếu này tại Công ty.
+                                Trường hợp thông tin trên không đúng sự thật, chúng tôi xin chịu hoàn toàn trách nhiệm
+                                và chấp nhận các hình thức xử phạt theo quy chế của công ty.
+                            </div>
                         </div>
 
                         <div class="dvkh-info-label">Tài khoản tạo</div>
