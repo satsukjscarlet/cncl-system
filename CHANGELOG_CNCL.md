@@ -10,6 +10,23 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-16
 
+### Phiếu in ký tươi - bỏ kẻ dòng trống dưới bảng sản phẩm
+
+File chính:
+- `app/Services/HardCopyCertificatePdfService.php`
+
+Nội dung:
+- Bỏ logic tự kẻ thêm tối đa 3 dòng trống bên dưới danh sách sản phẩm.
+- Phiếu in lại/in ký tươi giờ chỉ vẽ các dòng sản phẩm thật, phù hợp hơn với giấy phôi in sẵn.
+- Giữ nguyên vùng ghi chú, số trang và tên người ký cố định theo phôi.
+
+Kiểm tra:
+- `php -l app/Services/HardCopyCertificatePdfService.php`: pass.
+- Render thử phiếu `146`: pass, PDF 1 trang.
+- Render thử phiếu `238`: pass, PDF 13 trang.
+- Render thử phiếu `248`: pass, PDF 15 trang.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ### PDF ký số TCPDF - tách vùng "Còn tiếp trang sau" và số trang khỏi bảng sản phẩm
 
 File chính:

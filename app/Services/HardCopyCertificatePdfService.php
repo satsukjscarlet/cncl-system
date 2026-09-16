@@ -220,18 +220,9 @@ class HardCopyCertificatePdfService
             $rowNo++;
         }
 
-        $remaining = $this->noteY() - self::NOTE_SAFE_GAP - $y;
-        $blankRows = max(0, min(3, (int) floor($remaining / 18)));
-
-        for ($i = 0; $i < $blankRows; $i++) {
-            $x = self::LEFT;
-            foreach ($columns as $column) {
-                $this->pdf->SetXY($x, $y);
-                $this->pdf->Cell($column['w'], 18, '', 1, 0, 'C');
-                $x += $column['w'];
-            }
-            $y += 18;
-        }
+        // Hard-copy reprint is printed on pre-printed paper, so only actual
+        // product rows are drawn. Empty rows below the product list would make
+        // the software output look unlike the Excel/pre-printed form.
     }
 
     private function drawFixedFooter(QualityCertificate $certificate, int $pageIndex, int $totalPages): void
