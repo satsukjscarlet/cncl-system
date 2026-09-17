@@ -10,6 +10,67 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-16
 
+### PTN trả lại DVKH sau khi Trưởng PTN trả phiếu về PTN
+
+File chính:
+- `app/Http/Controllers/PtnRequestController.php`
+- `resources/views/ptn_requests/show.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+
+Nội dung:
+- Chuẩn hóa nghiệp vụ: nếu Trưởng PTN trả phiếu về `PTN xử lý lại`, yêu cầu ở trạng thái `PTN_PROCESSING` vẫn được PTN trả tiếp về DVKH khi lỗi nằm ngoài phạm vi PTN.
+- Nút `Trả lại DVKH` trên màn `/ptn/requests/{id}` nay hiển thị khi yêu cầu đang `WAIT_PTN` hoặc khi có phiếu `REJECTED` với `rejected_to = PTN` và chưa có phiếu CNCL hiệu lực mới.
+- Backend `ptn.requests.return-to-dvkh` dùng chung điều kiện `canReturnToDvkh()` để không phụ thuộc riêng trạng thái `WAIT_PTN`.
+- Bổ sung test tự động cho ca: Trung tâm gửi yêu cầu -> DVKH duyệt -> PTN lập phiếu -> Trưởng PTN trả về PTN -> PTN trả lại DVKH.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/PtnRequestController.php`: pass.
+- `php -l tests/Feature/CertificateWorkflowTest.php`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass, 20 tests.
+
+### PTN chi tiết yêu cầu - bổ sung tiến trình xử lý
+
+File chính:
+- `app/Http/Controllers/PtnRequestController.php`
+- `resources/views/ptn_requests/show.blade.php`
+
+Nội dung:
+- Màn chi tiết PTN `/ptn/requests/{id}` nay dùng `WorkflowStepService` để lấy tiến trình xử lý giống các màn yêu cầu/DVKH/phiếu CNCL.
+- Bổ sung partial `quality_certificates.partials.workflow_steps` vào đầu màn chi tiết PTN.
+- Kiểm tra thử yêu cầu `332`: trả đủ 5 bước, bước hiện tại là `PTN lập phiếu`.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/PtnRequestController.php`: pass.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
+### Tiến trình xử lý - tách service dùng chung và chuẩn hóa 5 bước
+
+File chính:
+- `app/Services/WorkflowStepService.php`
+- `app/Http/Controllers/CertificateRequestController.php`
+- `app/Http/Controllers/DvkhRequestController.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+
+Nội dung:
+- Tạo `WorkflowStepService` làm nguồn logic duy nhất cho phần `Tiến trình xử lý`.
+- Chuẩn hóa tiến trình thành 5 bước trên các màn: tạo yêu cầu, DVKH kiểm tra, PTN lập phiếu, Trưởng PTN duyệt/ký số, phát hành/thu hồi.
+- Thay màn chi tiết yêu cầu, màn DVKH và màn chi tiết phiếu CNCL sang dùng service chung.
+- Xử lý rõ hơn các trạng thái: nháp, chờ DVKH, chờ PTN, chờ Trưởng PTN duyệt, chờ gửi ký, đang chờ app ký, quá hạn ký, trưởng PTN trả lại, đã phát hành, đã thu hồi.
+- Luồng PTN lập trực tiếp sẽ bỏ qua bước DVKH thay vì hiển thị nhầm là DVKH đã xác nhận.
+- Xóa các hàm dựng tiến trình cũ trong controller để tránh lệch logic về sau.
+
+Kiểm tra:
+- `php -l app/Services/WorkflowStepService.php`: pass.
+- `php -l app/Http/Controllers/CertificateRequestController.php`: pass.
+- `php -l app/Http/Controllers/DvkhRequestController.php`: pass.
+- `php -l app/Http/Controllers/QualityCertificateController.php`: pass.
+- Gọi thử service với yêu cầu `330`, `253`, `153` và phiếu `248`, `238`, `146`: pass, đều trả 5 bước.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ### DVKH chi tiết yêu cầu - hiển thị đầy đủ nội dung cam kết nhận/lấy hàng
 
 File chính:

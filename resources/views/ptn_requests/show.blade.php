@@ -28,6 +28,8 @@
     </div>
 @endif
 
+@include('quality_certificates.partials.workflow_steps', ['steps' => $requestWorkflowSteps])
+
 <div class="row">
     <div class="col-md-4">
         <div class="card card-primary card-outline">
@@ -113,7 +115,7 @@
                                 </button>
                             </form>
 
-                            @if($certificateRequest->status === 'WAIT_PTN')
+                            @if($canReturnToDvkh)
                                 <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnToDvkhModal">
                                     <i class="fas fa-undo"></i> Trả lại DVKH
                                 </button>
@@ -180,7 +182,7 @@
 </div>
 
 @can('ptn.process')
-    @if($certificateRequest->status === 'WAIT_PTN' && !$certificateRequest->qualityCertificate)
+    @if($canReturnToDvkh)
         <div class="modal fade" id="returnToDvkhModal" tabindex="-1" role="dialog" aria-labelledby="returnToDvkhModalLabel" aria-hidden="true">
             <div class="modal-dialog" role="document">
                 <form method="POST" action="{{ route('ptn.requests.return-to-dvkh', $certificateRequest) }}" class="modal-content cncl-form">

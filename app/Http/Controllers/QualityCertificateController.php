@@ -15,6 +15,7 @@ use App\Services\NotificationService;
 use App\Services\SignedCertificatePdfService;
 use App\Services\SmartCaPadesService;
 use App\Services\SmartCaService;
+use App\Services\WorkflowStepService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -387,7 +388,8 @@ class QualityCertificateController extends Controller
             ->limit(30)
             ->get();
 
-        $certificateWorkflowSteps = $this->certificateWorkflowSteps($qualityCertificate, $certificateHistoryLogs);
+        $certificateWorkflowSteps = app(WorkflowStepService::class)
+            ->forCertificate($qualityCertificate, $certificateHistoryLogs);
 
         return view('quality_certificates.show', compact('qualityCertificate', 'certificateHistoryLogs', 'certificateWorkflowSteps'));
     }
@@ -1288,117 +1290,6 @@ class QualityCertificateController extends Controller
             ->filter()
             ->values()
             ->all();
-    }
-
-    private function certificateWorkflowSteps(QualityCertificate $qualityCertificate, $logs): array
-    {
-        $request = $qualityCertificate->request;
-        $logTime = function (array $actions) use ($logs) {
-            $log = $logs->first(fn ($item) => in_array($item->properties['action'] ?? null, $actions, true));
-
-            return $log?->created_at;
-        };
-
-        $steps = [
-            [
-                'title' => 'Trung tâm tạo yêu cầu',
-                'status' => 'done',
-                'icon' => 'fas fa-file-alt',
-                'time' => $request?->created_at ?: $qualityCertificate->created_at,
-                'description' => $request ? 'Yêu cầu ' . $request->request_no . ' được khởi tạo.' : 'Phiếu được PTN lập trực tiếp.',
-            ],
-            [
-                'title' => 'DVKH kiểm tra',
-                'status' => 'pending',
-                'icon' => 'fas fa-user-check',
-                'time' => $logTime(['approve']),
-                'description' => 'Chờ DVKH xác nhận thông tin yêu cầu.',
-            ],
-            [
-                'title' => 'PTN lập phiếu',
-                'status' => 'pending',
-                'icon' => 'fas fa-vials',
-                'time' => $qualityCertificate->created_at,
-                'description' => 'Chờ PTN lập phiếu CNCL.',
-            ],
-            [
-                'title' => 'Trưởng PTN duyệt / gửi ký',
-                'status' => 'pending',
-                'icon' => 'fas fa-file-signature',
-                'time' => $qualityCertificate->smartca_requested_at ?: $logTime(['approve_for_signing', 'smartca_request', 'smartca_request_resend']),
-                'description' => 'Chờ Trưởng PTN duyệt nội dung hoặc gửi yêu cầu ký VNPT SmartCA.',
-            ],
-            [
-                'title' => 'Phát hành / thu hồi',
-                'status' => 'pending',
-                'icon' => 'fas fa-paper-plane',
-                'time' => $qualityCertificate->signed_at ?: $qualityCertificate->revoked_at,
-                'description' => 'Chờ ký số thành công và phát hành phiếu.',
-            ],
-        ];
-
-        if (!$request) {
-            $steps[1]['status'] = 'skipped';
-            $steps[1]['description'] = 'Không qua bước DVKH do PTN lập trực tiếp.';
-        } elseif ($request->status === 'WAIT_DVKH') {
-            $steps[1]['status'] = 'current';
-        } elseif ($request->status === 'CANCELLED') {
-            $steps[1]['status'] = 'danger';
-            $steps[1]['description'] = 'Yêu cầu đã bị trả lại / hủy.';
-        } else {
-            $steps[1]['status'] = 'done';
-            $steps[1]['description'] = 'DVKH đã xác nhận và chuyển yêu cầu sang PTN.';
-        }
-
-        if ($qualityCertificate->status === 'REJECTED') {
-            $steps[2]['status'] = 'danger';
-            $steps[2]['description'] = 'Phiếu đã bị Trưởng PTN trả lại.';
-        } else {
-            $steps[2]['status'] = 'done';
-            $steps[2]['description'] = 'PTN đã lập phiếu ' . $qualityCertificate->certificate_no . '.';
-        }
-
-        if ($qualityCertificate->status === 'REVOKED') {
-            $steps[3]['status'] = 'done';
-            $steps[3]['description'] = 'Phiếu cũ đã được ký số trước khi bị thu hồi.';
-        } elseif ($qualityCertificate->status === 'REJECTED') {
-            $steps[3]['status'] = 'danger';
-            $steps[3]['time'] = $qualityCertificate->rejected_at;
-            $steps[3]['description'] = 'Trưởng PTN đã trả lại phiếu: ' . ($qualityCertificate->rejected_reason ?: '-');
-        } elseif ($qualityCertificate->signed_at) {
-            $steps[3]['status'] = 'done';
-            $steps[3]['time'] = $qualityCertificate->signed_at;
-            $steps[3]['description'] = 'Phiếu đã ký số thành công.';
-        } elseif ($qualityCertificate->smartcaStatusExpired()) {
-            $steps[3]['status'] = 'danger';
-            $steps[3]['description'] = 'Yêu cầu ký đã quá hạn, cần kiểm tra kết quả cũ hoặc gửi lại yêu cầu ký.';
-        } elseif ($qualityCertificate->smartca_status === 'PENDING') {
-            $steps[3]['status'] = 'current';
-            $steps[3]['description'] = 'Đang chờ Trưởng PTN xác nhận trên app VNPT SmartCA.';
-        } elseif ($qualityCertificate->status === 'READY_TO_SIGN') {
-            $steps[3]['status'] = 'current';
-            $steps[3]['description'] = 'Trưởng PTN đã duyệt nội dung, phiếu đang nằm trong danh sách chờ gửi ký.';
-        } elseif ($qualityCertificate->isAwaitingManagerApproval()) {
-            $steps[3]['status'] = 'current';
-            $steps[3]['description'] = 'Chờ Trưởng PTN kiểm tra nội dung phiếu.';
-        } else {
-            $steps[3]['status'] = 'current';
-            $steps[3]['description'] = 'Chờ Trưởng PTN kiểm tra và gửi yêu cầu ký số.';
-        }
-
-        if ($qualityCertificate->status === 'REVOKED') {
-            $steps[4]['status'] = 'danger';
-            $steps[4]['description'] = 'Phiếu đã hủy / thu hồi. Lý do: ' . ($qualityCertificate->revoked_reason ?: '-');
-        } elseif ($qualityCertificate->signed_at || $qualityCertificate->status === 'ISSUED') {
-            $steps[4]['status'] = 'done';
-            $steps[4]['time'] = $qualityCertificate->signed_at;
-            $steps[4]['description'] = 'Phiếu đã phát hành. Hệ thống gửi email theo cấu hình hiện tại.';
-        } elseif ($qualityCertificate->status === 'REJECTED') {
-            $steps[4]['status'] = 'skipped';
-            $steps[4]['description'] = 'Chưa phát hành vì phiếu đã bị trả lại.';
-        }
-
-        return $steps;
     }
 
     public function processSmartCaStatus(

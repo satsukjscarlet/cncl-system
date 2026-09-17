@@ -252,6 +252,68 @@ class CertificateWorkflowTest extends TestCase
         $this->assertSame('WAIT_PTN', $certificateRequest->fresh()->status);
     }
 
+    public function test_ptn_can_return_request_to_dvkh_after_head_of_lab_returns_certificate_to_ptn(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $ptn = User::where('username', 'ptn')->firstOrFail();
+        $truongPtn = User::where('username', 'truongptn')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-PTN-RETURN-AFTER-HEAD');
+
+        $this->actingAs($centerUser)->post(route('certificate-requests.store'), [
+            'customer_mode' => 'existing',
+            'customer_id' => $customer->id,
+            'delivery_date' => '2026-08-08',
+            'invoice_no' => 'INV-PTN-RETURN-AFTER-HEAD',
+            'require_hard_copy' => '0',
+            'hard_copy_quantity' => 0,
+            'is_urgent' => '0',
+            'requester_name' => 'Nguoi tao NP',
+            'customer_commitment_confirmed' => '1',
+            'note' => 'Yeu cau test truong PTN tra ve PTN.',
+            'product_id' => [$this->product->id],
+            'quantity' => [5],
+        ]);
+
+        $certificateRequest = CertificateRequest::where('invoice_no', 'INV-PTN-RETURN-AFTER-HEAD')->firstOrFail();
+
+        $this->actingAs($dvkh)->post(route('dvkh.requests.approve', $certificateRequest));
+        $this->actingAs($ptn)->post(route('ptn.requests.receive-and-create-certificate', $certificateRequest));
+
+        $certificate = QualityCertificate::where('certificate_request_id', $certificateRequest->id)->firstOrFail();
+
+        $this->actingAs($truongPtn)
+            ->post(route('quality-certificates.reject-signature', $certificate), [
+                'reject_to' => 'PTN',
+                'rejected_reason' => 'Can PTN kiem tra lai du lieu san pham.',
+            ])
+            ->assertRedirect(route('quality-certificates.show', $certificate));
+
+        $this->assertSame('REJECTED', $certificate->fresh()->status);
+        $this->assertSame('PTN', $certificate->fresh()->rejected_to);
+        $this->assertSame('PTN_PROCESSING', $certificateRequest->fresh()->status);
+
+        $this->actingAs($ptn)
+            ->get(route('ptn.requests.show', $certificateRequest))
+            ->assertOk()
+            ->assertSee('returnToDvkhModal');
+
+        $this->actingAs($ptn)
+            ->post(route('ptn.requests.return-to-dvkh', $certificateRequest), [
+                'reason' => 'Thong tin vuot ngoai pham vi PTN, can DVKH xac nhan lai.',
+            ])
+            ->assertRedirect(route('ptn.requests.index'));
+
+        $certificateRequest->refresh();
+
+        $this->assertSame('WAIT_DVKH', $certificateRequest->status);
+        $this->assertStringContainsString('Thong tin vuot ngoai pham vi PTN', $certificateRequest->note);
+        $this->assertSame(1, UserNotification::where('user_id', $dvkh->id)
+            ->where('type', 'request_returned_to_dvkh_by_ptn')
+            ->where('url', route('dvkh.requests.show', $certificateRequest))
+            ->count());
+    }
+
     public function test_quality_certificate_list_can_filter_by_distribution_center_for_internal_users(): void
     {
         $admin = User::where('username', 'admin')->firstOrFail();

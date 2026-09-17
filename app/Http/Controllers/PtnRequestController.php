@@ -11,6 +11,7 @@ use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
 use App\Models\UrgentReason;
 use App\Services\NotificationService;
+use App\Services\WorkflowStepService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -210,7 +211,10 @@ class PtnRequestController extends Controller
             'qualityCertificate',
         ]);
 
-        return view('ptn_requests.show', compact('certificateRequest'));
+        $requestWorkflowSteps = app(WorkflowStepService::class)->forRequest($certificateRequest);
+        $canReturnToDvkh = $this->canReturnToDvkh($certificateRequest);
+
+        return view('ptn_requests.show', compact('certificateRequest', 'requestWorkflowSteps', 'canReturnToDvkh'));
     }
 
     public function receive(CertificateRequest $certificateRequest)
@@ -226,10 +230,10 @@ class PtnRequestController extends Controller
     {
         $this->authorizePtnRequest($certificateRequest);
 
-        if ($certificateRequest->status !== 'WAIT_PTN') {
+        if (!$this->canReturnToDvkh($certificateRequest)) {
             return redirect()
                 ->route('ptn.requests.show', $certificateRequest)
-                ->with('error', 'Chỉ trả lại DVKH khi yêu cầu đang ở trạng thái Chờ PTN lập phiếu.');
+                ->with('error', 'Chỉ trả lại DVKH khi yêu cầu đang chờ PTN lập phiếu hoặc phiếu đã bị Trưởng PTN trả lại về PTN xử lý lại.');
         }
 
         if ($this->hasActiveQualityCertificate($certificateRequest)) {
@@ -465,6 +469,24 @@ class PtnRequestController extends Controller
         return QualityCertificate::where('certificate_request_id', $certificateRequest->id)
             ->where('status', '!=', 'REJECTED')
             ->exists();
+    }
+
+    private function canReturnToDvkh(CertificateRequest $certificateRequest): bool
+    {
+        if ($certificateRequest->status === 'WAIT_PTN') {
+            return !$this->hasActiveQualityCertificate($certificateRequest);
+        }
+
+        if ($certificateRequest->status !== 'PTN_PROCESSING') {
+            return false;
+        }
+
+        return QualityCertificate::where('certificate_request_id', $certificateRequest->id)
+            ->where('status', 'REJECTED')
+            ->where('rejected_to', 'PTN')
+            ->latest('rejected_at')
+            ->exists()
+            && !$this->hasActiveQualityCertificate($certificateRequest);
     }
 
     private function generateDirectRequestNo(): string

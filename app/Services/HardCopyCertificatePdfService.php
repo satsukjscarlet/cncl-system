@@ -303,11 +303,11 @@ class HardCopyCertificatePdfService
     {
         return [
             ['label' => 'TT', 'w' => 27.0],
-            ['label' => 'Tên sản phẩm', 'w' => 166.0],
-            ['label' => 'ĐVT', 'w' => 32.0],
+            ['label' => 'Tên sản phẩm', 'w' => 174.0],
+            ['label' => 'ĐVT', 'w' => 34.0],
             ['label' => 'Số lượng', 'w' => 43.0],
             ['label' => "Kích thước\ndanh nghĩa", 'w' => 75.0],
-            ['label' => "Yêu cầu kỹ\nthuật", 'w' => 75.0],
+            ['label' => "Yêu cầu\nkỹ thuật", 'w' => 65.0],
             ['label' => 'Tiêu chuẩn sản phẩm', 'w' => $this->contentWidth() - 418.0],
         ];
     }
