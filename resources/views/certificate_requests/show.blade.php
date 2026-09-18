@@ -159,7 +159,8 @@
                         <form action="{{ route('dvkh.requests.approve', $certificateRequest) }}"
                               method="POST"
                               class="d-inline"
-                              onsubmit="return confirm({!! json_encode($approveConfirm, JSON_UNESCAPED_UNICODE) !!})">
+                              data-loading-message="Đang xác nhận yêu cầu và chuyển sang PTN, vui lòng chờ..."
+                              onsubmit="if (!confirm({!! json_encode($approveConfirm, JSON_UNESCAPED_UNICODE) !!})) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
                             @csrf
                             <button type="submit" class="btn btn-success">
                                 <i class="fas fa-check"></i> Xác nhận chuyển PTN
@@ -167,7 +168,7 @@
                         </form>
 
                         <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#dvkhRejectModal">
-                            <i class="fas fa-times"></i> Trả lại
+                            <i class="fas fa-times"></i> Trả lại Trung tâm
                         </button>
                     </div>
                 @endif
@@ -235,11 +236,15 @@
     @if($certificateRequest->status === 'WAIT_DVKH')
         <div class="modal fade" id="dvkhRejectModal" tabindex="-1">
             <div class="modal-dialog">
-                <form method="POST" action="{{ route('dvkh.requests.reject', $certificateRequest) }}" class="modal-content">
+                <form method="POST"
+                      action="{{ route('dvkh.requests.reject', $certificateRequest) }}"
+                      class="modal-content"
+                      data-loading-message="Đang trả lại yêu cầu cho Trung tâm, vui lòng chờ..."
+                      onsubmit="window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
                     @csrf
 
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-times-circle"></i> Trả lại yêu cầu</h5>
+                        <h5 class="modal-title"><i class="fas fa-times-circle"></i> Trả lại Trung tâm</h5>
                         <button type="button" class="close" data-dismiss="modal">&times;</button>
                     </div>
 
@@ -254,7 +259,7 @@
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Đóng</button>
-                        <button type="submit" class="btn btn-danger"><i class="fas fa-times"></i> Trả lại</button>
+                        <button type="submit" class="btn btn-danger"><i class="fas fa-times"></i> Trả lại Trung tâm</button>
                     </div>
                 </form>
             </div>

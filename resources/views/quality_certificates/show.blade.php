@@ -134,7 +134,10 @@
                         @can('certificate.email')
                             @if($qualityCertificate->status !== 'REVOKED')
                                 <form action="{{ route('quality-certificates.resend-email', $qualityCertificate) }}" method="POST"
-                                      class="d-inline" onsubmit="return confirm('Gửi lại email phiếu CNCL cho khách hàng?')">
+                                      class="d-inline"
+                                      data-loading-lock
+                                      data-loading-message="Đang gửi lại email phiếu CNCL, vui lòng chờ..."
+                                      onsubmit="if (!confirm('Gửi lại email phiếu CNCL cho khách hàng?')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
                                     @csrf
                                     <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-envelope"></i> Gửi lại email
@@ -185,7 +188,9 @@
                                 @if($smartCaCanResend)
                                     <form action="{{ route('quality-certificates.sign', $qualityCertificate) }}" method="POST"
                                           class="d-inline"
-                                          onsubmit="return confirm('Gửi lại yêu cầu ký phiếu này sang VNPT SmartCA? Hệ thống sẽ kiểm tra giao dịch cũ trước khi gửi lại.')">
+                                          data-loading-lock
+                                          data-loading-message="Đang gửi lại yêu cầu ký sang VNPT SmartCA. Vui lòng chờ..."
+                                          onsubmit="if (!confirm('Gửi lại yêu cầu ký phiếu này sang VNPT SmartCA? Hệ thống sẽ kiểm tra giao dịch cũ trước khi gửi lại.')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
                                         @csrf
                                         <button type="submit" class="btn btn-warning">
                                             <i class="fas fa-file-signature"></i> Gửi lại yêu cầu ký

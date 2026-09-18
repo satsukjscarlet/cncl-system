@@ -108,7 +108,10 @@
                     @elseif(in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING']))
                         <div class="d-flex flex-wrap align-items-center" style="gap: 8px;">
                             <form action="{{ route('ptn.requests.receive-and-create-certificate', $certificateRequest) }}" method="POST"
-                                  class="m-0" onsubmit="return confirm('Lập phiếu CNCL từ yêu cầu này?')">
+                                  class="m-0"
+                                  data-loading-lock
+                                  data-loading-message="Đang lập phiếu CNCL từ yêu cầu, vui lòng chờ..."
+                                  onsubmit="if (!confirm('Lập phiếu CNCL từ yêu cầu này?')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
                                 @csrf
                                 <button class="btn btn-primary">
                                     <i class="fas fa-file-signature"></i> Lập phiếu CNCL

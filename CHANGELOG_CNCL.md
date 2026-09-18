@@ -915,6 +915,54 @@ Kiểm tra:
 - `php artisan view:cache`: pass.
 - Render thử PDF phiếu `150` bằng Dompdf: pass, xuất được `2046556` bytes.
 
+### Rà soát workflow - sửa dashboard, việc cần làm, sinh mã và loading
+
+File chính:
+- `app/Http/Controllers/DashboardController.php`
+- `app/Services/WorkQueueService.php`
+- `app/Http/Controllers/CertificateRequestController.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `resources/views/dvkh_requests/index.blade.php`
+- `resources/views/certificate_requests/show.blade.php`
+- `resources/views/quality_certificates/show.blade.php`
+- `resources/views/ptn_requests/show.blade.php`
+- `database/migrations/2026_09_18_000001_change_certificate_request_status_to_string.php`
+
+Nội dung:
+- Đồng bộ số đếm dashboard với link bộ lọc `SIGN_READY` bằng metric tổng `sign_actionable`.
+- Bổ sung mục việc cần làm `Nháp cần sửa / gửi DVKH` cho tài khoản Trung tâm để thấy yêu cầu bị DVKH trả lại về nháp.
+- Giảm rủi ro trùng mã yêu cầu/phiếu khi thao tác đồng thời bằng `lockForUpdate()` khi lấy số tiếp theo.
+- Chuyển cột `certificate_requests.status` sang `VARCHAR(30)` trên MySQL để không bị giới hạn enum cũ khi phát sinh trạng thái workflow mới.
+- Bổ sung loading/khóa thao tác cho các form xác nhận DVKH, gửi lại email, gửi lại ký SmartCA và PTN lập phiếu.
+
+Kiểm tra:
+- `php -l` các file PHP đã sửa: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+- `php artisan migrate`: pass.
+
+### DVKH - đồng bộ nút trả lại Trung tâm phân phối
+
+File chính:
+- `resources/views/dvkh_requests/index.blade.php`
+- `resources/views/dvkh_requests/show.blade.php`
+- `resources/views/certificate_requests/show.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+
+Nội dung:
+- Rà soát các màn tài khoản DVKH dùng để xử lý yêu cầu.
+- Đổi nhãn nút/modal từ `Trả lại` thành `Trả lại Trung tâm` để đúng nghiệp vụ.
+- Bổ sung loading khi DVKH gửi trả lại yêu cầu, tránh bấm lặp trong lúc hệ thống xử lý.
+- Bổ sung test xác nhận nút hiển thị ở danh sách DVKH, chi tiết DVKH và chi tiết yêu cầu chung.
+- Test xác nhận sau khi trả lại, yêu cầu quay về `DRAFT`, xóa thông tin gửi DVKH và gửi thông báo cho tài khoản Trung tâm.
+
+Kiểm tra:
+- `php -l tests/Feature/CertificateWorkflowTest.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ### Chi tiết phiếu CNCL - trả lại DVKH khi Trưởng PTN trả về PTN
 
 File chính:

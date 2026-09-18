@@ -433,7 +433,15 @@ class PtnRequestController extends Controller
     {
         $prefix = 'CNCL-' . date('Ymd') . '-';
 
-        $count = QualityCertificate::whereDate('created_at', now()->toDateString())->count() + 1;
+        $lastCertificateNo = QualityCertificate::withTrashed()
+            ->where('certificate_no', 'like', $prefix . '%')
+            ->lockForUpdate()
+            ->orderByDesc('certificate_no')
+            ->value('certificate_no');
+
+        $count = $lastCertificateNo
+            ? ((int) substr($lastCertificateNo, strlen($prefix))) + 1
+            : 1;
 
         return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
     }
@@ -523,9 +531,15 @@ class PtnRequestController extends Controller
     {
         $prefix = 'PTN-' . date('Ymd') . '-';
 
-        $count = CertificateRequest::withTrashed()
-                ->where('request_no', 'like', $prefix . '%')
-                ->count() + 1;
+        $lastRequestNo = CertificateRequest::withTrashed()
+            ->where('request_no', 'like', $prefix . '%')
+            ->lockForUpdate()
+            ->orderByDesc('request_no')
+            ->value('request_no');
+
+        $count = $lastRequestNo
+            ? ((int) substr($lastRequestNo, strlen($prefix))) + 1
+            : 1;
 
         return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
     }

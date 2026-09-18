@@ -40,6 +40,14 @@ class DashboardController extends Controller
             'revoked_certificates' => (clone $certificateQuery)->where('status', 'REVOKED')->count(),
             'rejected_certificates' => (clone $certificateQuery)->where('status', 'REJECTED')->count(),
             'unsigned_certificates' => (clone $certificateQuery)->whereNull('signed_at')->whereNotIn('status', ['REJECTED', 'REVOKED'])->count(),
+            'sign_actionable' => (clone $certificateQuery)
+                ->whereNull('signed_at')
+                ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL', 'READY_TO_SIGN'])
+                ->where(function ($q) {
+                    $q->whereNull('smartca_status')
+                        ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+                })
+                ->count(),
             'sign_waiting_approval' => (clone $certificateQuery)
                 ->whereNull('signed_at')
                 ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL'])
@@ -148,7 +156,7 @@ class DashboardController extends Controller
                 $this->card('Yêu cầu nháp', $metrics['request_draft'], 'fas fa-edit', 'secondary', route('certificate-requests.index', ['status_group' => 'draft'])),
                 $this->card('Chờ DVKH', $metrics['wait_dvkh'], 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
                 $this->card('Chờ PTN lập phiếu', $metrics['wait_ptn'], 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
-                $this->card('Phiếu nháp / chờ ký', $metrics['sign_ready'], 'fas fa-pen-nib', 'primary', route('quality-certificates.index', ['status' => 'SIGN_READY'])),
+                $this->card('Phiếu nháp / chờ ký', $metrics['sign_actionable'], 'fas fa-pen-nib', 'primary', route('quality-certificates.index', ['status' => 'SIGN_READY'])),
                 $this->card('Đang chờ app ký', $metrics['sign_pending'], 'fas fa-mobile-alt', 'warning', route('quality-certificates.index', ['status' => 'SMARTCA_PENDING'])),
                 $this->card('Quá hạn ký số', $metrics['sign_expired'], 'fas fa-hourglass-end', 'danger', route('quality-certificates.index', ['status' => 'SMARTCA_EXPIRED'])),
                 $this->card('Đã phát hành', $metrics['issued_certificates'], 'fas fa-check-circle', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
@@ -171,7 +179,7 @@ class DashboardController extends Controller
             'PTN' => [
                 $this->card('Chờ PTN lập phiếu', $metrics['wait_ptn'], 'fas fa-inbox', 'warning', route('ptn.requests.index', ['status' => 'WAIT_PTN'])),
                 $this->card('Đã lập phiếu - chờ ký', $metrics['ptn_processing'], 'fas fa-vials', 'info', route('ptn.requests.index', ['status' => 'PTN_PROCESSING'])),
-                $this->card('Phiếu chờ Trưởng PTN ký', $metrics['sign_ready'], 'fas fa-file-signature', 'primary', route('quality-certificates.index', ['status' => 'SIGN_READY'])),
+                $this->card('Phiếu chờ Trưởng PTN ký', $metrics['sign_actionable'], 'fas fa-file-signature', 'primary', route('quality-certificates.index', ['status' => 'SIGN_READY'])),
                 $this->card('Yêu cầu gấp', $metrics['urgent_ptn'], 'fas fa-bolt', 'danger', route('ptn.requests.index', ['status' => '', 'urgent' => '1'])),
             ],
             'TruongPTN' => [

@@ -1713,6 +1713,7 @@ class QualityCertificateController extends Controller
 
         $lastRequestNo = CertificateRequest::withTrashed()
             ->where('request_no', 'like', $prefix . '%')
+            ->lockForUpdate()
             ->orderByDesc('request_no')
             ->value('request_no');
 

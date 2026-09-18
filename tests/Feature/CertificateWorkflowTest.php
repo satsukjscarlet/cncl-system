@@ -154,6 +154,66 @@ class CertificateWorkflowTest extends TestCase
             ->assertSee($certificate->certificate_no);
     }
 
+    public function test_dvkh_can_return_waiting_request_to_distribution_center_from_all_request_screens(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-DVKH-RETURN');
+
+        $this->actingAs($centerUser)
+            ->post(route('certificate-requests.store'), [
+                'customer_mode' => 'existing',
+                'customer_id' => $customer->id,
+                'delivery_date' => '2026-08-08',
+                'invoice_no' => 'INV-DVKH-RETURN-001',
+                'require_hard_copy' => '0',
+                'hard_copy_quantity' => 0,
+                'is_urgent' => '0',
+                'requester_name' => 'Nguoi tao NP',
+                'customer_commitment_confirmed' => '1',
+                'note' => 'Yeu cau test DVKH tra lai trung tam.',
+                'product_id' => [$this->product->id],
+                'quantity' => [12],
+            ]);
+
+        $certificateRequest = CertificateRequest::where('invoice_no', 'INV-DVKH-RETURN-001')->firstOrFail();
+
+        $this->actingAs($dvkh)
+            ->get(route('dvkh.requests.index', ['status' => 'WAIT_DVKH']))
+            ->assertOk()
+            ->assertSee('rejectModal' . $certificateRequest->id)
+            ->assertSee('Trả lại Trung tâm');
+
+        $this->actingAs($dvkh)
+            ->get(route('dvkh.requests.show', $certificateRequest))
+            ->assertOk()
+            ->assertSee('dvkhRejectModal')
+            ->assertSee('Trả lại Trung tâm');
+
+        $this->actingAs($dvkh)
+            ->get(route('certificate-requests.show', $certificateRequest))
+            ->assertOk()
+            ->assertSee('dvkhRejectModal')
+            ->assertSee('Trả lại Trung tâm');
+
+        $this->actingAs($dvkh)
+            ->post(route('dvkh.requests.reject', $certificateRequest), [
+                'reason' => 'Thong tin cong trinh chua chinh xac, Trung tam vui long cap nhat lai.',
+            ])
+            ->assertRedirect(route('dvkh.requests.index'));
+
+        $certificateRequest->refresh();
+
+        $this->assertSame('DRAFT', $certificateRequest->status);
+        $this->assertNull($certificateRequest->submitted_at);
+        $this->assertNull($certificateRequest->submitted_by);
+        $this->assertStringContainsString('Thong tin cong trinh chua chinh xac', $certificateRequest->note);
+        $this->assertSame(1, UserNotification::where('user_id', $centerUser->id)
+            ->where('type', 'request_rejected')
+            ->where('url', route('certificate-requests.show', $certificateRequest))
+            ->count());
+    }
+
     public function test_ptn_can_return_waiting_request_to_dvkh(): void
     {
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();

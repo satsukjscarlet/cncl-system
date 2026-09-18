@@ -31,6 +31,7 @@ class WorkQueueService
 
         return match ($role) {
             'TrungTam' => [
+                $this->item('Nháp cần sửa / gửi DVKH', (clone $requests)->where('status', 'DRAFT')->count(), 'fas fa-edit', 'secondary', route('certificate-requests.index', ['status_group' => 'draft'])),
                 $this->item('Yêu cầu bị trả lại', (clone $requests)->where('status', 'CANCELLED')->count(), 'fas fa-reply', 'danger', route('certificate-requests.index', ['status' => 'CANCELLED'])),
                 $this->item('Đang chờ DVKH', (clone $requests)->where('status', 'WAIT_DVKH')->count(), 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
                 $this->item('Đang chờ PTN lập phiếu', (clone $requests)->where('status', 'WAIT_PTN')->count(), 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
