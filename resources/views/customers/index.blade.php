@@ -268,6 +268,7 @@
                   data-loading-message="Đang cập nhật dữ liệu khách hàng. Vui lòng chờ...">
                 @csrf
                 <input type="hidden" name="temp_path" value="{{ $preview['temp_path'] }}">
+                <input type="hidden" name="temp_token" value="{{ $preview['temp_token'] }}">
                 <input type="hidden" name="confirm_update" value="1">
                 <input type="hidden" name="import_distribution_center_id" value="{{ $preview['import_distribution_center_id'] }}">
 

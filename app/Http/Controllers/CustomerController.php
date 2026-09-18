@@ -196,6 +196,7 @@ class CustomerController extends Controller
         $request->validate([
             'file' => ['nullable', 'file', 'mimes:xlsx,xls,csv'],
             'temp_path' => ['nullable', 'string'],
+            'temp_token' => ['nullable', 'string'],
             'confirm_update' => ['nullable', 'boolean'],
             'import_distribution_center_id' => ['nullable', 'exists:distribution_centers,id'],
         ]);
@@ -206,11 +207,28 @@ class CustomerController extends Controller
                 ->with('error', 'Vui lòng chọn file Excel để import.');
         }
 
-        $path = $request->filled('temp_path')
-            ? $request->input('temp_path')
-            : $request->file('file')->store('customer-imports');
+        $tempToken = $request->input('temp_token');
+
+        if ($request->filled('temp_path')) {
+            $path = $request->input('temp_path');
+            $sessionPath = $tempToken ? session('customer_imports.' . $tempToken) : null;
+
+            if (!$sessionPath || !hash_equals($sessionPath, $path)) {
+                return redirect()
+                    ->route('customers.index')
+                    ->with('error', 'File import tạm không hợp lệ hoặc phiên xác nhận đã hết hạn. Vui lòng tải lại file.');
+            }
+        } else {
+            $path = $request->file('file')->store('customer-imports');
+            $tempToken = bin2hex(random_bytes(16));
+            session(['customer_imports.' . $tempToken => $path]);
+        }
 
         if (!Storage::exists($path)) {
+            if ($tempToken) {
+                session()->forget('customer_imports.' . $tempToken);
+            }
+
             return redirect()
                 ->route('customers.index')
                 ->with('error', 'File import tạm không còn tồn tại. Vui lòng tải lại file.');
@@ -219,8 +237,10 @@ class CustomerController extends Controller
         $result = $this->parseCustomerImport($path, $request);
 
         if (!empty($result['errors'])) {
-            if (!$request->filled('temp_path')) {
-                Storage::delete($path);
+            Storage::delete($path);
+
+            if ($tempToken) {
+                session()->forget('customer_imports.' . $tempToken);
             }
 
             return redirect()
@@ -239,6 +259,7 @@ class CustomerController extends Controller
                     'duplicates' => array_slice($result['duplicates'], 0, 30),
                     'total_duplicates' => count($result['duplicates']),
                     'import_distribution_center_id' => $request->input('import_distribution_center_id'),
+                    'temp_token' => $tempToken,
                 ]);
         }
 
@@ -263,6 +284,10 @@ class CustomerController extends Controller
         }
 
         Storage::delete($path);
+
+        if ($tempToken) {
+            session()->forget('customer_imports.' . $tempToken);
+        }
 
         ActivityLogger::log(
             'Khách hàng - Công trình',
@@ -378,6 +403,19 @@ class CustomerController extends Controller
                 continue;
             }
 
+            $projectName = $this->nullIfEmpty($row['ten_cong_trinh'] ?? null);
+            $projectAddress = $this->nullIfEmpty($row['dia_diem_cong_trinh'] ?? null);
+
+            if (!$projectName) {
+                $errors[] = "Dòng {$line}: Thiếu tên công trình.";
+                continue;
+            }
+
+            if (!$projectAddress) {
+                $errors[] = "Dòng {$line}: Thiếu địa điểm công trình.";
+                continue;
+            }
+
             $email = $this->nullIfEmpty($row['email'] ?? null);
 
             if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -416,8 +454,8 @@ class CustomerController extends Controller
                 'contact_person' => $this->nullIfEmpty($row['nguoi_lien_he'] ?? null),
                 'phone' => $this->nullIfEmpty($row['dien_thoai'] ?? null),
                 'email' => $email,
-                'project_name' => $this->nullIfEmpty($row['ten_cong_trinh'] ?? null),
-                'project_address' => $this->nullIfEmpty($row['dia_diem_cong_trinh'] ?? null),
+                'project_name' => $projectName,
+                'project_address' => $projectAddress,
                 'is_active' => $this->parseBoolean($row['dang_su_dung'] ?? true),
                 'exists' => (bool) $existing,
             ];

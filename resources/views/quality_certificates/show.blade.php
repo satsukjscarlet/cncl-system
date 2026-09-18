@@ -137,7 +137,7 @@
                                       class="d-inline"
                                       data-loading-lock
                                       data-loading-message="Đang gửi lại email phiếu CNCL, vui lòng chờ..."
-                                      onsubmit="if (!confirm('Gửi lại email phiếu CNCL cho khách hàng?')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
+                                      onsubmit="if (!confirm('Gửi lại email phiếu CNCL cho Trung tâm phân phối?')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
                                     @csrf
                                     <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-envelope"></i> Gửi lại email

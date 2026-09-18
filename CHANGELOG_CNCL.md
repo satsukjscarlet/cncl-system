@@ -1061,3 +1061,21 @@ Kiểm tra:
 
 Ghi chú:
 - Phiếu đã ký có file PDF lưu sẵn trong `storage` vẫn ưu tiên trả file đã ký cũ. Mẫu mới áp dụng cho phiếu chưa ký, phiếu ký mới hoặc khi regenerate PDF.
+### Import khách hàng và gửi lại email phiếu - 18/09/2026
+
+File chính:
+- `app/Http/Controllers/CustomerController.php`
+- `resources/views/customers/index.blade.php`
+- `resources/views/quality_certificates/show.blade.php`
+
+Nội dung:
+- Import khách hàng bắt buộc có `ten_cong_trinh` và `dia_diem_cong_trinh`, đồng bộ với rule tạo/sửa khách hàng trên giao diện.
+- File import tạm khi cảnh báo trùng mã khách hàng được gắn token trong session, tránh submit lại `temp_path` không hợp lệ.
+- Sau khi import thành công hoặc file lỗi, hệ thống xóa file tạm và xóa token phiên import.
+- Câu xác nhận gửi lại email phiếu đổi từ "cho khách hàng" sang "cho Trung tâm phân phối" đúng nghiệp vụ gửi mail hiện tại.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/CustomerController.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.

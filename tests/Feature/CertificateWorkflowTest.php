@@ -829,6 +829,7 @@ class CertificateWorkflowTest extends TestCase
             $this->actingAs($centerUser)
                 ->post(route('customers.import'), [
                     'temp_path' => $preview['temp_path'],
+                    'temp_token' => $preview['temp_token'],
                     'confirm_update' => 1,
                 ])
                 ->assertRedirect(route('customers.index'))
