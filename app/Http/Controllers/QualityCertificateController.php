@@ -399,7 +399,14 @@ class QualityCertificateController extends Controller
         $certificateWorkflowSteps = app(WorkflowStepService::class)
             ->forCertificate($qualityCertificate, $certificateHistoryLogs);
 
-        return view('quality_certificates.show', compact('qualityCertificate', 'certificateHistoryLogs', 'certificateWorkflowSteps'));
+        $canReturnRejectedCertificateRequestToDvkh = $this->canReturnRejectedCertificateRequestToDvkh($qualityCertificate);
+
+        return view('quality_certificates.show', compact(
+            'qualityCertificate',
+            'certificateHistoryLogs',
+            'certificateWorkflowSteps',
+            'canReturnRejectedCertificateRequestToDvkh'
+        ));
     }
 
     public function approveForSigning(QualityCertificate $qualityCertificate)
@@ -1631,6 +1638,27 @@ class QualityCertificateController extends Controller
                     });
             })
             ->first();
+    }
+
+    private function canReturnRejectedCertificateRequestToDvkh(QualityCertificate $qualityCertificate): bool
+    {
+        $request = $qualityCertificate->request;
+
+        if (!$request) {
+            return false;
+        }
+
+        if (
+            $qualityCertificate->status !== QualityCertificate::STATUS_REJECTED
+            || $qualityCertificate->rejected_to !== 'PTN'
+            || $request->status !== 'PTN_PROCESSING'
+        ) {
+            return false;
+        }
+
+        return !QualityCertificate::where('certificate_request_id', $request->id)
+            ->where('status', '!=', QualityCertificate::STATUS_REJECTED)
+            ->exists();
     }
 
     private function createReissueRequestFromCertificates($certificates, string $reason): CertificateRequest

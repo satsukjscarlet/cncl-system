@@ -915,6 +915,25 @@ Kiểm tra:
 - `php artisan view:cache`: pass.
 - Render thử PDF phiếu `150` bằng Dompdf: pass, xuất được `2046556` bytes.
 
+### Chi tiết phiếu CNCL - trả lại DVKH khi Trưởng PTN trả về PTN
+
+File chính:
+- `app/Http/Controllers/QualityCertificateController.php`
+- `resources/views/quality_certificates/show.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+
+Nội dung:
+- Bổ sung kiểm tra điều kiện hiển thị nút `Trả lại DVKH` ngay tại màn chi tiết phiếu CNCL.
+- Nút chỉ hiển thị khi phiếu đã bị Trưởng PTN trả về PTN, yêu cầu đang ở trạng thái PTN xử lý lại, và chưa có phiếu mới thay thế đang hoạt động.
+- Dùng lại route xử lý nghiệp vụ hiện có của PTN để chuyển yêu cầu về bước DVKH, tránh tách logic gây lệch trạng thái.
+- Ẩn nút xám `Phiếu đã trả lại` khi người dùng PTN có quyền thực hiện hành động trả lại DVKH.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/QualityCertificateController.php`: pass.
+- `php -l tests/Feature/CertificateWorkflowTest.php`: pass.
+- `php artisan view:clear`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+
 ### PDF phiếu CNCL - tăng cỡ chữ tên công ty
 
 File chính:

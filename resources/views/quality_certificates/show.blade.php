@@ -165,9 +165,11 @@
                     @else
                         @can('certificate.sign')
                             @if ($qualityCertificate->status === 'REJECTED')
-                                <button class="btn btn-secondary" disabled>
-                                    <i class="fas fa-undo"></i> Phiếu đã trả lại
-                                </button>
+                                @unless($canReturnRejectedCertificateRequestToDvkh)
+                                    <button class="btn btn-secondary" disabled>
+                                        <i class="fas fa-undo"></i> Phiếu đã trả lại
+                                    </button>
+                                @endunless
                             @elseif (in_array($qualityCertificate->smartca_status, ['PENDING', 'EXPIRED'], true) && $qualityCertificate->smartca_transaction_id)
                                 <form action="{{ route('quality-certificates.smartca-status', $qualityCertificate) }}"
                                       method="POST"
@@ -215,6 +217,14 @@
                                         <i class="fas fa-file-signature"></i> {{ $qualityCertificate->isAwaitingManagerApproval() ? 'Duyệt và gửi ký SmartCA' : ($smartCaCanResend ? 'Gửi lại yêu cầu ký' : 'Gửi yêu cầu ký SmartCA') }}
                                     </button>
                                 </form>
+                            @endif
+                        @endcan
+
+                        @can('ptn.process')
+                            @if($canReturnRejectedCertificateRequestToDvkh)
+                                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnRejectedToDvkhModal">
+                                    <i class="fas fa-undo"></i> Trả lại DVKH
+                                </button>
                             @endif
                         @endcan
 
@@ -476,6 +486,50 @@
         </form>
     </div>
 </div>
+@endcan
+
+@can('ptn.process')
+@if($canReturnRejectedCertificateRequestToDvkh)
+<div class="modal fade" id="returnRejectedToDvkhModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST"
+              action="{{ route('ptn.requests.return-to-dvkh', $qualityCertificate->request) }}"
+              class="modal-content">
+            @csrf
+
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-undo"></i> Trả lại DVKH</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    Phiếu này đã được Trưởng PTN trả về PTN xử lý lại. Nếu nội dung cần DVKH xác nhận lại, hãy nhập rõ lý do để chuyển yêu cầu về bước DVKH.
+                </div>
+
+                <div class="form-group">
+                    <label>Lý do trả lại DVKH <span class="text-danger">*</span></label>
+                    <textarea name="reason"
+                              class="form-control @error('reason') is-invalid @enderror"
+                              rows="4"
+                              required
+                              placeholder="Ví dụ: Thông tin khách hàng/công trình cần DVKH xác nhận lại...">{{ old('reason') }}</textarea>
+                    @error('reason')
+                        <span class="invalid-feedback">{{ $message }}</span>
+                    @enderror
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Đóng</button>
+                <button class="btn btn-warning">
+                    <i class="fas fa-paper-plane"></i> Trả lại DVKH
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
 @endcan
 
 @can('certificate.reject')

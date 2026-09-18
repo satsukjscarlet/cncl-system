@@ -328,6 +328,11 @@ class CertificateWorkflowTest extends TestCase
             ->assertSee('returnToDvkhModal');
 
         $this->actingAs($ptn)
+            ->get(route('quality-certificates.show', $certificate))
+            ->assertOk()
+            ->assertSee('returnRejectedToDvkhModal');
+
+        $this->actingAs($ptn)
             ->post(route('ptn.requests.return-to-dvkh', $certificateRequest), [
                 'reason' => 'Thong tin vuot ngoai pham vi PTN, can DVKH xac nhan lai.',
             ])
