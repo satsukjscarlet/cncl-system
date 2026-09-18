@@ -520,6 +520,24 @@ select.form-control:not([size]):not([multiple]) {
     min-width: 10px;
 }
 
+.sort-link {
+    align-items: center;
+    color: #343a40;
+    display: inline-flex;
+    gap: .35rem;
+    text-decoration: none;
+}
+
+.sort-link:hover {
+    color: #0d7df2;
+    text-decoration: none;
+}
+
+.sort-link i {
+    font-size: .8rem;
+    min-width: 10px;
+}
+
 .request-table tbody td {
     padding-bottom: .85rem;
     padding-top: .85rem;

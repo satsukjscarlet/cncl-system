@@ -213,6 +213,35 @@ class CertificateWorkflowTest extends TestCase
             ->count());
     }
 
+    public function test_hard_copy_quantity_must_be_at_least_one_when_hard_copy_is_required(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-HARD-COPY-QTY');
+
+        $this->actingAs($centerUser)
+            ->from(route('certificate-requests.create'))
+            ->post(route('certificate-requests.store'), [
+                'customer_mode' => 'existing',
+                'customer_id' => $customer->id,
+                'delivery_date' => '2026-08-08',
+                'invoice_no' => 'INV-HARD-COPY-QTY',
+                'require_hard_copy' => '1',
+                'hard_copy_quantity' => 0,
+                'is_urgent' => '0',
+                'requester_name' => 'Nguoi tao NP',
+                'customer_commitment_confirmed' => '1',
+                'note' => 'Test so ban ky tuoi.',
+                'product_id' => [$this->product->id],
+                'quantity' => [5],
+            ])
+            ->assertRedirect(route('certificate-requests.create'))
+            ->assertSessionHasErrors('hard_copy_quantity');
+
+        $this->assertDatabaseMissing('certificate_requests', [
+            'invoice_no' => 'INV-HARD-COPY-QTY',
+        ]);
+    }
+
     public function test_ptn_cannot_return_request_to_dvkh_after_certificate_exists(): void
     {
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();

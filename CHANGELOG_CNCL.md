@@ -10,6 +10,60 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-16
 
+### Danh sách dữ liệu - bổ sung sắp xếp nhanh trên header bảng
+
+File chính:
+- `app/Http/Controllers/Controller.php`
+- `app/Http/Controllers/ProductGroupController.php`
+- `app/Http/Controllers/ProductController.php`
+- `app/Http/Controllers/CustomerController.php`
+- `app/Http/Controllers/QualityStandardController.php`
+- `app/Http/Controllers/DistributionCenterController.php`
+- `app/Http/Controllers/UrgentReasonController.php`
+- `app/Http/Controllers/SlaConfigController.php`
+- `app/Http/Controllers/UserController.php`
+- `app/Http/Controllers/DvkhRequestController.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+- `resources/views/partials/sort_link.blade.php`
+- Các màn index danh mục/nghiệp vụ tương ứng.
+
+Nội dung:
+- Tạo helper `sortInput()` dùng chung để nhận `sort`/`direction` an toàn bằng whitelist.
+- Tạo partial `partials.sort_link` để bấm vào header cột và đảo chiều tăng/giảm.
+- Bổ sung sort nhanh cho các màn: trung tâm phân phối, nhóm sản phẩm, sản phẩm, khách hàng - công trình, tiêu chuẩn chất lượng, lý do gấp, cấu hình SLA, người dùng, DVKH kiểm tra, PTN lập phiếu, danh sách phiếu CNCL.
+- Giữ nguyên bộ lọc hiện tại khi đổi sắp xếp và tự bỏ `page` để tránh nhảy vào trang phân trang không còn phù hợp.
+- Với các màn DVKH/PTN, nếu chưa bấm sort vẫn giữ thứ tự ưu tiên nghiệp vụ cũ: trạng thái cần xử lý, yêu cầu gấp, thời gian tạo.
+
+Kiểm tra:
+- `php -l` các controller đã chỉnh: pass.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass, 21 tests.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
+### Yêu cầu cấp phiếu - bắt buộc số bản ký tươi từ 1 khi đã chọn ký tươi
+
+File chính:
+- `app/Http/Controllers/CertificateRequestController.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `resources/views/certificate_requests/_form.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+
+Nội dung:
+- Khi người dùng bật `Yêu cầu ký tươi`, hệ thống bắt buộc `Số bản ký tươi` phải là số nguyên từ 1 trở lên.
+- Khi không bật ký tươi, `hard_copy_quantity = 0` vẫn hợp lệ và không bị rule `min:1` chặn nhầm.
+- Form tự đồng bộ ô số bản: bật ký tươi thì bắt buộc và tự đưa giá trị tối thiểu về 1; tắt ký tươi thì cho phép 0.
+- Ô nhập `Số bản ký tươi` chỉ hiển thị khi đã bật `Yêu cầu ký tươi`, tránh gây hiểu nhầm khi chưa chọn ký tươi.
+- Bổ sung test tự động để chặn trường hợp tick ký tươi nhưng nhập 0 bản.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/CertificateRequestController.php`: pass.
+- `php -l app/Http/Controllers/PtnRequestController.php`: pass.
+- `php artisan view:clear`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass, 21 tests.
+
 ### PTN trả lại DVKH sau khi Trưởng PTN trả phiếu về PTN
 
 File chính:

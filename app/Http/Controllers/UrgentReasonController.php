@@ -24,8 +24,11 @@ class UrgentReasonController extends Controller
             $query->where('is_active', $request->status);
         }
 
+        [$sort, $direction] = $this->sortInput($request, ['code', 'name', 'is_active', 'created_at']);
+
         $urgentReasons = $query
-            ->latest()
+            ->orderBy($sort, $direction)
+            ->orderBy('id', 'desc')
             ->paginate(15)
             ->withQueryString();
 

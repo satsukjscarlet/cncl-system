@@ -126,12 +126,12 @@
             <thead class="thead-light">
                 <tr>
                     <th style="width:60px">STT</th>
-                    <th>Nhóm</th>
-                    <th style="width:130px">Mã SP</th>
-                    <th>Tên sản phẩm</th>
-                    <th style="width:120px">Kích thước</th>
-                    <th>Tiêu chuẩn</th>
-                    <th style="width:120px">Trạng thái</th>
+                    <th>@include('partials.sort_link', ['column' => 'group', 'label' => 'Nhóm'])</th>
+                    <th style="width:130px">@include('partials.sort_link', ['column' => 'product_code', 'label' => 'Mã SP'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'product_name', 'label' => 'Tên sản phẩm'])</th>
+                    <th style="width:120px">@include('partials.sort_link', ['column' => 'nominal_size', 'label' => 'Kích thước'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'quality_standard', 'label' => 'Tiêu chuẩn'])</th>
+                    <th style="width:120px">@include('partials.sort_link', ['column' => 'is_active', 'label' => 'Trạng thái'])</th>
                     <th style="width:140px" class="text-center">Thao tác</th>
                 </tr>
             </thead>

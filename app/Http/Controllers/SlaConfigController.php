@@ -32,8 +32,19 @@ class SlaConfigController extends Controller
             $query->where('is_active', $request->status);
         }
 
+        [$sort, $direction] = $this->sortInput($request, [
+            'code',
+            'name',
+            'process_step',
+            'warning_minutes',
+            'limit_minutes',
+            'is_active',
+            'created_at',
+        ]);
+
         $slaConfigs = $query
-            ->latest()
+            ->orderBy($sort, $direction)
+            ->orderBy('id', 'desc')
             ->paginate(15)
             ->withQueryString();
 

@@ -29,21 +29,43 @@ class ProductController extends Controller
         }
 
         if ($request->filled('product_group_id')) {
-            $query->where('product_group_id', $request->product_group_id);
+            $query->where('products.product_group_id', $request->product_group_id);
         }
 
         if ($request->filled('quality_standard_id')) {
-            $query->where('quality_standard_id', $request->quality_standard_id);
+            $query->where('products.quality_standard_id', $request->quality_standard_id);
         }
 
         if ($request->filled('status')) {
-            $query->where('is_active', $request->status);
+            $query->where('products.is_active', $request->status);
         }
 
-        $products = $query
-            ->latest()
-            ->paginate(15)
-            ->withQueryString();
+        [$sort, $direction] = $this->sortInput($request, [
+            'product_code',
+            'product_name',
+            'nominal_size',
+            'is_active',
+            'created_at',
+            'group',
+            'quality_standard',
+        ]);
+
+        if ($sort === 'group') {
+            $query->leftJoin('product_groups as sort_groups', 'sort_groups.id', '=', 'products.product_group_id')
+                ->select('products.*')
+                ->orderBy('sort_groups.name', $direction)
+                ->orderBy('products.product_code');
+        } elseif ($sort === 'quality_standard') {
+            $query->leftJoin('quality_standards as sort_standards', 'sort_standards.id', '=', 'products.quality_standard_id')
+                ->select('products.*')
+                ->orderBy('sort_standards.code', $direction)
+                ->orderBy('products.product_code');
+        } else {
+            $query->orderBy('products.' . $sort, $direction)
+                ->orderBy('products.id', 'desc');
+        }
+
+        $products = $query->paginate(15)->withQueryString();
 
         $groups = ProductGroup::where('is_active', true)->orderBy('name')->get();
         $standards = QualityStandard::where('is_active', true)->orderBy('name')->get();

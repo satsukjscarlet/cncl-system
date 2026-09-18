@@ -237,10 +237,14 @@
                 </div>
             </div>
 
-            <div class="col-md-7">
-                <input type="number" name="hard_copy_quantity" min="0" class="form-control"
+            <div class="col-md-7" id="hard_copy_quantity_box" style="{{ old('require_hard_copy', $certificateRequest->require_hard_copy ?? false) || $errors->has('hard_copy_quantity') ? '' : 'display: none;' }}">
+                <input type="number" name="hard_copy_quantity" id="hard_copy_quantity" min="{{ old('require_hard_copy', $certificateRequest->require_hard_copy ?? false) ? 1 : 0 }}" class="form-control @error('hard_copy_quantity') is-invalid @enderror"
                        value="{{ old('hard_copy_quantity', $certificateRequest->hard_copy_quantity ?? 0) }}"
-                       placeholder="Số bản">
+                       placeholder="Số bản"
+                       {{ old('require_hard_copy', $certificateRequest->require_hard_copy ?? false) || $errors->has('hard_copy_quantity') ? '' : 'disabled' }}>
+                @error('hard_copy_quantity')
+                    <span class="invalid-feedback">{{ $message }}</span>
+                @enderror
             </div>
         </div>
     </div>
@@ -560,6 +564,9 @@
             const pasteProductsErrors = document.getElementById('paste-products-errors');
             const commitmentCheckbox = document.getElementById('customer_commitment_confirmed');
             const submitRequestButton = document.getElementById('request-submit-button');
+            const hardCopySwitch = document.getElementById('require_hard_copy');
+            const hardCopyQuantity = document.getElementById('hard_copy_quantity');
+            const hardCopyQuantityBox = document.getElementById('hard_copy_quantity_box');
             const productRowTemplate = tableBody.querySelector('tr').cloneNode(true);
             let invoiceCheckTimer = null;
 
@@ -595,6 +602,32 @@
             if (commitmentCheckbox) {
                 commitmentCheckbox.addEventListener('change', syncSubmitButtonState);
                 syncSubmitButtonState();
+            }
+
+            function syncHardCopyQuantity() {
+                if (!hardCopySwitch || !hardCopyQuantity) {
+                    return;
+                }
+
+                const enabled = hardCopySwitch.checked;
+                if (hardCopyQuantityBox) {
+                    hardCopyQuantityBox.style.display = enabled ? '' : 'none';
+                }
+
+                hardCopyQuantity.disabled = !enabled;
+                hardCopyQuantity.required = enabled;
+                hardCopyQuantity.min = enabled ? '1' : '0';
+
+                if (enabled && (!hardCopyQuantity.value || Number(hardCopyQuantity.value) < 1)) {
+                    hardCopyQuantity.value = '1';
+                } else if (!enabled) {
+                    hardCopyQuantity.value = '0';
+                }
+            }
+
+            if (hardCopySwitch) {
+                hardCopySwitch.addEventListener('change', syncHardCopyQuantity);
+                syncHardCopyQuantity();
             }
 
             if (distributionCenterSelect && customerSelect) {

@@ -98,10 +98,10 @@
             <thead class="thead-light">
                 <tr>
                     <th style="width:70px">STT</th>
-                    <th style="width:160px">Mã nhóm</th>
-                    <th>Tên nhóm</th>
+                    <th style="width:160px">@include('partials.sort_link', ['column' => 'code', 'label' => 'Mã nhóm'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'name', 'label' => 'Tên nhóm'])</th>
                     <th>Ghi chú</th>
-                    <th style="width:140px">Trạng thái</th>
+                    <th style="width:140px">@include('partials.sort_link', ['column' => 'is_active', 'label' => 'Trạng thái'])</th>
                     <th style="width:140px" class="text-center">Thao tác</th>
                 </tr>
             </thead>

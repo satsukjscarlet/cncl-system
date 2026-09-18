@@ -282,13 +282,13 @@
             <thead class="thead-light">
                 <tr>
                     <th style="width:60px">STT</th>
-                    <th>Số yêu cầu</th>
-                    <th>Trung tâm</th>
-                    <th>Khách hàng / Công trình</th>
-                    <th>Ngày xuất hàng</th>
-                    <th>Số hóa đơn</th>
-                    <th>Ký tươi</th>
-                    <th>Trạng thái</th>
+                    <th>@include('partials.sort_link', ['column' => 'request_no', 'label' => 'Số yêu cầu'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'center', 'label' => 'Trung tâm'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'customer', 'label' => 'Khách hàng / Công trình'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'delivery_date', 'label' => 'Ngày xuất hàng'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'invoice_no', 'label' => 'Số hóa đơn'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'hard_copy_quantity', 'label' => 'Ký tươi'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'status', 'label' => 'Trạng thái'])</th>
                     <th style="width:132px" class="text-center">Thao tác</th>
                 </tr>
             </thead>

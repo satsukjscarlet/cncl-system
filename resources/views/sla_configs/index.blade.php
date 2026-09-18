@@ -117,12 +117,12 @@
             <thead class="thead-light">
                 <tr>
                     <th style="width:60px">STT</th>
-                    <th style="width:140px">Mã SLA</th>
-                    <th>Tên SLA</th>
-                    <th style="width:180px">Công đoạn</th>
-                    <th style="width:130px">Cảnh báo</th>
-                    <th style="width:130px">Quá hạn</th>
-                    <th style="width:140px">Trạng thái</th>
+                    <th style="width:140px">@include('partials.sort_link', ['column' => 'code', 'label' => 'Mã SLA'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'name', 'label' => 'Tên SLA'])</th>
+                    <th style="width:180px">@include('partials.sort_link', ['column' => 'process_step', 'label' => 'Công đoạn'])</th>
+                    <th style="width:130px">@include('partials.sort_link', ['column' => 'warning_minutes', 'label' => 'Cảnh báo'])</th>
+                    <th style="width:130px">@include('partials.sort_link', ['column' => 'limit_minutes', 'label' => 'Quá hạn'])</th>
+                    <th style="width:140px">@include('partials.sort_link', ['column' => 'is_active', 'label' => 'Trạng thái'])</th>
                     <th style="width:130px" class="text-center">Thao tác</th>
                 </tr>
             </thead>

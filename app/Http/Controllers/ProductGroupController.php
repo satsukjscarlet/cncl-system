@@ -27,7 +27,13 @@ class ProductGroupController extends Controller
             $query->where('is_active', $request->status);
         }
 
-        $groups = $query->latest()->paginate(10)->withQueryString();
+        [$sort, $direction] = $this->sortInput($request, ['code', 'name', 'is_active', 'created_at']);
+
+        $groups = $query
+            ->orderBy($sort, $direction)
+            ->orderBy('id', 'desc')
+            ->paginate(10)
+            ->withQueryString();
 
         return view('product_groups.index', compact('groups'));
     }

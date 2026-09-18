@@ -25,26 +25,44 @@ class CustomerController extends Controller
 
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
-                $q->where('customer_code', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('customer_name', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('customer_address', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('tax_code', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('contact_person', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('phone', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('email', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('project_name', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('project_address', 'like', '%' . $request->keyword . '%');
+                $q->where('customers.customer_code', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('customers.customer_name', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('customers.customer_address', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('customers.tax_code', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('customers.contact_person', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('customers.phone', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('customers.email', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('customers.project_name', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('customers.project_address', 'like', '%' . $request->keyword . '%');
             });
         }
 
         if ($request->filled('status')) {
-            $query->where('is_active', $request->status);
+            $query->where('customers.is_active', $request->status);
         }
 
-        $customers = $query
-            ->latest()
-            ->paginate(15)
-            ->withQueryString();
+        [$sort, $direction] = $this->sortInput($request, [
+            'customer_code',
+            'customer_name',
+            'project_name',
+            'email',
+            'phone',
+            'is_active',
+            'created_at',
+            'center',
+        ]);
+
+        if ($sort === 'center') {
+            $query->leftJoin('distribution_centers as sort_centers', 'sort_centers.id', '=', 'customers.distribution_center_id')
+                ->select('customers.*')
+                ->orderBy('sort_centers.name', $direction)
+                ->orderBy('customers.customer_name');
+        } else {
+            $query->orderBy('customers.' . $sort, $direction)
+                ->orderBy('customers.id', 'desc');
+        }
+
+        $customers = $query->paginate(15)->withQueryString();
 
         $centers = DistributionCenter::where('is_active', true)
             ->orderBy('name')
@@ -482,7 +500,7 @@ class CustomerController extends Controller
         $centerId = $this->currentDistributionCenterId();
 
         if ($centerId) {
-            $query->where('distribution_center_id', $centerId);
+            $query->where('customers.distribution_center_id', $centerId);
         }
     }
 

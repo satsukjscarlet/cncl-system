@@ -127,13 +127,13 @@
                         </th>
                     @endcan
                     <th style="width:60px">STT</th>
-                    <th>Số phiếu</th>
+                    <th>@include('partials.sort_link', ['column' => 'certificate_no', 'label' => 'Số phiếu'])</th>
                     <th>Số yêu cầu</th>
                     <th>Khách hàng / Công trình</th>
                     <th>Trung tâm</th>
                     <th>Người lập</th>
-                    <th>Ngày ký</th>
-                    <th>Trạng thái</th>
+                    <th>@include('partials.sort_link', ['column' => 'signed_at', 'label' => 'Ngày ký'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'status', 'label' => 'Trạng thái'])</th>
                     <th style="width:170px" class="text-center">Thao tác</th>
                 </tr>
             </thead>

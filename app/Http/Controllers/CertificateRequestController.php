@@ -428,7 +428,7 @@ class CertificateRequestController extends Controller
             'delivery_date' => ['required', 'date'],
             'invoice_no' => ['nullable', 'string', 'max:255'],
             'require_hard_copy' => ['nullable'],
-            'hard_copy_quantity' => ['nullable', 'integer', 'min:0'],
+            'hard_copy_quantity' => ['exclude_unless:require_hard_copy,1', 'required', 'integer', 'min:1'],
             'is_urgent' => ['nullable', 'boolean'],
             'urgent_reason_id' => ['nullable', 'required_if:is_urgent,1', 'exists:urgent_reasons,id'],
             'requester_name' => ['required', 'string', 'max:255'],
@@ -605,7 +605,7 @@ class CertificateRequestController extends Controller
             'delivery_date' => ['required', 'date'],
             'invoice_no' => ['nullable', 'string', 'max:255'],
             'require_hard_copy' => ['nullable'],
-            'hard_copy_quantity' => ['nullable', 'integer', 'min:0'],
+            'hard_copy_quantity' => ['exclude_unless:require_hard_copy,1', 'required', 'integer', 'min:1'],
             'is_urgent' => ['nullable', 'boolean'],
             'urgent_reason_id' => ['nullable', 'required_if:is_urgent,1', 'exists:urgent_reasons,id'],
             'requester_name' => ['required', 'string', 'max:255'],
@@ -1188,6 +1188,9 @@ class CertificateRequestController extends Controller
             'new_project_address.required_if' => 'Vui lòng nhập địa điểm công trình khi tạo khách hàng mới.',
             'requester_name.required' => 'Vui lòng nhập tên người tạo yêu cầu.',
             'customer_commitment_confirmed.accepted' => 'Bạn phải xác nhận cam kết trước khi gửi yêu cầu sang DVKH.',
+            'hard_copy_quantity.required' => 'Vui lòng nhập số bản ký tươi khi đã chọn yêu cầu ký tươi.',
+            'hard_copy_quantity.integer' => 'Số bản ký tươi phải là số nguyên.',
+            'hard_copy_quantity.min' => 'Số bản ký tươi phải từ 1 trở lên.',
         ];
     }
 }

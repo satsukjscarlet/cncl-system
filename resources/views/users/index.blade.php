@@ -123,12 +123,12 @@
             <thead class="thead-light">
                 <tr>
                     <th style="width:70px">ID</th>
-                    <th>Họ tên</th>
-                    <th>Username</th>
-                    <th>Email</th>
+                    <th>@include('partials.sort_link', ['column' => 'name', 'label' => 'Họ tên'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'username', 'label' => 'Username'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'email', 'label' => 'Email'])</th>
                     <th>Vai trò</th>
-                    <th>Trung tâm</th>
-                    <th style="width:120px">Trạng thái</th>
+                    <th>@include('partials.sort_link', ['column' => 'center', 'label' => 'Trung tâm'])</th>
+                    <th style="width:120px">@include('partials.sort_link', ['column' => 'is_active', 'label' => 'Trạng thái'])</th>
                     <th style="width:170px" class="text-center">Thao tác</th>
                 </tr>
             </thead>

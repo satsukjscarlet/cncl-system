@@ -62,12 +62,39 @@ class PtnRequestController extends Controller
             $this->applySlaFilter($query, $request->sla, $slaPtn);
         }
 
-        $requests = $query
-            ->orderByRaw("CASE WHEN status = 'WAIT_PTN' THEN 0 ELSE 1 END")
-            ->orderByDesc('is_urgent')
-            ->orderBy('created_at')
-            ->paginate(15)
-            ->withQueryString();
+        [$sort, $direction] = $this->sortInput($request, [
+            'request_no',
+            'center',
+            'customer',
+            'delivery_date',
+            'invoice_no',
+            'hard_copy_quantity',
+            'status',
+            'created_at',
+        ]);
+
+        if ($request->filled('sort')) {
+            if ($sort === 'center') {
+                $query->leftJoin('distribution_centers as sort_centers', 'sort_centers.id', '=', 'certificate_requests.distribution_center_id')
+                    ->select('certificate_requests.*')
+                    ->orderBy('sort_centers.name', $direction);
+            } elseif ($sort === 'customer') {
+                $query->leftJoin('customers as sort_customers', 'sort_customers.id', '=', 'certificate_requests.customer_id')
+                    ->select('certificate_requests.*')
+                    ->orderBy('sort_customers.customer_name', $direction)
+                    ->orderBy('sort_customers.project_name', $direction);
+            } else {
+                $query->orderBy('certificate_requests.' . $sort, $direction);
+            }
+
+            $query->orderBy('certificate_requests.id', 'desc');
+        } else {
+            $query->orderByRaw("CASE WHEN status = 'WAIT_PTN' THEN 0 ELSE 1 END")
+                ->orderByDesc('is_urgent')
+                ->orderBy('created_at');
+        }
+
+        $requests = $query->paginate(15)->withQueryString();
 
         $this->attachSlaMeta($requests->getCollection(), $slaPtn);
 
@@ -112,7 +139,7 @@ class PtnRequestController extends Controller
             'delivery_date' => ['nullable', 'date'],
             'invoice_no' => ['nullable', 'string', 'max:255'],
             'require_hard_copy' => ['nullable'],
-            'hard_copy_quantity' => ['nullable', 'integer', 'min:0'],
+            'hard_copy_quantity' => ['exclude_unless:require_hard_copy,1', 'required', 'integer', 'min:1'],
             'is_urgent' => ['nullable', 'boolean'],
             'urgent_reason_id' => ['nullable', 'required_if:is_urgent,1', 'exists:urgent_reasons,id'],
             'requester_name' => ['required', 'string', 'max:255'],
@@ -125,6 +152,9 @@ class PtnRequestController extends Controller
             'new_project_name.required_if' => 'Vui lòng nhập tên công trình khi tạo khách hàng mới.',
             'new_project_address.required_if' => 'Vui lòng nhập địa điểm công trình khi tạo khách hàng mới.',
             'requester_name.required' => 'Vui lòng nhập tên người tạo yêu cầu.',
+            'hard_copy_quantity.required' => 'Vui lòng nhập số bản ký tươi khi đã chọn yêu cầu ký tươi.',
+            'hard_copy_quantity.integer' => 'Số bản ký tươi phải là số nguyên.',
+            'hard_copy_quantity.min' => 'Số bản ký tươi phải từ 1 trở lên.',
         ]);
 
         DB::beginTransaction();

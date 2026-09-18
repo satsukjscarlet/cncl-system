@@ -113,8 +113,16 @@ class QualityCertificateController extends Controller
             }
         }
 
+        [$sort, $direction] = $this->sortInput($request, [
+            'certificate_no',
+            'signed_at',
+            'status',
+            'created_at',
+        ]);
+
         $certificates = $query
-            ->latest()
+            ->orderBy('quality_certificates.' . $sort, $direction)
+            ->orderBy('quality_certificates.id', 'desc')
             ->paginate(15)
             ->withQueryString();
 

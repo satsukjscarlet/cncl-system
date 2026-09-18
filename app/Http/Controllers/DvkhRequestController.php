@@ -64,12 +64,39 @@ class DvkhRequestController extends Controller
             $this->applySlaFilter($query, $request->sla, $slaDvkh);
         }
 
-        $requests = $query
-            ->orderByRaw("CASE WHEN status = 'WAIT_DVKH' THEN 0 WHEN status = 'WAIT_PTN' THEN 1 ELSE 2 END")
-            ->orderByDesc('is_urgent')
-            ->orderBy('created_at')
-            ->paginate(15)
-            ->withQueryString();
+        [$sort, $direction] = $this->sortInput($request, [
+            'request_no',
+            'center',
+            'customer',
+            'delivery_date',
+            'invoice_no',
+            'hard_copy_quantity',
+            'status',
+            'created_at',
+        ]);
+
+        if ($request->filled('sort')) {
+            if ($sort === 'center') {
+                $query->leftJoin('distribution_centers as sort_centers', 'sort_centers.id', '=', 'certificate_requests.distribution_center_id')
+                    ->select('certificate_requests.*')
+                    ->orderBy('sort_centers.name', $direction);
+            } elseif ($sort === 'customer') {
+                $query->leftJoin('customers as sort_customers', 'sort_customers.id', '=', 'certificate_requests.customer_id')
+                    ->select('certificate_requests.*')
+                    ->orderBy('sort_customers.customer_name', $direction)
+                    ->orderBy('sort_customers.project_name', $direction);
+            } else {
+                $query->orderBy('certificate_requests.' . $sort, $direction);
+            }
+
+            $query->orderBy('certificate_requests.id', 'desc');
+        } else {
+            $query->orderByRaw("CASE WHEN status = 'WAIT_DVKH' THEN 0 WHEN status = 'WAIT_PTN' THEN 1 ELSE 2 END")
+                ->orderByDesc('is_urgent')
+                ->orderBy('created_at');
+        }
+
+        $requests = $query->paginate(15)->withQueryString();
 
         $this->attachInvoiceDuplicateCounts($requests->getCollection());
         $this->attachSlaMeta($requests->getCollection(), $slaDvkh);

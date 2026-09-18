@@ -82,12 +82,12 @@
             <thead class="thead-light">
                 <tr>
                     <th style="width:70px">STT</th>
-                    <th style="width:130px">Mã</th>
-                    <th>Tên trung tâm</th>
-                    <th>Email</th>
-                    <th style="width:140px">Điện thoại</th>
-                    <th>Người liên hệ</th>
-                    <th style="width:150px">Trạng thái</th>
+                    <th style="width:130px">@include('partials.sort_link', ['column' => 'code', 'label' => 'Mã'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'name', 'label' => 'Tên trung tâm'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'email', 'label' => 'Email'])</th>
+                    <th style="width:140px">@include('partials.sort_link', ['column' => 'phone', 'label' => 'Điện thoại'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'contact_person', 'label' => 'Người liên hệ'])</th>
+                    <th style="width:150px">@include('partials.sort_link', ['column' => 'is_active', 'label' => 'Trạng thái'])</th>
                     <th style="width:140px" class="text-center">Thao tác</th>
                 </tr>
             </thead>

@@ -19,9 +19,9 @@ class UserController extends Controller
 
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('username', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('email', 'like', '%' . $request->keyword . '%');
+                $q->where('users.name', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('users.username', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('users.email', 'like', '%' . $request->keyword . '%');
             });
         }
 
@@ -30,17 +30,33 @@ class UserController extends Controller
         }
 
         if ($request->filled('distribution_center_id')) {
-            $query->where('distribution_center_id', $request->distribution_center_id);
+            $query->where('users.distribution_center_id', $request->distribution_center_id);
         }
 
         if ($request->status !== null && $request->status !== '') {
-            $query->where('is_active', $request->status);
+            $query->where('users.is_active', $request->status);
         }
 
-        $users = $query
-            ->latest()
-            ->paginate(15)
-            ->withQueryString();
+        [$sort, $direction] = $this->sortInput($request, [
+            'name',
+            'username',
+            'email',
+            'is_active',
+            'created_at',
+            'center',
+        ]);
+
+        if ($sort === 'center') {
+            $query->leftJoin('distribution_centers as sort_centers', 'sort_centers.id', '=', 'users.distribution_center_id')
+                ->select('users.*')
+                ->orderBy('sort_centers.name', $direction)
+                ->orderBy('users.name');
+        } else {
+            $query->orderBy('users.' . $sort, $direction)
+                ->orderBy('users.id', 'desc');
+        }
+
+        $users = $query->paginate(15)->withQueryString();
 
         $roles = Role::orderBy('name')->get();
         $centers = DistributionCenter::orderBy('name')->get();

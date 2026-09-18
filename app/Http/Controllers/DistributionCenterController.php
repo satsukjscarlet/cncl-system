@@ -26,8 +26,11 @@ class DistributionCenterController extends Controller
             $query->where('is_active', $request->status);
         }
 
+        [$sort, $direction] = $this->sortInput($request, ['code', 'name', 'email', 'phone', 'contact_person', 'is_active', 'created_at']);
+
         $centers = $query
-            ->latest()
+            ->orderBy($sort, $direction)
+            ->orderBy('id', 'desc')
             ->paginate(15)
             ->withQueryString();
 

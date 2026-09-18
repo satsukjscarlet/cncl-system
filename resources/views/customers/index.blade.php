@@ -119,15 +119,15 @@
             <thead class="thead-light">
                 <tr>
                     <th style="width:60px">STT</th>
-                    <th style="width:120px">Mã KH</th>
+                    <th style="width:120px">@include('partials.sort_link', ['column' => 'customer_code', 'label' => 'Mã KH'])</th>
                     @unless(auth()->user()->hasRole('TrungTam'))
-                        <th style="width:170px">Trung tâm</th>
+                        <th style="width:170px">@include('partials.sort_link', ['column' => 'center', 'label' => 'Trung tâm'])</th>
                     @endunless
-                    <th>Khách hàng</th>
-                    <th>Công trình</th>
-                    <th>Email</th>
-                    <th>Điện thoại</th>
-                    <th style="width:130px">Trạng thái</th>
+                    <th>@include('partials.sort_link', ['column' => 'customer_name', 'label' => 'Khách hàng'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'project_name', 'label' => 'Công trình'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'email', 'label' => 'Email'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'phone', 'label' => 'Điện thoại'])</th>
+                    <th style="width:130px">@include('partials.sort_link', ['column' => 'is_active', 'label' => 'Trạng thái'])</th>
                     <th style="width:130px" class="text-center">Thao tác</th>
                 </tr>
             </thead>
