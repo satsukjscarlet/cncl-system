@@ -147,6 +147,10 @@
         <strong>{{ $metrics['urgent'] ?? 0 }}</strong>
         <span>Yêu cầu gấp</span>
     </a>
+    <a class="dvkh-metric warning" href="{{ route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'returned' => 1]) }}">
+        <strong>{{ $metrics['returned'] ?? 0 }}</strong>
+        <span>PTN/Trưởng PTN trả lại</span>
+    </a>
     <a class="dvkh-metric warning" href="{{ route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'duplicate_invoice' => 1]) }}">
         <strong>{{ $metrics['duplicate'] ?? 0 }}</strong>
         <span>Hóa đơn trùng</span>
@@ -232,6 +236,16 @@
                             <option value="">Tất cả</option>
                             <option value="1" {{ request('urgent') === '1' ? 'selected' : '' }}>Chỉ yêu cầu gấp</option>
                             <option value="0" {{ request('urgent') === '0' ? 'selected' : '' }}>Không gấp</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-field">
+                    <label for="returned">Yêu cầu trả lại</label>
+                    <div class="form-group mb-0">
+                        <select id="returned" name="returned" class="form-control select2">
+                            <option value="">Tất cả</option>
+                            <option value="1" {{ request('returned') === '1' ? 'selected' : '' }}>PTN/Trưởng PTN trả lại</option>
                         </select>
                     </div>
                 </div>
@@ -333,7 +347,20 @@
                                 <span class="badge badge-light">Không</span>
                             @endif
                         </td>
-                        <td>@include('certificate_requests.partials.status_badge', ['certificateRequest' => $item])</td>
+                        <td>
+                            @include('certificate_requests.partials.status_badge', ['certificateRequest' => $item])
+                            @if($item->status === 'WAIT_DVKH' && $item->last_returned_to === 'DVKH')
+                                <div class="mt-1">
+                                    <span class="badge badge-warning">
+                                        <i class="fas fa-undo"></i>
+                                        {{ $item->last_returned_from === 'TRUONG_PTN' ? 'Trưởng PTN trả lại' : 'PTN trả lại' }}
+                                    </span>
+                                </div>
+                                @if($item->last_returned_at)
+                                    <div class="text-muted small mt-1">{{ $item->last_returned_at->format('d/m/Y H:i') }}</div>
+                                @endif
+                            @endif
+                        </td>
                         <td class="text-center">
                             <div class="dvkh-actions">
                                 <a href="{{ route('dvkh.requests.show', $item) }}" class="btn btn-sm btn-info" title="Xem">

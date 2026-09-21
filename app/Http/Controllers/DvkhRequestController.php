@@ -7,6 +7,7 @@ use App\Models\CertificateRequest;
 use App\Models\DistributionCenter;
 use App\Models\SlaConfig;
 use App\Services\NotificationService;
+use App\Services\WorkflowHistoryService;
 use App\Services\WorkflowStepService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,7 @@ class DvkhRequestController extends Controller
             'reissueOfCertificate',
             'reissueCertificates',
             'qualityCertificate',
+            'lastReturnedBy',
         ])->whereIn('status', [
             'WAIT_DVKH',
             'CANCELLED',
@@ -58,6 +60,11 @@ class DvkhRequestController extends Controller
 
         if ($request->filled('urgent')) {
             $query->where('is_urgent', $request->urgent);
+        }
+
+        if ($request->filled('returned')) {
+            $query->where('status', 'WAIT_DVKH')
+                ->where('last_returned_to', 'DVKH');
         }
 
         if ($request->filled('sla')) {
@@ -124,12 +131,14 @@ class DvkhRequestController extends Controller
             'reissueOfCertificate',
             'reissueCertificates',
             'qualityCertificate',
+            'lastReturnedBy',
         ]);
 
         $invoiceDuplicates = $this->invoiceDuplicates($certificateRequest);
         $requestWorkflowSteps = app(WorkflowStepService::class)->forRequest($certificateRequest);
+        $requestHistoryLogs = app(WorkflowHistoryService::class)->forRequest($certificateRequest);
 
-        return view('dvkh_requests.show', compact('certificateRequest', 'invoiceDuplicates', 'requestWorkflowSteps'));
+        return view('dvkh_requests.show', compact('certificateRequest', 'invoiceDuplicates', 'requestWorkflowSteps', 'requestHistoryLogs'));
     }
 
     public function approve(Request $request, CertificateRequest $certificateRequest)
@@ -175,6 +184,11 @@ class DvkhRequestController extends Controller
 
             $certificateRequest->update([
                 'status' => 'WAIT_PTN',
+                'last_returned_from' => null,
+                'last_returned_to' => null,
+                'last_return_reason' => null,
+                'last_returned_at' => null,
+                'last_returned_by' => null,
             ]);
 
             DB::commit();
@@ -225,6 +239,11 @@ class DvkhRequestController extends Controller
             'submitted_at' => null,
             'submitted_by' => null,
             'note' => trim(($certificateRequest->note ? $certificateRequest->note . "\n" : '') . '[DVKH trả lại]: ' . $data['reason']),
+            'last_returned_from' => 'DVKH',
+            'last_returned_to' => 'TRUNG_TAM',
+            'last_return_reason' => $data['reason'],
+            'last_returned_at' => now(),
+            'last_returned_by' => Auth::id(),
         ]);
 
         ActivityLogger::log(
@@ -287,6 +306,7 @@ class DvkhRequestController extends Controller
         return [
             'waiting' => (clone $base)->where('status', 'WAIT_DVKH')->count(),
             'urgent' => (clone $base)->where('status', 'WAIT_DVKH')->where('is_urgent', true)->count(),
+            'returned' => (clone $base)->where('status', 'WAIT_DVKH')->where('last_returned_to', 'DVKH')->count(),
             'duplicate' => tap(clone $base, function ($query) {
                 $query->where('status', 'WAIT_DVKH');
                 $this->applyDuplicateInvoiceFilter($query, '1');

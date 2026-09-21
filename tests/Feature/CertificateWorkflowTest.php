@@ -208,10 +208,26 @@ class CertificateWorkflowTest extends TestCase
         $this->assertNull($certificateRequest->submitted_at);
         $this->assertNull($certificateRequest->submitted_by);
         $this->assertStringContainsString('Thong tin cong trinh chua chinh xac', $certificateRequest->note);
+        $this->assertSame('DVKH', $certificateRequest->last_returned_from);
+        $this->assertSame('TRUNG_TAM', $certificateRequest->last_returned_to);
+        $this->assertSame('Thong tin cong trinh chua chinh xac, Trung tam vui long cap nhat lai.', $certificateRequest->last_return_reason);
         $this->assertSame(1, UserNotification::where('user_id', $centerUser->id)
             ->where('type', 'request_rejected')
             ->where('url', route('certificate-requests.show', $certificateRequest))
             ->count());
+
+        $this->actingAs($centerUser)
+            ->post(route('certificate-requests.submit-draft', $certificateRequest), [
+                'customer_commitment_confirmed' => '1',
+            ])
+            ->assertRedirect(route('certificate-requests.show', $certificateRequest));
+
+        $certificateRequest->refresh();
+
+        $this->assertSame('WAIT_DVKH', $certificateRequest->status);
+        $this->assertNull($certificateRequest->last_returned_from);
+        $this->assertNull($certificateRequest->last_returned_to);
+        $this->assertNull($certificateRequest->last_return_reason);
     }
 
     public function test_ptn_can_return_waiting_request_to_dvkh(): void
@@ -260,8 +276,36 @@ class CertificateWorkflowTest extends TestCase
         $this->assertSame('WAIT_DVKH', $certificateRequest->status);
         $this->assertStringContainsString('PTN trả lại DVKH', $certificateRequest->note);
         $this->assertStringContainsString('Can DVKH xac nhan lai thong tin cong trinh.', $certificateRequest->note);
+        $this->assertSame('PTN', $certificateRequest->last_returned_from);
+        $this->assertSame('DVKH', $certificateRequest->last_returned_to);
+        $this->assertSame('Can DVKH xac nhan lai thong tin cong trinh.', $certificateRequest->last_return_reason);
+        $this->assertNotNull($certificateRequest->last_returned_at);
+        $this->assertSame($ptn->id, $certificateRequest->last_returned_by);
         $this->assertNotNull($certificateRequest->submitted_at);
         $this->assertSame($centerUser->id, $certificateRequest->submitted_by);
+
+        $this->actingAs($dvkh)
+            ->get(route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'returned' => '1']))
+            ->assertOk()
+            ->assertSee($certificateRequest->request_no)
+            ->assertSee('PTN trả lại');
+
+        $this->actingAs($dvkh)
+            ->get(route('dvkh.requests.show', $certificateRequest))
+            ->assertOk()
+            ->assertSee('PTN trả lại yêu cầu về DVKH')
+            ->assertSee('Can DVKH xac nhan lai thong tin cong trinh.');
+
+        $this->actingAs($dvkh)
+            ->post(route('dvkh.requests.approve', $certificateRequest))
+            ->assertRedirect(route('dvkh.requests.index'));
+
+        $certificateRequest->refresh();
+
+        $this->assertSame('WAIT_PTN', $certificateRequest->status);
+        $this->assertNull($certificateRequest->last_returned_from);
+        $this->assertNull($certificateRequest->last_returned_to);
+        $this->assertNull($certificateRequest->last_return_reason);
 
         $this->assertSame(1, UserNotification::where('user_id', $dvkh->id)
             ->where('type', 'request_returned_to_dvkh_by_ptn')

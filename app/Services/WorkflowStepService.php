@@ -108,14 +108,18 @@ class WorkflowStepService
 
         if ($request->status === 'DRAFT') {
             $steps[0]['status'] = 'current';
-            $steps[0]['description'] = 'Yêu cầu đang được lưu nháp, chưa gửi sang DVKH.';
+            $steps[0]['description'] = $request->last_returned_to === 'TRUNG_TAM'
+                ? 'DVKH đã trả lại yêu cầu để Trung tâm chỉnh sửa. Lý do: ' . ($request->last_return_reason ?: '-')
+                : 'Yêu cầu đang được lưu nháp, chưa gửi sang DVKH.';
 
             return;
         }
 
         if ($request->status === 'WAIT_DVKH') {
             $steps[1]['status'] = 'current';
-            $steps[1]['description'] = 'Đang chờ DVKH xác nhận hoặc trả lại yêu cầu.';
+            $steps[1]['description'] = $request->last_returned_to === 'DVKH'
+                ? (($request->last_returned_from === 'TRUONG_PTN' ? 'Trưởng PTN' : 'PTN') . ' đã trả lại yêu cầu về DVKH. Lý do: ' . ($request->last_return_reason ?: '-'))
+                : 'Đang chờ DVKH xác nhận hoặc trả lại yêu cầu.';
 
             return;
         }
@@ -170,7 +174,7 @@ class WorkflowStepService
             $steps[3]['status'] = 'danger';
             $steps[3]['time'] = $certificate->rejected_at;
             $steps[3]['description'] = 'Trưởng PTN đã trả lại phiếu'
-                . ($certificate->rejected_to === 'DVKH' ? ' về DVKH' : '')
+                . ($certificate->rejected_to === 'DVKH' ? ' về DVKH' : ' về PTN')
                 . ': ' . ($certificate->rejected_reason ?: '-');
 
             $steps[4]['status'] = 'skipped';

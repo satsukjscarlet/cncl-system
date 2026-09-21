@@ -27,6 +27,11 @@ class CertificateRequest extends Model
         'requester_name',
         'customer_commitment_confirmed',
         'note',
+        'last_returned_from',
+        'last_returned_to',
+        'last_return_reason',
+        'last_returned_at',
+        'last_returned_by',
         'status',
         'submitted_at',
         'submitted_by',
@@ -38,6 +43,7 @@ class CertificateRequest extends Model
         'require_hard_copy' => 'boolean',
         'is_urgent' => 'boolean',
         'customer_commitment_confirmed' => 'boolean',
+        'last_returned_at' => 'datetime',
         'submitted_at' => 'datetime',
     ];
 
@@ -76,6 +82,11 @@ class CertificateRequest extends Model
     public function submittedBy()
     {
         return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function lastReturnedBy()
+    {
+        return $this->belongsTo(User::class, 'last_returned_by');
     }
 
     public function urgentReason()

@@ -232,6 +232,11 @@
     </div>
 </div>
 
+@include('quality_certificates.partials.history_timeline', [
+    'logs' => $requestHistoryLogs,
+    'title' => 'Lịch sử xử lý yêu cầu',
+])
+
 @can('dvkh.process')
     @if($certificateRequest->status === 'WAIT_DVKH')
         <div class="modal fade" id="dvkhRejectModal" tabindex="-1">

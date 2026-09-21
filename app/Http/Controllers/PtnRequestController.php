@@ -11,6 +11,7 @@ use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
 use App\Models\UrgentReason;
 use App\Services\NotificationService;
+use App\Services\WorkflowHistoryService;
 use App\Services\WorkflowStepService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -242,9 +243,10 @@ class PtnRequestController extends Controller
         ]);
 
         $requestWorkflowSteps = app(WorkflowStepService::class)->forRequest($certificateRequest);
+        $requestHistoryLogs = app(WorkflowHistoryService::class)->forRequest($certificateRequest);
         $canReturnToDvkh = $this->canReturnToDvkh($certificateRequest);
 
-        return view('ptn_requests.show', compact('certificateRequest', 'requestWorkflowSteps', 'canReturnToDvkh'));
+        return view('ptn_requests.show', compact('certificateRequest', 'requestWorkflowSteps', 'requestHistoryLogs', 'canReturnToDvkh'));
     }
 
     public function receive(CertificateRequest $certificateRequest)
@@ -281,6 +283,11 @@ class PtnRequestController extends Controller
         $certificateRequest->update([
             'status' => 'WAIT_DVKH',
             'note' => trim(($certificateRequest->note ? $certificateRequest->note . "\n" : '') . '[PTN trả lại DVKH]: ' . $data['reason']),
+            'last_returned_from' => 'PTN',
+            'last_returned_to' => 'DVKH',
+            'last_return_reason' => $data['reason'],
+            'last_returned_at' => now(),
+            'last_returned_by' => Auth::id(),
         ]);
 
         ActivityLogger::log(
@@ -331,6 +338,19 @@ class PtnRequestController extends Controller
             if ($certificateRequest->status === 'WAIT_PTN') {
                 $certificateRequest->update([
                     'status' => 'PTN_PROCESSING',
+                    'last_returned_from' => null,
+                    'last_returned_to' => null,
+                    'last_return_reason' => null,
+                    'last_returned_at' => null,
+                    'last_returned_by' => null,
+                ]);
+            } elseif ($certificateRequest->last_returned_to === 'PTN') {
+                $certificateRequest->update([
+                    'last_returned_from' => null,
+                    'last_returned_to' => null,
+                    'last_return_reason' => null,
+                    'last_returned_at' => null,
+                    'last_returned_by' => null,
                 ]);
             }
 
@@ -397,6 +417,11 @@ class PtnRequestController extends Controller
 
             $certificateRequest->update([
                 'status' => 'PTN_PROCESSING',
+                'last_returned_from' => null,
+                'last_returned_to' => null,
+                'last_return_reason' => null,
+                'last_returned_at' => null,
+                'last_returned_by' => null,
             ]);
 
             $this->markReissueCertificatesReplaced($certificateRequest, $certificate);

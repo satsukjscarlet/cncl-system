@@ -11,6 +11,7 @@ use App\Models\DistributionCenter;
 use App\Models\Product;
 use App\Models\UrgentReason;
 use App\Services\NotificationService;
+use App\Services\WorkflowHistoryService;
 use App\Services\WorkflowStepService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -543,8 +544,9 @@ class CertificateRequestController extends Controller
 
         $invoiceDuplicates = $this->invoiceDuplicates($certificateRequest);
         $requestWorkflowSteps = app(WorkflowStepService::class)->forRequest($certificateRequest);
+        $requestHistoryLogs = app(WorkflowHistoryService::class)->forRequest($certificateRequest);
 
-        return view('certificate_requests.show', compact('certificateRequest', 'invoiceDuplicates', 'requestWorkflowSteps'));
+        return view('certificate_requests.show', compact('certificateRequest', 'invoiceDuplicates', 'requestWorkflowSteps', 'requestHistoryLogs'));
     }
 
     public function edit(CertificateRequest $certificateRequest)
@@ -654,6 +656,11 @@ class CertificateRequestController extends Controller
                 'status' => $requestStatus,
                 'submitted_at' => $requestStatus === 'WAIT_DVKH' ? now() : null,
                 'submitted_by' => $requestStatus === 'WAIT_DVKH' ? Auth::id() : null,
+                'last_returned_from' => $requestStatus === 'WAIT_DVKH' ? null : $certificateRequest->last_returned_from,
+                'last_returned_to' => $requestStatus === 'WAIT_DVKH' ? null : $certificateRequest->last_returned_to,
+                'last_return_reason' => $requestStatus === 'WAIT_DVKH' ? null : $certificateRequest->last_return_reason,
+                'last_returned_at' => $requestStatus === 'WAIT_DVKH' ? null : $certificateRequest->last_returned_at,
+                'last_returned_by' => $requestStatus === 'WAIT_DVKH' ? null : $certificateRequest->last_returned_by,
             ]);
 
             $certificateRequest->details()->delete();
@@ -761,6 +768,11 @@ class CertificateRequestController extends Controller
             'submitted_at' => now(),
             'submitted_by' => Auth::id(),
             'customer_commitment_confirmed' => true,
+            'last_returned_from' => null,
+            'last_returned_to' => null,
+            'last_return_reason' => null,
+            'last_returned_at' => null,
+            'last_returned_by' => null,
         ]);
 
         $this->logDuplicateInvoiceWarning($certificateRequest);

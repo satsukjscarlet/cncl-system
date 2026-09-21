@@ -1089,6 +1089,11 @@ class QualityCertificateController extends Controller
             $qualityCertificate->request->update([
                 'status' => $newRequestStatus,
                 'note' => trim(($qualityCertificate->request->note ? $qualityCertificate->request->note . "\n" : '') . $noteLine),
+                'last_returned_from' => 'TRUONG_PTN',
+                'last_returned_to' => $data['reject_to'],
+                'last_return_reason' => $data['rejected_reason'],
+                'last_returned_at' => now(),
+                'last_returned_by' => Auth::id(),
             ]);
 
             ActivityLogger::log(

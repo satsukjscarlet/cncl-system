@@ -184,6 +184,11 @@
     </div>
 </div>
 
+@include('quality_certificates.partials.history_timeline', [
+    'logs' => $requestHistoryLogs,
+    'title' => 'Lịch sử xử lý yêu cầu',
+])
+
 @can('ptn.process')
     @if($canReturnToDvkh)
         <div class="modal fade" id="returnToDvkhModal" tabindex="-1" role="dialog" aria-labelledby="returnToDvkhModalLabel" aria-hidden="true">

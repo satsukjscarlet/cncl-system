@@ -31,6 +31,7 @@ class DashboardController extends Controller
             'cancelled' => (clone $requestQuery)->where('status', 'CANCELLED')->count(),
             'urgent' => (clone $requestQuery)->where('is_urgent', true)->whereNotIn('status', ['COMPLETED', 'CANCELLED'])->count(),
             'urgent_dvkh' => (clone $requestQuery)->where('status', 'WAIT_DVKH')->where('is_urgent', true)->count(),
+            'returned_dvkh' => (clone $requestQuery)->where('status', 'WAIT_DVKH')->where('last_returned_to', 'DVKH')->count(),
             'urgent_ptn' => (clone $requestQuery)->whereIn('status', ['WAIT_PTN', 'PTN_PROCESSING'])->where('is_urgent', true)->count(),
             'duplicate_invoice' => $this->duplicateInvoiceCount(clone $requestQuery),
             'duplicate_invoice_dvkh' => $this->duplicateInvoiceCount((clone $requestQuery)->where('status', 'WAIT_DVKH')),
@@ -172,6 +173,7 @@ class DashboardController extends Controller
             ],
             'DVKH' => [
                 $this->card('Chờ DVKH kiểm tra', $metrics['wait_dvkh'], 'fas fa-user-check', 'warning', route('dvkh.requests.index', ['status' => 'WAIT_DVKH'])),
+                $this->card('PTN/Trưởng PTN trả lại', $metrics['returned_dvkh'], 'fas fa-undo', 'warning', route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'returned' => '1'])),
                 $this->card('Yêu cầu gấp', $metrics['urgent_dvkh'], 'fas fa-bolt', 'danger', route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'urgent' => '1'])),
                 $this->card('Trùng số hóa đơn', $metrics['duplicate_invoice_dvkh'], 'fas fa-copy', 'orange', route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'duplicate_invoice' => '1'])),
                 $this->card('Đã chuyển PTN', $metrics['wait_ptn'], 'fas fa-vials', 'info', route('dvkh.requests.index', ['status' => 'WAIT_PTN'])),

@@ -39,6 +39,7 @@ class WorkQueueService
             ],
             'DVKH' => [
                 $this->item('Yêu cầu chờ kiểm tra', (clone $requests)->where('status', 'WAIT_DVKH')->count(), 'fas fa-user-check', 'warning', route('dvkh.requests.index', ['status' => 'WAIT_DVKH'])),
+                $this->item('PTN/Trưởng PTN trả lại', (clone $requests)->where('status', 'WAIT_DVKH')->where('last_returned_to', 'DVKH')->count(), 'fas fa-undo', 'warning', route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'returned' => '1'])),
                 $this->item('Yêu cầu gấp cần kiểm tra', (clone $requests)->where('status', 'WAIT_DVKH')->where('is_urgent', true)->count(), 'fas fa-bolt', 'danger', route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'urgent' => '1'])),
                 $this->item('Trùng số hóa đơn', $this->duplicateInvoiceCount((clone $requests)->where('status', 'WAIT_DVKH')), 'fas fa-copy', 'warning', route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'duplicate_invoice' => '1'])),
             ],

@@ -817,6 +817,34 @@ Kiểm tra:
 - `php artisan test --filter=CertificateWorkflowTest`: pass.
 - `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
 
+### Tối ưu lịch sử xử lý yêu cầu và vòng trả lại - 18/09/2026
+
+File chính:
+- `app/Services/WorkflowHistoryService.php`
+- `app/Services/WorkflowStepService.php`
+- `app/Http/Controllers/CertificateRequestController.php`
+- `app/Http/Controllers/DvkhRequestController.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `resources/views/certificate_requests/show.blade.php`
+- `resources/views/dvkh_requests/show.blade.php`
+- `resources/views/ptn_requests/show.blade.php`
+- `resources/views/quality_certificates/partials/history_timeline.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+
+Nội dung:
+- Bổ sung service gom lịch sử xử lý theo yêu cầu, bao gồm cả log của phiếu CNCL được tạo từ yêu cầu đó.
+- Màn chi tiết yêu cầu của Trung tâm, DVKH và PTN hiển thị thêm `Lịch sử xử lý yêu cầu`.
+- Timeline hiển thị nhãn thao tác tiếng Việt dễ hiểu thay vì action code nội bộ.
+- DVKH trả lại Trung tâm sẽ lưu metadata trả lại để tiến trình hiển thị rõ lý do trong lúc yêu cầu quay về nháp.
+- Khi Trung tâm gửi lại, DVKH duyệt lại hoặc PTN lập lại phiếu sau khi bị trả về, hệ thống tự xóa metadata trả lại cũ để dashboard/bộ lọc không báo nhầm.
+- Tiến trình xử lý phân biệt rõ Trưởng PTN trả phiếu về PTN hay về DVKH.
+
+Kiểm tra:
+- `php -l` các controller/service liên quan: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
 ### Trưởng PTN - duyệt phiếu, chờ gửi ký và tự động kiểm tra SmartCA
 
 File chính:
@@ -1061,6 +1089,36 @@ Kiểm tra:
 
 Ghi chú:
 - Phiếu đã ký có file PDF lưu sẵn trong `storage` vẫn ưu tiên trả file đã ký cũ. Mẫu mới áp dụng cho phiếu chưa ký, phiếu ký mới hoặc khi regenerate PDF.
+### DVKH nhận diện yêu cầu bị PTN trả lại - 18/09/2026
+
+File chính:
+- `database/migrations/2026_09_18_000002_add_return_tracking_to_certificate_requests.php`
+- `app/Models/CertificateRequest.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+- `app/Http/Controllers/DvkhRequestController.php`
+- `app/Http/Controllers/DashboardController.php`
+- `app/Services/WorkQueueService.php`
+- `app/Services/WorkflowStepService.php`
+- `resources/views/dvkh_requests/index.blade.php`
+- `resources/views/dvkh_requests/show.blade.php`
+
+Nội dung:
+- Bổ sung metadata lần trả lại gần nhất cho yêu cầu: nguồn trả lại, bước nhận lại, lý do, thời gian, người trả lại.
+- Khi PTN trả yêu cầu về DVKH, hệ thống lưu metadata để DVKH phân biệt với yêu cầu mới.
+- Khi Trưởng PTN trả phiếu về DVKH/PTN, request gốc cũng lưu metadata trả lại tương ứng.
+- Màn DVKH có thẻ thống kê và bộ lọc riêng `PTN/Trưởng PTN trả lại`.
+- Danh sách và chi tiết DVKH hiển thị badge/cảnh báo kèm lý do trả lại.
+- Dashboard và "Việc cần làm" của DVKH có mục riêng cho yêu cầu bị trả lại.
+- Tiến trình xử lý mô tả rõ khi yêu cầu quay về DVKH do bị trả lại.
+
+Kiểm tra:
+- `php artisan migrate`: pass.
+- `php -l` các file PHP liên quan: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
 ### Import khách hàng và gửi lại email phiếu - 18/09/2026
 
 File chính:

@@ -1,6 +1,6 @@
 <div class="card">
     <div class="card-header bg-white">
-        <h3 class="card-title"><i class="fas fa-stream"></i> Lịch sử xử lý phiếu</h3>
+        <h3 class="card-title"><i class="fas fa-stream"></i> {{ $title ?? 'Lịch sử xử lý phiếu' }}</h3>
         <div class="card-tools">
             <span class="badge badge-info">Tối đa {{ $logs->count() }} dòng gần nhất</span>
         </div>
@@ -18,13 +18,35 @@
                 @foreach($logs as $log)
                     @php
                         $action = $log->properties['action'] ?? null;
+                        $actionLabel = match ($action) {
+                            'create' => 'Tạo mới',
+                            'update' => 'Cập nhật',
+                            'submit' => 'Gửi DVKH',
+                            'approve' => 'Xác nhận',
+                            'reject' => 'Trả lại Trung tâm',
+                            'return_to_dvkh' => 'Trả lại DVKH',
+                            'create_certificate', 'create_certificate_from_request' => 'Lập phiếu',
+                            'approve_for_signing' => 'Duyệt chờ ký',
+                            'smartca_request' => 'Gửi ký số',
+                            'smartca_request_resend' => 'Gửi lại ký số',
+                            'smartca_request_expired' => 'Quá hạn ký số',
+                            'smartca_signed_and_send_email' => 'Ký và gửi email',
+                            'smartca_signed_without_email' => 'Ký thành công',
+                            'smartca_status_failed' => 'Lỗi kiểm tra ký',
+                            'send_email_failed' => 'Lỗi gửi email',
+                            'request_reissue' => 'Yêu cầu cấp lại',
+                            'reject_signature' => 'Trưởng PTN trả lại',
+                            default => $action,
+                        };
                         $iconClass = match ($action) {
                             'smartca_request', 'smartca_request_resend' => 'fas fa-file-signature bg-primary',
                             'smartca_signed_and_send_email', 'smartca_signed_without_email' => 'fas fa-check bg-success',
                             'smartca_request_expired', 'smartca_status_failed', 'send_email_failed' => 'fas fa-exclamation-triangle bg-danger',
                             'request_reissue' => 'fas fa-redo bg-warning',
                             'approve' => 'fas fa-check-circle bg-success',
-                            'reject', 'reject_signature' => 'fas fa-undo bg-secondary',
+                            'reject', 'reject_signature', 'return_to_dvkh' => 'fas fa-undo bg-secondary',
+                            'submit' => 'fas fa-paper-plane bg-primary',
+                            'create_certificate', 'create_certificate_from_request' => 'fas fa-file-signature bg-info',
                             default => 'fas fa-circle bg-info',
                         };
                     @endphp
@@ -39,8 +61,8 @@
 
                             <h3 class="timeline-header">
                                 <span class="badge badge-light">{{ $log->log_name ?: 'Hệ thống' }}</span>
-                                @if($action)
-                                    <span class="badge badge-secondary">{{ $action }}</span>
+                                @if($actionLabel)
+                                    <span class="badge badge-secondary">{{ $actionLabel }}</span>
                                 @endif
                             </h3>
 

@@ -223,6 +223,24 @@
         </div>
     @endif
 
+    @if($certificateRequest->status === 'WAIT_DVKH' && $certificateRequest->last_returned_to === 'DVKH')
+        <div class="alert alert-warning">
+            <div class="font-weight-bold">
+                <i class="fas fa-undo"></i>
+                {{ $certificateRequest->last_returned_from === 'TRUONG_PTN' ? 'Trưởng PTN trả lại yêu cầu về DVKH' : 'PTN trả lại yêu cầu về DVKH' }}
+            </div>
+            <div class="mt-1">
+                <strong>Lý do:</strong> {{ $certificateRequest->last_return_reason ?: '-' }}
+            </div>
+            <div class="small text-muted mt-1">
+                {{ $certificateRequest->last_returned_at ? $certificateRequest->last_returned_at->format('d/m/Y H:i') : '' }}
+                @if($certificateRequest->lastReturnedBy)
+                    bởi {{ $certificateRequest->lastReturnedBy->name }}
+                @endif
+            </div>
+        </div>
+    @endif
+
     @can('dvkh.process')
         @if($certificateRequest->status === 'WAIT_DVKH')
             @php
@@ -430,6 +448,11 @@
             </table>
         </div>
     </div>
+
+    @include('quality_certificates.partials.history_timeline', [
+        'logs' => $requestHistoryLogs,
+        'title' => 'Lịch sử xử lý yêu cầu',
+    ])
 
     @can('dvkh.process')
         @if($certificateRequest->status === 'WAIT_DVKH')
