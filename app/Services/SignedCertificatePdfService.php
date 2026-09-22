@@ -548,8 +548,8 @@ class SignedCertificatePdfService
             ['label' => $this->t('ĐVT'), 'w' => 32.0],
             ['label' => $this->t('Số lượng'), 'w' => 48.0],
             ['label' => $this->t("Kích thước\ndanh nghĩa"), 'w' => 78.0],
-            ['label' => $this->t("Yêu cầu kỹ\nthuật"), 'w' => 78.0],
-            ['label' => $this->t('Tiêu chuẩn sản phẩm'), 'w' => $this->contentWidth() - 439.0],
+            ['label' => $this->t("Yêu cầu \nkỹ thuật"), 'w' => 78.0],
+            ['label' => $this->t("Tiêu chuẩn \nsản phẩm"), 'w' => $this->contentWidth() - 439.0],
         ];
     }
 
