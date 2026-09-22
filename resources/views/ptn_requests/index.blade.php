@@ -162,6 +162,10 @@
         <strong>{{ $metrics['processing'] ?? 0 }}</strong>
         <span>Đã lập phiếu - chờ ký</span>
     </a>
+    <a class="ptn-metric warning" href="{{ route('ptn.requests.index', ['status' => 'PTN_PROCESSING', 'returned' => 1]) }}">
+        <strong>{{ $metrics['returned_ptn'] ?? 0 }}</strong>
+        <span>Trưởng PTN trả lại</span>
+    </a>
     <a class="ptn-metric" href="{{ route('ptn.requests.index', ['status' => 'PTN_PROCESSING']) }}">
         <strong>{{ $metrics['created_today'] ?? 0 }}</strong>
         <span>Đã lập phiếu hôm nay</span>
@@ -223,6 +227,16 @@
                             <option value="">Tất cả</option>
                             <option value="1" {{ request('urgent') === '1' ? 'selected' : '' }}>Chỉ yêu cầu gấp</option>
                             <option value="0" {{ request('urgent') === '0' ? 'selected' : '' }}>Không gấp</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-field">
+                    <label for="returned">Phiếu trả lại</label>
+                    <div class="form-group mb-0">
+                        <select id="returned" name="returned" class="form-control">
+                            <option value="">Tất cả</option>
+                            <option value="1" {{ request('returned') === '1' ? 'selected' : '' }}>Trưởng PTN trả lại PTN</option>
                         </select>
                     </div>
                 </div>
@@ -317,7 +331,10 @@
                                 <span class="badge badge-light">Không</span>
                             @endif
                         </td>
-                        <td>@include('certificate_requests.partials.status_badge', ['certificateRequest' => $item])</td>
+                        <td>
+                            @include('certificate_requests.partials.status_badge', ['certificateRequest' => $item])
+                            @include('certificate_requests.partials.return_badge', ['certificateRequest' => $item])
+                        </td>
                         <td class="text-center">
                             <div class="ptn-actions">
                                 <a href="{{ route('ptn.requests.show', $item) }}"

@@ -29,6 +29,7 @@ class PtnRequestController extends Controller
             'urgentReason',
             'reissueOfCertificate',
             'qualityCertificate',
+            'lastReturnedBy',
         ])->whereIn('status', [
             'WAIT_PTN',
             'PTN_PROCESSING',
@@ -49,7 +50,9 @@ class PtnRequestController extends Controller
             $query->where('distribution_center_id', $request->distribution_center_id);
         }
 
-        $statusFilter = $request->has('status') ? $request->input('status') : 'WAIT_PTN';
+        $statusFilter = $request->has('status')
+            ? $request->input('status')
+            : ($request->filled('returned') ? 'PTN_PROCESSING' : 'WAIT_PTN');
 
         if ($statusFilter !== null && $statusFilter !== '') {
             $query->where('status', $statusFilter);
@@ -57,6 +60,11 @@ class PtnRequestController extends Controller
 
         if ($request->filled('urgent')) {
             $query->where('is_urgent', $request->urgent);
+        }
+
+        if ($request->filled('returned')) {
+            $query->where('status', 'PTN_PROCESSING')
+                ->where('last_returned_to', 'PTN');
         }
 
         if ($request->filled('sla')) {
@@ -675,6 +683,7 @@ class PtnRequestController extends Controller
                 ->whereDate('updated_at', now()->toDateString())
                 ->count(),
             'processing' => (clone $base)->where('status', 'PTN_PROCESSING')->count(),
+            'returned_ptn' => (clone $base)->where('status', 'PTN_PROCESSING')->where('last_returned_to', 'PTN')->count(),
         ];
     }
 

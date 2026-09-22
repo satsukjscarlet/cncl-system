@@ -29,9 +29,11 @@ class DashboardController extends Controller
             'ptn_processing' => (clone $requestQuery)->where('status', 'PTN_PROCESSING')->count(),
             'completed' => (clone $requestQuery)->where('status', 'COMPLETED')->count(),
             'cancelled' => (clone $requestQuery)->where('status', 'CANCELLED')->count(),
+            'returned_center' => (clone $requestQuery)->where('status', 'DRAFT')->where('last_returned_to', 'TRUNG_TAM')->count(),
             'urgent' => (clone $requestQuery)->where('is_urgent', true)->whereNotIn('status', ['COMPLETED', 'CANCELLED'])->count(),
             'urgent_dvkh' => (clone $requestQuery)->where('status', 'WAIT_DVKH')->where('is_urgent', true)->count(),
             'returned_dvkh' => (clone $requestQuery)->where('status', 'WAIT_DVKH')->where('last_returned_to', 'DVKH')->count(),
+            'returned_ptn' => (clone $requestQuery)->where('status', 'PTN_PROCESSING')->where('last_returned_to', 'PTN')->count(),
             'urgent_ptn' => (clone $requestQuery)->whereIn('status', ['WAIT_PTN', 'PTN_PROCESSING'])->where('is_urgent', true)->count(),
             'duplicate_invoice' => $this->duplicateInvoiceCount(clone $requestQuery),
             'duplicate_invoice_dvkh' => $this->duplicateInvoiceCount((clone $requestQuery)->where('status', 'WAIT_DVKH')),
@@ -166,6 +168,7 @@ class DashboardController extends Controller
             ],
             'TrungTam' => [
                 $this->card('Yêu cầu của tôi', $metrics['total_requests'], 'fas fa-file-alt', 'primary', route('certificate-requests.index')),
+                $this->card('DVKH trả lại cần sửa', $metrics['returned_center'], 'fas fa-undo', 'warning', route('certificate-requests.index', ['status_group' => 'returned_center'])),
                 $this->card('Chờ DVKH', $metrics['wait_dvkh'], 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
                 $this->card('Chờ PTN lập phiếu', $metrics['wait_ptn'], 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
                 $this->card('Đã lập phiếu - chờ ký', $metrics['ptn_processing'], 'fas fa-file-signature', 'primary', route('certificate-requests.index', ['status' => 'PTN_PROCESSING'])),
@@ -180,6 +183,7 @@ class DashboardController extends Controller
             ],
             'PTN' => [
                 $this->card('Chờ PTN lập phiếu', $metrics['wait_ptn'], 'fas fa-inbox', 'warning', route('ptn.requests.index', ['status' => 'WAIT_PTN'])),
+                $this->card('Trưởng PTN trả lại', $metrics['returned_ptn'], 'fas fa-undo', 'warning', route('ptn.requests.index', ['status' => 'PTN_PROCESSING', 'returned' => '1'])),
                 $this->card('Đã lập phiếu - chờ ký', $metrics['ptn_processing'], 'fas fa-vials', 'info', route('ptn.requests.index', ['status' => 'PTN_PROCESSING'])),
                 $this->card('Phiếu chờ Trưởng PTN ký', $metrics['sign_actionable'], 'fas fa-file-signature', 'primary', route('quality-certificates.index', ['status' => 'SIGN_READY'])),
                 $this->card('Yêu cầu gấp', $metrics['urgent_ptn'], 'fas fa-bolt', 'danger', route('ptn.requests.index', ['status' => '', 'urgent' => '1'])),

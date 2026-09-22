@@ -217,6 +217,12 @@ class CertificateWorkflowTest extends TestCase
             ->count());
 
         $this->actingAs($centerUser)
+            ->get(route('certificate-requests.index', ['status_group' => 'returned_center']))
+            ->assertOk()
+            ->assertSee($certificateRequest->request_no)
+            ->assertSee('DVKH trả lại');
+
+        $this->actingAs($centerUser)
             ->post(route('certificate-requests.submit-draft', $certificateRequest), [
                 'customer_commitment_confirmed' => '1',
             ])
@@ -425,11 +431,20 @@ class CertificateWorkflowTest extends TestCase
         $this->assertSame('REJECTED', $certificate->fresh()->status);
         $this->assertSame('PTN', $certificate->fresh()->rejected_to);
         $this->assertSame('PTN_PROCESSING', $certificateRequest->fresh()->status);
+        $this->assertSame('TRUONG_PTN', $certificateRequest->fresh()->last_returned_from);
+        $this->assertSame('PTN', $certificateRequest->fresh()->last_returned_to);
 
         $this->actingAs($ptn)
             ->get(route('ptn.requests.show', $certificateRequest))
             ->assertOk()
-            ->assertSee('returnToDvkhModal');
+            ->assertSee('returnToDvkhModal')
+            ->assertSee('Trưởng PTN trả lại PTN');
+
+        $this->actingAs($ptn)
+            ->get(route('ptn.requests.index', ['status' => 'PTN_PROCESSING', 'returned' => 1]))
+            ->assertOk()
+            ->assertSee($certificateRequest->request_no)
+            ->assertSee('Trưởng PTN trả lại PTN');
 
         $this->actingAs($ptn)
             ->get(route('quality-certificates.show', $certificate))
@@ -627,12 +642,32 @@ class CertificateWorkflowTest extends TestCase
             'created_by' => $centerUser->id,
         ]);
 
+        CertificateRequest::create([
+            'request_no' => 'YC-WORK-RETURNED-CENTER',
+            'request_type' => 'NORMAL',
+            'distribution_center_id' => $centerUser->distribution_center_id,
+            'customer_id' => $customer->id,
+            'delivery_date' => '2026-08-08',
+            'invoice_no' => 'INV-WORK-RETURNED-CENTER',
+            'require_hard_copy' => false,
+            'hard_copy_quantity' => 0,
+            'is_urgent' => false,
+            'requester_name' => 'Nguoi tao',
+            'status' => 'DRAFT',
+            'last_returned_from' => 'DVKH',
+            'last_returned_to' => 'TRUNG_TAM',
+            'last_return_reason' => 'Can sua thong tin.',
+            'created_by' => $centerUser->id,
+        ]);
+
         $centerItems = collect(app(WorkQueueService::class)->forUser($centerUser)['items']);
 
         $this->assertSame(1, $centerItems->firstWhere('label', 'Đang chờ PTN lập phiếu')['count']);
         $this->assertSame(route('certificate-requests.index', ['status' => 'WAIT_PTN']), $centerItems->firstWhere('label', 'Đang chờ PTN lập phiếu')['url']);
         $this->assertSame(1, $centerItems->firstWhere('label', 'Phiếu đã lập - chờ ký')['count']);
         $this->assertSame(route('certificate-requests.index', ['status' => 'PTN_PROCESSING']), $centerItems->firstWhere('label', 'Phiếu đã lập - chờ ký')['url']);
+        $this->assertSame(1, $centerItems->firstWhere('label', 'DVKH trả lại cần sửa')['count']);
+        $this->assertSame(route('certificate-requests.index', ['status_group' => 'returned_center']), $centerItems->firstWhere('label', 'DVKH trả lại cần sửa')['url']);
 
         $dvkh = User::where('username', 'dvkh')->firstOrFail();
         $waitPtn->update([
@@ -644,6 +679,30 @@ class CertificateWorkflowTest extends TestCase
 
         $this->assertSame(1, $dvkhItems->firstWhere('label', 'Yêu cầu gấp cần kiểm tra')['count']);
         $this->assertSame(route('dvkh.requests.index', ['status' => 'WAIT_DVKH', 'urgent' => '1']), $dvkhItems->firstWhere('label', 'Yêu cầu gấp cần kiểm tra')['url']);
+
+        CertificateRequest::create([
+            'request_no' => 'YC-WORK-RETURNED-PTN',
+            'request_type' => 'NORMAL',
+            'distribution_center_id' => $centerUser->distribution_center_id,
+            'customer_id' => $customer->id,
+            'delivery_date' => '2026-08-08',
+            'invoice_no' => 'INV-WORK-RETURNED-PTN',
+            'require_hard_copy' => false,
+            'hard_copy_quantity' => 0,
+            'is_urgent' => false,
+            'requester_name' => 'Nguoi tao',
+            'status' => 'PTN_PROCESSING',
+            'last_returned_from' => 'TRUONG_PTN',
+            'last_returned_to' => 'PTN',
+            'last_return_reason' => 'Can PTN xu ly lai.',
+            'created_by' => $centerUser->id,
+        ]);
+
+        $ptn = User::where('username', 'ptn')->firstOrFail();
+        $ptnItems = collect(app(WorkQueueService::class)->forUser($ptn)['items']);
+
+        $this->assertSame(1, $ptnItems->firstWhere('label', 'Trưởng PTN trả lại')['count']);
+        $this->assertSame(route('ptn.requests.index', ['status' => 'PTN_PROCESSING', 'returned' => '1']), $ptnItems->firstWhere('label', 'Trưởng PTN trả lại')['url']);
     }
 
     public function test_center_can_save_draft_then_submit_to_dvkh(): void

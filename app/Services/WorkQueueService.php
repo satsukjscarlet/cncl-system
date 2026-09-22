@@ -31,6 +31,7 @@ class WorkQueueService
 
         return match ($role) {
             'TrungTam' => [
+                $this->item('DVKH trả lại cần sửa', (clone $requests)->where('status', 'DRAFT')->where('last_returned_to', 'TRUNG_TAM')->count(), 'fas fa-undo', 'warning', route('certificate-requests.index', ['status_group' => 'returned_center'])),
                 $this->item('Nháp cần sửa / gửi DVKH', (clone $requests)->where('status', 'DRAFT')->count(), 'fas fa-edit', 'secondary', route('certificate-requests.index', ['status_group' => 'draft'])),
                 $this->item('Yêu cầu bị trả lại', (clone $requests)->where('status', 'CANCELLED')->count(), 'fas fa-reply', 'danger', route('certificate-requests.index', ['status' => 'CANCELLED'])),
                 $this->item('Đang chờ DVKH', (clone $requests)->where('status', 'WAIT_DVKH')->count(), 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
@@ -45,6 +46,7 @@ class WorkQueueService
             ],
             'PTN' => [
                 $this->item('Chờ PTN lập phiếu', (clone $requests)->where('status', 'WAIT_PTN')->count(), 'fas fa-inbox', 'warning', route('ptn.requests.index', ['status' => 'WAIT_PTN'])),
+                $this->item('Trưởng PTN trả lại', (clone $requests)->where('status', 'PTN_PROCESSING')->where('last_returned_to', 'PTN')->count(), 'fas fa-undo', 'warning', route('ptn.requests.index', ['status' => 'PTN_PROCESSING', 'returned' => '1'])),
                 $this->item('Đã lập phiếu - chờ ký', (clone $requests)->where('status', 'PTN_PROCESSING')->count(), 'fas fa-vials', 'primary', route('ptn.requests.index', ['status' => 'PTN_PROCESSING'])),
                 $this->item('Yêu cầu gấp của PTN', (clone $requests)->whereIn('status', ['WAIT_PTN', 'PTN_PROCESSING'])->where('is_urgent', true)->count(), 'fas fa-bolt', 'danger', route('ptn.requests.index', ['urgent' => '1'])),
             ],

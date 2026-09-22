@@ -46,6 +46,7 @@ class CertificateRequestController extends Controller
             'reissueOfCertificate',
             'reissueCertificates',
             'qualityCertificate',
+            'lastReturnedBy',
         ]);
 
         if ($request->filled('keyword')) {
@@ -1089,6 +1090,7 @@ class CertificateRequestController extends Controller
         return [
             'processing' => tap(clone $baseQuery, fn ($query) => $this->applyStatusGroupFilter($query, 'processing'))->count(),
             'draft' => (clone $baseQuery)->where('status', 'DRAFT')->count(),
+            'returned_center' => (clone $baseQuery)->where('status', 'DRAFT')->where('last_returned_to', 'TRUNG_TAM')->count(),
             'wait_dvkh' => (clone $baseQuery)->where('status', 'WAIT_DVKH')->count(),
             'wait_ptn' => (clone $baseQuery)->where('status', 'WAIT_PTN')->count(),
             'sign_ready' => tap(clone $baseQuery, fn ($query) => $this->applyStatusFilter($query, 'SIGN_READY'))->count(),
@@ -1128,6 +1130,13 @@ class CertificateRequestController extends Controller
 
         if ($group === 'draft') {
             $query->where('status', 'DRAFT');
+
+            return;
+        }
+
+        if ($group === 'returned_center') {
+            $query->where('status', 'DRAFT')
+                ->where('last_returned_to', 'TRUNG_TAM');
 
             return;
         }

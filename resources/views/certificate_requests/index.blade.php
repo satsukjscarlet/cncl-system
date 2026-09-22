@@ -112,6 +112,7 @@
     $tabs = [
         'processing' => ['label' => 'Đang xử lý', 'icon' => 'fas fa-tasks', 'count' => $tabCounts['processing'] ?? 0],
         'draft' => ['label' => 'Nháp', 'icon' => 'fas fa-edit', 'count' => $tabCounts['draft'] ?? 0],
+        'returned_center' => ['label' => 'DVKH trả lại', 'icon' => 'fas fa-undo', 'count' => $tabCounts['returned_center'] ?? 0],
         'wait_dvkh' => ['label' => 'Chờ DVKH', 'icon' => 'fas fa-user-check', 'count' => $tabCounts['wait_dvkh'] ?? 0],
         'wait_ptn' => ['label' => 'Chờ PTN', 'icon' => 'fas fa-vials', 'count' => $tabCounts['wait_ptn'] ?? 0],
         'sign_ready' => ['label' => 'Chờ ký', 'icon' => 'fas fa-pen-nib', 'count' => $tabCounts['sign_ready'] ?? 0],
@@ -328,6 +329,7 @@
                         </td>
                         <td>
                             @include('certificate_requests.partials.status_badge', ['certificateRequest' => $item])
+                            @include('certificate_requests.partials.return_badge', ['certificateRequest' => $item])
                         </td>
                         <td class="text-center">
                             <a href="{{ route('certificate-requests.show', $item) }}" class="btn btn-sm btn-info" title="Xem">

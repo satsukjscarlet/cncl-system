@@ -817,6 +817,34 @@ Kiểm tra:
 - `php artisan test --filter=CertificateWorkflowTest`: pass.
 - `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
 
+### Hiển thị rõ các yêu cầu/phiếu bị trả lại theo vai trò - 21/09/2026
+
+File chính:
+- `app/Http/Controllers/CertificateRequestController.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `app/Http/Controllers/DashboardController.php`
+- `app/Services/WorkQueueService.php`
+- `resources/views/certificate_requests/index.blade.php`
+- `resources/views/certificate_requests/show.blade.php`
+- `resources/views/certificate_requests/partials/return_badge.blade.php`
+- `resources/views/ptn_requests/index.blade.php`
+- `resources/views/ptn_requests/show.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+
+Nội dung:
+- Trung tâm có tab riêng `DVKH trả lại` trên danh sách yêu cầu, lọc các yêu cầu nháp cần sửa do DVKH trả lại.
+- Dashboard và "Việc cần làm" của Trung tâm có mục `DVKH trả lại cần sửa`.
+- PTN có thẻ thống kê và bộ lọc `Trưởng PTN trả lại` để nhận diện các phiếu bị Trưởng PTN trả về PTN xử lý lại.
+- Dashboard và "Việc cần làm" của PTN có mục `Trưởng PTN trả lại`.
+- Bổ sung partial badge dùng chung để hiển thị nguồn trả lại và lý do ngắn tại danh sách/chi tiết yêu cầu.
+- Bộ lọc PTN tự chuyển mặc định sang trạng thái `PTN_PROCESSING` khi lọc phiếu Trưởng PTN trả lại, tránh lọc rỗng.
+
+Kiểm tra:
+- `php -l` các controller/service liên quan: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
 ### Tối ưu lịch sử xử lý yêu cầu và vòng trả lại - 18/09/2026
 
 File chính:
