@@ -53,6 +53,8 @@ class DvkhRequestController extends Controller
             $query->where('distribution_center_id', $request->distribution_center_id);
         }
 
+        $this->applySubmittedDateRange($query, $request);
+
         $statusFilter = $request->has('status') ? $request->input('status') : 'WAIT_DVKH';
 
         if ($statusFilter !== null && $statusFilter !== '') {
@@ -311,6 +313,8 @@ class DvkhRequestController extends Controller
                 $query->where('distribution_center_id', $request->distribution_center_id);
             });
 
+        $this->applySubmittedDateRange($base, $request);
+
         return [
             'waiting' => (clone $base)->where('status', 'WAIT_DVKH')->count(),
             'urgent' => (clone $base)->where('status', 'WAIT_DVKH')->where('is_urgent', true)->count(),
@@ -394,6 +398,17 @@ class DvkhRequestController extends Controller
     private function slaLevel(CertificateRequest $item, ?SlaConfig $sla): ?string
     {
         return $this->slaClock->level($item, $sla, 'DVKH');
+    }
+
+    private function applySubmittedDateRange($query, Request $request): void
+    {
+        if ($request->filled('submitted_from')) {
+            $query->whereDate('certificate_requests.submitted_at', '>=', $request->submitted_from);
+        }
+
+        if ($request->filled('submitted_to')) {
+            $query->whereDate('certificate_requests.submitted_at', '<=', $request->submitted_to);
+        }
     }
 
     private function duplicateInvoiceExistsSubQuery($subQuery): void

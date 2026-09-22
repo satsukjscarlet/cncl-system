@@ -64,6 +64,9 @@
 
         .dvkh-row-warning { background: #fff8e1; }
         .dvkh-row-overdue { background: #fff1f1; }
+        .dvkh-row-returned { box-shadow: inset 4px 0 0 #f0ad4e; }
+        .dvkh-row-urgent { box-shadow: inset 4px 0 0 #dc3545; }
+        .dvkh-row-returned.dvkh-row-urgent { box-shadow: inset 4px 0 0 #dc3545, inset 8px 0 0 #f0ad4e; }
 
         .dvkh-actions {
             display: inline-flex;
@@ -89,6 +92,13 @@
             color: #6c757d;
             font-size: 12px;
             line-height: 1.35;
+        }
+
+        .dvkh-status-stack {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
         }
 
         .request-list-card .card-header {
@@ -273,12 +283,28 @@
                     </div>
                 </div>
 
+                <div class="filter-field">
+                    <label for="submitted_from">Gửi DVKH từ ngày</label>
+                    <div class="form-group mb-0">
+                        <input id="submitted_from" type="date" name="submitted_from" class="form-control"
+                               value="{{ request('submitted_from') }}">
+                    </div>
+                </div>
+
+                <div class="filter-field">
+                    <label for="submitted_to">Gửi DVKH đến ngày</label>
+                    <div class="form-group mb-0">
+                        <input id="submitted_to" type="date" name="submitted_to" class="form-control"
+                               value="{{ request('submitted_to') }}">
+                    </div>
+                </div>
+
                 <div class="filter-actions">
                     <button class="btn btn-primary"><i class="fas fa-search"></i> Lọc</button>
                     <a href="{{ route('dvkh.requests.index') }}" class="btn btn-outline-secondary" title="Làm mới">
                         <i class="fas fa-sync"></i>
                     </a>
-                    @if(request()->hasAny(['keyword', 'distribution_center_id', 'status', 'duplicate_invoice', 'urgent', 'sla']))
+                    @if(request()->hasAny(['keyword', 'distribution_center_id', 'status', 'duplicate_invoice', 'urgent', 'returned', 'sla', 'submitted_from', 'submitted_to']))
                         <a href="{{ route('dvkh.requests.index') }}" class="btn btn-outline-danger">
                             <i class="fas fa-times"></i> Xóa lọc
                         </a>
@@ -321,7 +347,19 @@
             <tbody>
                 @forelse($requests as $item)
                     @php
-                        $rowClass = $item->sla_level === 'overdue' ? 'dvkh-row-overdue' : ($item->sla_level === 'warning' ? 'dvkh-row-warning' : '');
+                        $rowClasses = [];
+                        if ($item->sla_level === 'overdue') {
+                            $rowClasses[] = 'dvkh-row-overdue';
+                        } elseif ($item->sla_level === 'warning') {
+                            $rowClasses[] = 'dvkh-row-warning';
+                        }
+                        if ($item->status === 'WAIT_DVKH' && $item->effectiveLastReturnedTo() === 'DVKH') {
+                            $rowClasses[] = 'dvkh-row-returned';
+                        }
+                        if ($item->is_urgent) {
+                            $rowClasses[] = 'dvkh-row-urgent';
+                        }
+                        $rowClass = implode(' ', $rowClasses);
                     @endphp
                     <tr class="{{ $rowClass }}">
                         <td>{{ $requests->firstItem() + $loop->index }}</td>
@@ -371,13 +409,15 @@
                             @endif
                         </td>
                         <td>
-                            @include('certificate_requests.partials.status_badge', ['certificateRequest' => $item])
-                            @if($item->status === 'WAIT_DVKH' && $item->effectiveLastReturnedTo() === 'DVKH')
-                                @include('certificate_requests.partials.return_badge', ['certificateRequest' => $item])
-                                @if($item->last_returned_at)
-                                    <div class="text-muted small mt-1">Nhận lại: {{ $item->last_returned_at->format('d/m/Y H:i') }}</div>
+                            <div class="dvkh-status-stack">
+                                @include('certificate_requests.partials.status_badge', ['certificateRequest' => $item])
+                                @if($item->status === 'WAIT_DVKH' && $item->effectiveLastReturnedTo() === 'DVKH')
+                                    @include('certificate_requests.partials.return_badge', ['certificateRequest' => $item])
+                                    @if($item->last_returned_at)
+                                        <div class="text-muted small">Nhận lại: {{ $item->last_returned_at->format('d/m/Y H:i') }}</div>
+                                    @endif
                                 @endif
-                            @endif
+                            </div>
                         </td>
                         <td class="text-center">
                             <div class="dvkh-actions">

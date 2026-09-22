@@ -10,6 +10,24 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-22
 
+### DVKH - tối ưu lọc và nhận diện yêu cầu cần xử lý
+
+File chính:
+- `app/Http/Controllers/DvkhRequestController.php`
+- `resources/views/dvkh_requests/index.blade.php`
+
+Nội dung:
+- Bổ sung bộ lọc khoảng ngày `Gửi DVKH từ ngày` và `Gửi DVKH đến ngày`.
+- Các chỉ số đầu trang bám theo bộ lọc trung tâm và khoảng ngày gửi DVKH.
+- Làm nổi bật dòng yêu cầu gấp, yêu cầu gần/quá hạn SLA và yêu cầu bị PTN/Trưởng PTN trả lại về DVKH.
+- Sửa nút `Xóa lọc` nhận đủ các tham số mới và tham số `returned`.
+- Sắp xếp bảng rõ hơn theo mốc gửi DVKH khi không chọn sort thủ công.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/DvkhRequestController.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
 ### DVKH - hiển thị ngày Trung tâm gửi yêu cầu
 
 File chính:
