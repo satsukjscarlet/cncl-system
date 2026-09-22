@@ -63,18 +63,23 @@ class QualityCertificateController extends Controller
             });
         }
 
-        if ($request->filled('status')) {
-            if ($request->status === 'SIGNED') {
+        $statusFilter = $request->input('status');
+        if ($statusFilter === 'ALL') {
+            $statusFilter = null;
+        }
+
+        if (filled($statusFilter)) {
+            if ($statusFilter === 'SIGNED') {
                 $query->whereNotNull('signed_at')
                     ->where('status', 'ISSUED');
             }
 
-            if ($request->status === 'UNSIGNED') {
+            if ($statusFilter === 'UNSIGNED') {
                 $query->whereNull('signed_at')
                     ->whereNotIn('status', ['REJECTED', 'REVOKED']);
             }
 
-            if ($request->status === 'SIGN_READY') {
+            if ($statusFilter === 'SIGN_READY') {
                 $query->whereNull('signed_at')
                     ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL', 'READY_TO_SIGN'])
                     ->where(function ($q) {
@@ -83,7 +88,7 @@ class QualityCertificateController extends Controller
                     });
             }
 
-            if ($request->status === 'SMARTCA_PENDING') {
+            if ($statusFilter === 'SMARTCA_PENDING') {
                 $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
 
                 $query->whereNull('signed_at')
@@ -91,15 +96,15 @@ class QualityCertificateController extends Controller
                     ->where('smartca_requested_at', '>', $expiredBefore);
             }
 
-            if ($request->status === 'REVOKED') {
+            if ($statusFilter === 'REVOKED') {
                 $query->where('status', 'REVOKED');
             }
 
-            if ($request->status === 'REJECTED') {
+            if ($statusFilter === 'REJECTED') {
                 $query->where('status', 'REJECTED');
             }
 
-            if ($request->status === 'SMARTCA_EXPIRED') {
+            if ($statusFilter === 'SMARTCA_EXPIRED') {
                 $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
 
                 $query->whereNull('signed_at')

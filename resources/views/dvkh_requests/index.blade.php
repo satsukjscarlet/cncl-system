@@ -77,7 +77,18 @@
         }
 
         .dvkh-table {
-            min-width: 1120px;
+            min-width: 1240px;
+        }
+
+        .dvkh-date-main {
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .dvkh-date-sub {
+            color: #6c757d;
+            font-size: 12px;
+            line-height: 1.35;
         }
 
         .request-list-card .card-header {
@@ -284,7 +295,7 @@
             <h3 class="card-title mb-0">
                 <i class="fas fa-check-circle"></i> Danh sách yêu cầu DVKH
             </h3>
-            <div class="text-muted small mt-1">Mặc định chỉ hiển thị yêu cầu đang chờ DVKH xử lý. Có thể mở rộng bằng bộ lọc trạng thái.</div>
+            <div class="text-muted small mt-1">Mặc định ưu tiên yêu cầu chờ DVKH theo thời điểm Trung tâm gửi sang. Có thể mở rộng bằng bộ lọc trạng thái.</div>
         </div>
         <div class="card-tools">
             <span class="badge badge-info">Tổng số: {{ $requests->total() }}</span>
@@ -297,6 +308,7 @@
                 <tr>
                     <th style="width:60px">STT</th>
                     <th>@include('partials.sort_link', ['column' => 'request_no', 'label' => 'Số yêu cầu'])</th>
+                    <th style="width:140px">@include('partials.sort_link', ['column' => 'submitted_at', 'label' => 'Ngày gửi DVKH'])</th>
                     <th>@include('partials.sort_link', ['column' => 'center', 'label' => 'Trung tâm'])</th>
                     <th>@include('partials.sort_link', ['column' => 'customer', 'label' => 'Khách hàng / Công trình'])</th>
                     <th>@include('partials.sort_link', ['column' => 'delivery_date', 'label' => 'Ngày xuất hàng'])</th>
@@ -315,13 +327,24 @@
                         <td>{{ $requests->firstItem() + $loop->index }}</td>
                         <td>
                             <strong>{{ $item->request_no }}</strong>
-                            <div class="text-muted small">{{ optional($item->created_at)->format('d/m/Y H:i') }}</div>
+                            <div class="text-muted small">Tạo: {{ optional($item->created_at)->format('d/m/Y H:i') }}</div>
                             @include('certificate_requests.partials.request_type_badge', ['certificateRequest' => $item])
                             @include('certificate_requests.partials.urgent_badge', ['urgentRequest' => $item])
                             @if($item->sla_level === 'overdue')
                                 <div class="mt-1"><span class="badge badge-danger"><i class="fas fa-clock"></i> Quá SLA</span></div>
                             @elseif($item->sla_level === 'warning')
                                 <div class="mt-1"><span class="badge badge-warning"><i class="fas fa-clock"></i> Gần quá SLA</span></div>
+                            @endif
+                        </td>
+                        <td>
+                            @if($item->submitted_at)
+                                <div class="dvkh-date-main">{{ $item->submitted_at->format('d/m/Y') }}</div>
+                                <div class="dvkh-date-sub">{{ $item->submitted_at->format('H:i') }}</div>
+                            @else
+                                <span class="text-muted">-</span>
+                            @endif
+                            @if($item->creator)
+                                <div class="dvkh-date-sub">Người gửi: {{ $item->creator->name ?? $item->creator->username }}</div>
                             @endif
                         </td>
                         <td>{{ $item->distributionCenter->name ?? '-' }}</td>
@@ -352,7 +375,7 @@
                             @if($item->status === 'WAIT_DVKH' && $item->effectiveLastReturnedTo() === 'DVKH')
                                 @include('certificate_requests.partials.return_badge', ['certificateRequest' => $item])
                                 @if($item->last_returned_at)
-                                    <div class="text-muted small mt-1">{{ $item->last_returned_at->format('d/m/Y H:i') }}</div>
+                                    <div class="text-muted small mt-1">Nhận lại: {{ $item->last_returned_at->format('d/m/Y H:i') }}</div>
                                 @endif
                             @endif
                         </td>
@@ -417,7 +440,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">
+                        <td colspan="10" class="text-center text-muted py-4">
                             <i class="fas fa-database fa-2x mb-2"></i><br>
                             Không có yêu cầu cần DVKH xử lý.
                         </td>

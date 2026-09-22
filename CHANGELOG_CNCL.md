@@ -10,6 +10,51 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-22
 
+### DVKH - hiển thị ngày Trung tâm gửi yêu cầu
+
+File chính:
+- `app/Http/Controllers/DvkhRequestController.php`
+- `resources/views/dvkh_requests/index.blade.php`
+
+Nội dung:
+- Bổ sung cột `Ngày gửi DVKH` trên danh sách yêu cầu DVKH, lấy theo `submitted_at`.
+- Hiển thị thêm người gửi yêu cầu và đổi nhãn ngày tạo trong cột số yêu cầu cho rõ nghĩa.
+- Với yêu cầu bị PTN/Trưởng PTN trả lại về DVKH, đổi nhãn thời gian thành `Nhận lại`.
+- Thêm sort theo `submitted_at` và đổi thứ tự mặc định sang ưu tiên yêu cầu gửi sang DVKH cũ nhất.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/DvkhRequestController.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
+### Danh sách phiếu - sửa bộ lọc tất cả trạng thái trên Select2
+
+File chính:
+- `resources/views/quality_certificates/index.blade.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+
+Nội dung:
+- Đổi lựa chọn `Tất cả trạng thái` từ giá trị rỗng sang `ALL` để Select2 hiển thị như một lựa chọn thật.
+- Controller quy đổi `status=ALL` thành không lọc trạng thái, giữ đúng dữ liệu toàn bộ phiếu.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/QualityCertificateController.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
+### Danh sách phiếu - bổ sung trạng thái ký tất cả
+
+File chính:
+- `resources/views/quality_certificates/index.blade.php`
+
+Nội dung:
+- Đưa lựa chọn `Tất cả trạng thái` lên đầu bộ lọc `Trạng thái ký`.
+- Set selected rõ ràng khi không truyền tham số `status`, tránh select2 tự hiển thị mặc định `Chờ duyệt / chờ gửi ký`.
+
+Kiểm tra:
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
 ### PTN - hiển thị rõ yêu cầu bị Trưởng PTN trả lại
 
 File chính:

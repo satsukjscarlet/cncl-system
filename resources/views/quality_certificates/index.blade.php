@@ -69,15 +69,18 @@
             <div class="col-lg-3 col-md-4">
                 <div class="form-group">
                     <label>Trạng thái ký</label>
+                    @php
+                        $selectedStatus = request('status', 'ALL') ?: 'ALL';
+                    @endphp
                     <select name="status" class="form-control select2">
-                        <option value="SIGN_READY" {{ request('status') == 'SIGN_READY' ? 'selected' : '' }}>Chờ duyệt / chờ gửi ký</option>
-                        <option value="SMARTCA_PENDING" {{ request('status') == 'SMARTCA_PENDING' ? 'selected' : '' }}>Đang chờ ký số</option>
-                        <option value="">Tất cả</option>
-                        <option value="UNSIGNED" {{ request('status') == 'UNSIGNED' ? 'selected' : '' }}>Chưa ký</option>
-                        <option value="SIGNED" {{ request('status') == 'SIGNED' ? 'selected' : '' }}>Đã ký/phát hành</option>
-                        <option value="SMARTCA_EXPIRED" {{ request('status') == 'SMARTCA_EXPIRED' ? 'selected' : '' }}>Yêu cầu ký hết hạn</option>
-                        <option value="REVOKED" {{ request('status') == 'REVOKED' ? 'selected' : '' }}>Đã hủy/thu hồi</option>
-                        <option value="REJECTED" {{ request('status') == 'REJECTED' ? 'selected' : '' }}>Đã trả lại</option>
+                        <option value="ALL" {{ $selectedStatus === 'ALL' ? 'selected' : '' }}>Tất cả trạng thái</option>
+                        <option value="SIGN_READY" {{ $selectedStatus === 'SIGN_READY' ? 'selected' : '' }}>Chờ duyệt / chờ gửi ký</option>
+                        <option value="SMARTCA_PENDING" {{ $selectedStatus === 'SMARTCA_PENDING' ? 'selected' : '' }}>Đang chờ ký số</option>
+                        <option value="UNSIGNED" {{ $selectedStatus === 'UNSIGNED' ? 'selected' : '' }}>Chưa ký</option>
+                        <option value="SIGNED" {{ $selectedStatus === 'SIGNED' ? 'selected' : '' }}>Đã ký/phát hành</option>
+                        <option value="SMARTCA_EXPIRED" {{ $selectedStatus === 'SMARTCA_EXPIRED' ? 'selected' : '' }}>Yêu cầu ký hết hạn</option>
+                        <option value="REVOKED" {{ $selectedStatus === 'REVOKED' ? 'selected' : '' }}>Đã hủy/thu hồi</option>
+                        <option value="REJECTED" {{ $selectedStatus === 'REJECTED' ? 'selected' : '' }}>Đã trả lại</option>
                     </select>
                 </div>
             </div>

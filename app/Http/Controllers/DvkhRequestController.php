@@ -78,6 +78,7 @@ class DvkhRequestController extends Controller
 
         [$sort, $direction] = $this->sortInput($request, [
             'request_no',
+            'submitted_at',
             'center',
             'customer',
             'delivery_date',
@@ -105,7 +106,8 @@ class DvkhRequestController extends Controller
         } else {
             $query->orderByRaw("CASE WHEN status = 'WAIT_DVKH' THEN 0 WHEN status = 'WAIT_PTN' THEN 1 ELSE 2 END")
                 ->orderByDesc('is_urgent')
-                ->orderBy('created_at');
+                ->orderByRaw('COALESCE(submitted_at, created_at) asc')
+                ->orderBy('certificate_requests.id');
         }
 
         $requests = $query->paginate(15)->withQueryString();
