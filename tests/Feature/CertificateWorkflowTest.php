@@ -8,8 +8,10 @@ use App\Models\Product;
 use App\Models\ProductGroup;
 use App\Models\QualityCertificate;
 use App\Models\QualityStandard;
+use App\Models\SlaConfig;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Services\SlaClockService;
 use App\Services\WorkQueueService;
 use Database\Seeders\DistributionCenterSeeder;
 use Database\Seeders\PermissionSeeder;
@@ -758,6 +760,90 @@ class CertificateWorkflowTest extends TestCase
         $this->assertNotNull($certificateRequest->submitted_at);
         $this->assertSame($centerUser->id, $certificateRequest->submitted_by);
         $this->assertSame(1, UserNotification::where('user_id', $dvkh->id)->where('type', 'request_created')->count());
+    }
+
+    public function test_sla_starts_when_draft_is_submitted_not_when_it_was_created(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-SLA-DRAFT-SUBMIT');
+
+        $slaDvkh = SlaConfig::create([
+            'code' => 'SLA_DVKH',
+            'name' => 'SLA DVKH test',
+            'process_step' => 'DVKH',
+            'warning_minutes' => 60,
+            'limit_minutes' => 120,
+            'is_active' => true,
+        ]);
+
+        $slaPtn = SlaConfig::create([
+            'code' => 'SLA_PTN',
+            'name' => 'SLA PTN test',
+            'process_step' => 'PTN',
+            'warning_minutes' => 60,
+            'limit_minutes' => 120,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($centerUser)
+            ->post(route('certificate-requests.store'), [
+                'customer_mode' => 'existing',
+                'customer_id' => $customer->id,
+                'delivery_date' => '2026-08-08',
+                'invoice_no' => 'INV-SLA-DRAFT-SUBMIT',
+                'require_hard_copy' => '0',
+                'hard_copy_quantity' => 0,
+                'is_urgent' => '0',
+                'requester_name' => 'Nguoi tao nhap',
+                'note' => 'Luu nhap truoc khi gui',
+                'product_id' => [$this->product->id],
+                'quantity' => [12],
+                'request_action' => 'draft',
+            ])
+            ->assertRedirect(route('certificate-requests.index'));
+
+        $certificateRequest = CertificateRequest::where('invoice_no', 'INV-SLA-DRAFT-SUBMIT')->firstOrFail();
+        $certificateRequest->forceFill([
+            'created_at' => now()->subDays(5),
+            'updated_at' => now()->subDays(5),
+        ])->save();
+
+        $this->actingAs($centerUser)
+            ->put(route('certificate-requests.update', $certificateRequest), [
+                'customer_mode' => 'existing',
+                'customer_id' => $customer->id,
+                'delivery_date' => '2026-08-09',
+                'invoice_no' => 'INV-SLA-DRAFT-SUBMIT',
+                'require_hard_copy' => '0',
+                'hard_copy_quantity' => 0,
+                'is_urgent' => '0',
+                'requester_name' => 'Nguoi gui DVKH',
+                'customer_commitment_confirmed' => '1',
+                'note' => 'Gui DVKH sau vai ngay luu nhap',
+                'product_id' => [$this->product->id],
+                'quantity' => [15],
+                'request_action' => 'submit',
+            ])
+            ->assertRedirect(route('certificate-requests.index'));
+
+        $certificateRequest->refresh();
+        $slaClock = app(SlaClockService::class);
+
+        $this->assertSame('WAIT_DVKH', $certificateRequest->status);
+        $this->assertSame('normal', $slaClock->level($certificateRequest, $slaDvkh, 'DVKH'));
+        $this->assertLessThan(5, $slaClock->elapsedMinutes($certificateRequest, 'DVKH'));
+
+        $this->actingAs($dvkh)
+            ->post(route('dvkh.requests.approve', $certificateRequest))
+            ->assertRedirect(route('dvkh.requests.index'));
+
+        $certificateRequest->refresh();
+
+        $this->assertSame('WAIT_PTN', $certificateRequest->status);
+        $this->assertNotNull($certificateRequest->sent_to_ptn_at);
+        $this->assertSame('normal', $slaClock->level($certificateRequest, $slaPtn, 'PTN'));
+        $this->assertLessThan(5, $slaClock->elapsedMinutes($certificateRequest, 'PTN'));
     }
 
     public function test_draft_request_can_be_submitted_to_dvkh_from_detail_screen(): void

@@ -35,6 +35,7 @@ class CertificateRequest extends Model
         'status',
         'submitted_at',
         'submitted_by',
+        'sent_to_ptn_at',
         'created_by',
     ];
 
@@ -45,6 +46,7 @@ class CertificateRequest extends Model
         'customer_commitment_confirmed' => 'boolean',
         'last_returned_at' => 'datetime',
         'submitted_at' => 'datetime',
+        'sent_to_ptn_at' => 'datetime',
     ];
 
     public function distributionCenter()

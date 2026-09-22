@@ -5,7 +5,7 @@ namespace App\Exports;
 use App\Models\CertificateRequest;
 use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
-use Carbon\Carbon;
+use App\Services\SlaClockService;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -52,17 +52,19 @@ class CertificateSummaryExport implements FromCollection, WithHeadings
 
         $slaDvkh = SlaConfig::where('code', 'SLA_DVKH')->where('is_active', true)->first();
         $slaPtn = SlaConfig::where('code', 'SLA_PTN')->where('is_active', true)->first();
+        $slaClock = app(SlaClockService::class);
 
         return $query->latest()
             ->get()
-            ->map(function ($item) use ($slaDvkh, $slaPtn) {
+            ->map(function ($item) use ($slaDvkh, $slaPtn, $slaClock) {
                 $certificate = $item->qualityCertificates
                     ->sortByDesc(fn ($certificate) => optional($certificate->created_at)->timestamp ?? 0)
                     ->first();
-                $minutes = Carbon::parse($item->created_at)->diffInMinutes(now());
+                $step = $item->status === 'WAIT_DVKH' ? 'DVKH' : (in_array($item->status, ['WAIT_PTN', 'PTN_PROCESSING'], true) ? 'PTN' : null);
+                $minutes = $step ? $slaClock->elapsedMinutes($item, $step) : null;
                 $slaStatus = 'Bình thường';
 
-                if ($item->status === 'WAIT_DVKH' && $slaDvkh) {
+                if ($item->status === 'WAIT_DVKH' && $slaDvkh && $minutes !== null) {
                     if ($minutes >= $slaDvkh->limit_minutes) {
                         $slaStatus = 'Quá hạn DVKH';
                     } elseif ($minutes >= $slaDvkh->warning_minutes) {
@@ -70,7 +72,7 @@ class CertificateSummaryExport implements FromCollection, WithHeadings
                     }
                 }
 
-                if (in_array($item->status, ['WAIT_PTN', 'PTN_PROCESSING'], true) && $slaPtn) {
+                if (in_array($item->status, ['WAIT_PTN', 'PTN_PROCESSING'], true) && $slaPtn && $minutes !== null) {
                     if ($minutes >= $slaPtn->limit_minutes) {
                         $slaStatus = 'Quá hạn PTN';
                     } elseif ($minutes >= $slaPtn->warning_minutes) {

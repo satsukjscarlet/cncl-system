@@ -54,8 +54,8 @@ class WorkflowReportTestDataSeeder extends Seeder
                     $request = $this->createRequest($center, $customer->id, $centerUserId, $index, $scenario, $createdAt);
                     $details = $this->createRequestDetails($request, $products, $index, $createdAt);
 
-                    if ($scenario['create_certificate']) {
-                        $this->createDraftCertificate($request, $details, $ptnUserId, $createdAt->copy()->addHours(2));
+                    if ($scenario['certificate_status']) {
+                        $this->createScenarioCertificate($request, $details, $ptnUserId, $scenario, $createdAt->copy()->addHours(2));
                     }
                 }
 
@@ -89,13 +89,31 @@ class WorkflowReportTestDataSeeder extends Seeder
 
         $certificateIds = DB::table('quality_certificates')
             ->whereIn('certificate_request_id', $requestIds)
+            ->orWhere('certificate_no', 'like', self::PREFIX . '-%')
             ->pluck('id');
 
         if ($certificateIds->isNotEmpty()) {
             DB::table('print_logs')->whereIn('quality_certificate_id', $certificateIds)->delete();
-            DB::table('certificate_request_reissue_certificates')->whereIn('quality_certificate_id', $certificateIds)->delete();
+            DB::table('certificate_request_reissue_certificates')
+                ->whereIn('quality_certificate_id', $certificateIds)
+                ->orWhereIn('certificate_request_id', $requestIds)
+                ->delete();
             DB::table('quality_certificate_details')->whereIn('quality_certificate_id', $certificateIds)->delete();
             DB::table('quality_certificates')->whereIn('id', $certificateIds)->delete();
+        }
+
+        if ($requestIds->isNotEmpty()) {
+            DB::table('user_notifications')
+                ->where('title', 'like', '%' . self::PREFIX . '%')
+                ->orWhere('message', 'like', '%' . self::PREFIX . '%')
+                ->orWhere('url', 'like', '%' . self::PREFIX . '%')
+                ->orWhere('data', 'like', '%' . self::PREFIX . '%')
+                ->delete();
+
+            DB::table('activity_log')
+                ->where('description', 'like', '%' . self::PREFIX . '%')
+                ->orWhere('properties', 'like', '%' . self::PREFIX . '%')
+                ->delete();
         }
 
         DB::table('certificate_request_details')->whereIn('certificate_request_id', $requestIds)->delete();
@@ -181,6 +199,20 @@ class WorkflowReportTestDataSeeder extends Seeder
 
     private function createRequest(DistributionCenter $center, int $customerId, ?int $creatorId, int $index, array $scenario, $createdAt): CertificateRequest
     {
+        $submittedAt = $scenario['submitted_minutes_ago'] !== null
+            ? now()->subMinutes($scenario['submitted_minutes_ago'])
+            : null;
+        $sentToPtnAt = $scenario['sent_to_ptn_minutes_ago'] !== null
+            ? now()->subMinutes($scenario['sent_to_ptn_minutes_ago'])
+            : null;
+        $lastReturnedAt = $scenario['last_returned_minutes_ago'] !== null
+            ? now()->subMinutes($scenario['last_returned_minutes_ago'])
+            : null;
+        $updatedAt = $lastReturnedAt
+            ?? $sentToPtnAt
+            ?? $submittedAt
+            ?? $createdAt;
+
         return CertificateRequest::create([
             'request_no' => self::PREFIX . '-YC-' . $center->code . '-' . str_pad((string) $index, 4, '0', STR_PAD_LEFT),
             'request_type' => 'NORMAL',
@@ -195,11 +227,20 @@ class WorkflowReportTestDataSeeder extends Seeder
                 ? DB::table('urgent_reasons')->where('is_active', true)->inRandomOrder()->value('id')
                 : null,
             'requester_name' => 'Người tạo test ' . $center->code . ' ' . $index,
+            'customer_commitment_confirmed' => $scenario['request_status'] !== 'DRAFT',
             'note' => self::PREFIX . ' - ' . $scenario['label'] . '. Dữ liệu test SLA/báo cáo.',
+            'last_returned_from' => $scenario['last_returned_from'],
+            'last_returned_to' => $scenario['last_returned_to'],
+            'last_return_reason' => $scenario['last_return_reason'],
+            'last_returned_at' => $lastReturnedAt,
+            'last_returned_by' => $scenario['last_returned_to'] ? User::where('username', 'admin')->value('id') : null,
             'status' => $scenario['request_status'],
+            'submitted_at' => $submittedAt,
+            'submitted_by' => $submittedAt ? $creatorId : null,
+            'sent_to_ptn_at' => $sentToPtnAt,
             'created_by' => $creatorId,
             'created_at' => $createdAt,
-            'updated_at' => $createdAt,
+            'updated_at' => $updatedAt,
         ]);
     }
 
@@ -227,19 +268,37 @@ class WorkflowReportTestDataSeeder extends Seeder
         return $details;
     }
 
-    private function createDraftCertificate(CertificateRequest $request, Collection $products, ?int $ptnUserId, $createdAt): void
+    private function createScenarioCertificate(CertificateRequest $request, Collection $products, ?int $ptnUserId, array $scenario, $createdAt): void
     {
+        $smartCaRequestedAt = $scenario['smartca_requested_minutes_ago'] !== null
+            ? now()->subMinutes($scenario['smartca_requested_minutes_ago'])
+            : null;
+
         $certificateId = DB::table('quality_certificates')->insertGetId([
             'certificate_no' => self::PREFIX . '-CNCL-' . str_replace(self::PREFIX . '-YC-', '', $request->request_no),
-            'status' => 'DRAFT',
+            'status' => $scenario['certificate_status'],
             'certificate_request_id' => $request->id,
             'created_by' => $ptnUserId ?: $request->created_by,
             'signed_at' => null,
             'signed_by' => null,
             'pdf_path' => null,
             'print_count' => 0,
+            'rejected_at' => $scenario['certificate_status'] === 'REJECTED' ? now()->subMinutes(30) : null,
+            'rejected_by' => $scenario['certificate_status'] === 'REJECTED' ? User::where('username', 'truongptn')->value('id') : null,
+            'rejected_to' => $scenario['certificate_status'] === 'REJECTED' ? 'PTN' : null,
+            'rejected_reason' => $scenario['certificate_status'] === 'REJECTED' ? 'Test trưởng PTN trả lại PTN xử lý lại.' : null,
+            'smartca_status' => $scenario['smartca_status'],
+            'smartca_transaction_id' => $scenario['smartca_status'] ? self::PREFIX . '-TRAN-' . $request->id : null,
+            'smartca_tran_code' => $scenario['smartca_status'] ? self::PREFIX . '-CODE-' . $request->id : null,
+            'smartca_doc_id' => $scenario['smartca_status'] ? self::PREFIX . '-DOC-' . $request->id : null,
+            'smartca_data_hash' => $scenario['smartca_status'] ? hash('sha256', $request->request_no) : null,
+            'smartca_response' => $scenario['smartca_status'] ? json_encode([
+                'test_data' => true,
+                'scenario' => $scenario['label'],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+            'smartca_requested_at' => $smartCaRequestedAt,
             'created_at' => $createdAt,
-            'updated_at' => $createdAt,
+            'updated_at' => $smartCaRequestedAt ?? $createdAt,
         ]);
 
         $rows = $products->map(function (array $detail) use ($certificateId, $createdAt) {
@@ -286,6 +345,7 @@ class WorkflowReportTestDataSeeder extends Seeder
             'status' => 'COMPLETED',
             'submitted_at' => $createdAt->copy()->addMinutes(30),
             'submitted_by' => $centerUserId,
+            'sent_to_ptn_at' => $createdAt->copy()->addHours(2),
             'created_by' => $centerUserId,
             'created_at' => $createdAt,
             'updated_at' => $signedAt,
@@ -358,31 +418,142 @@ class WorkflowReportTestDataSeeder extends Seeder
 
     private function scenario(int $index): array
     {
-        return match (true) {
-            in_array($index, [1, 2], true) => [
-                'request_status' => 'WAIT_DVKH',
-                'create_certificate' => false,
-                'age_days' => $index === 1 ? 5 : 1,
-                'label' => 'Chờ DVKH để test SLA DVKH',
+        $base = [
+            'request_status' => 'DRAFT',
+            'certificate_status' => null,
+            'smartca_status' => null,
+            'smartca_requested_minutes_ago' => null,
+            'age_days' => 1,
+            'submitted_minutes_ago' => null,
+            'sent_to_ptn_minutes_ago' => null,
+            'last_returned_from' => null,
+            'last_returned_to' => null,
+            'last_return_reason' => null,
+            'last_returned_minutes_ago' => null,
+            'label' => 'Nháp test',
+        ];
+
+        return array_merge($base, match ($index) {
+            1 => [
+                'request_status' => 'DRAFT',
+                'age_days' => 6,
+                'label' => 'Nháp cũ chưa gửi DVKH - không tính SLA',
             ],
-            in_array($index, [3, 4, 5, 6], true) => [
+            2 => [
+                'request_status' => 'DRAFT',
+                'age_days' => 4,
+                'last_returned_from' => 'DVKH',
+                'last_returned_to' => 'TRUNG_TAM',
+                'last_return_reason' => 'Test DVKH trả lại trung tâm bổ sung thông tin.',
+                'last_returned_minutes_ago' => 180,
+                'label' => 'DVKH trả lại trung tâm phân phối',
+            ],
+            3 => [
+                'request_status' => 'WAIT_DVKH',
+                'age_days' => 5,
+                'submitted_minutes_ago' => 20,
+                'label' => 'Mới gửi DVKH từ bản nháp cũ - SLA phải bình thường',
+            ],
+            4 => [
+                'request_status' => 'WAIT_DVKH',
+                'age_days' => 2,
+                'submitted_minutes_ago' => 1500,
+                'label' => 'Chờ DVKH gần quá hạn SLA',
+            ],
+            5 => [
+                'request_status' => 'WAIT_DVKH',
+                'age_days' => 5,
+                'submitted_minutes_ago' => 3300,
+                'label' => 'Chờ DVKH quá hạn SLA',
+            ],
+            6 => [
+                'request_status' => 'WAIT_DVKH',
+                'age_days' => 6,
+                'submitted_minutes_ago' => 4200,
+                'last_returned_from' => 'PTN',
+                'last_returned_to' => 'DVKH',
+                'last_return_reason' => 'Test PTN trả lại DVKH kiểm tra lại dữ liệu.',
+                'last_returned_minutes_ago' => 45,
+                'label' => 'PTN trả lại DVKH - SLA tính lại từ lúc trả',
+            ],
+            7 => [
                 'request_status' => 'WAIT_PTN',
-                'create_certificate' => false,
-                'age_days' => match ($index) {
-                    3 => 4,
-                    4 => 2,
-                    5 => 3,
-                    default => 1,
-                },
-                'label' => 'Cho PTN lap phieu de test SLA PTN',
+                'age_days' => 5,
+                'submitted_minutes_ago' => 4200,
+                'sent_to_ptn_minutes_ago' => 30,
+                'label' => 'Mới chuyển PTN từ hồ sơ cũ - SLA PTN bình thường',
+            ],
+            8 => [
+                'request_status' => 'WAIT_PTN',
+                'age_days' => 3,
+                'submitted_minutes_ago' => 3000,
+                'sent_to_ptn_minutes_ago' => 1500,
+                'label' => 'Chờ PTN gần quá hạn SLA',
+            ],
+            9 => [
+                'request_status' => 'WAIT_PTN',
+                'age_days' => 5,
+                'submitted_minutes_ago' => 4200,
+                'sent_to_ptn_minutes_ago' => 3300,
+                'label' => 'Chờ PTN quá hạn SLA',
+            ],
+            10 => [
+                'request_status' => 'PTN_PROCESSING',
+                'certificate_status' => 'WAIT_PTN_MANAGER_APPROVAL',
+                'age_days' => 2,
+                'submitted_minutes_ago' => 2600,
+                'sent_to_ptn_minutes_ago' => 1200,
+                'label' => 'PTN đã lập phiếu - chờ Trưởng PTN duyệt',
+            ],
+            11 => [
+                'request_status' => 'PTN_PROCESSING',
+                'certificate_status' => 'READY_TO_SIGN',
+                'age_days' => 2,
+                'submitted_minutes_ago' => 2600,
+                'sent_to_ptn_minutes_ago' => 1000,
+                'label' => 'Trưởng PTN đã duyệt - chờ gửi ký số',
+            ],
+            12 => [
+                'request_status' => 'PTN_PROCESSING',
+                'certificate_status' => 'READY_TO_SIGN',
+                'smartca_status' => 'PENDING',
+                'smartca_requested_minutes_ago' => 3,
+                'age_days' => 2,
+                'submitted_minutes_ago' => 2600,
+                'sent_to_ptn_minutes_ago' => 1000,
+                'label' => 'SmartCA pending còn hạn để test kiểm tra kết quả ký',
+            ],
+            13 => [
+                'request_status' => 'PTN_PROCESSING',
+                'certificate_status' => 'READY_TO_SIGN',
+                'smartca_status' => 'PENDING',
+                'smartca_requested_minutes_ago' => 15,
+                'age_days' => 2,
+                'submitted_minutes_ago' => 2600,
+                'sent_to_ptn_minutes_ago' => 1000,
+                'label' => 'SmartCA pending quá 5 phút để test gửi lại yêu cầu ký',
+            ],
+            14 => [
+                'request_status' => 'PTN_PROCESSING',
+                'certificate_status' => 'REJECTED',
+                'age_days' => 4,
+                'submitted_minutes_ago' => 5000,
+                'sent_to_ptn_minutes_ago' => 3000,
+                'last_returned_from' => 'TRUONG_PTN',
+                'last_returned_to' => 'PTN',
+                'last_return_reason' => 'Test Trưởng PTN trả lại PTN xử lý lại.',
+                'last_returned_minutes_ago' => 35,
+                'label' => 'Trưởng PTN trả lại PTN - SLA PTN tính lại',
             ],
             default => [
                 'request_status' => 'PTN_PROCESSING',
-                'create_certificate' => true,
-                'age_days' => (($index - 7) % 8) + 1,
-                'label' => 'Đã lập phiếu, chờ Trưởng PTN ký',
+                'certificate_status' => 'WAIT_PTN_MANAGER_APPROVAL',
+                'age_days' => 1,
+                'submitted_minutes_ago' => 1800,
+                'sent_to_ptn_minutes_ago' => 900,
+                'label' => 'Yêu cầu gấp đã lập phiếu, chờ Trưởng PTN duyệt',
             ],
-        };
+        });
     }
 
     private function invoiceNo(string $centerCode, int $index): string

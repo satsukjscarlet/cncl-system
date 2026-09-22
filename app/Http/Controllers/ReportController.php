@@ -7,12 +7,17 @@ use App\Models\CertificateRequest;
 use App\Models\DistributionCenter;
 use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
+use App\Services\SlaClockService;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ReportController extends Controller
 {
+    public function __construct(private readonly SlaClockService $slaClock)
+    {
+    }
+
     public function summary(Request $request)
     {
         /** @var \App\Models\User $user */
@@ -289,26 +294,20 @@ class ReportController extends Controller
         $overdueCount = 0;
 
         foreach ([
-            [['WAIT_DVKH'], $slaDvkh],
-            [['WAIT_PTN', 'PTN_PROCESSING'], $slaPtn],
-        ] as [$statuses, $sla]) {
+            ['DVKH', ['WAIT_DVKH'], $slaDvkh],
+            ['PTN', ['WAIT_PTN', 'PTN_PROCESSING'], $slaPtn],
+        ] as [$step, $statuses, $sla]) {
             if (!$sla) {
                 continue;
             }
 
-            $limitAt = now()->subMinutes((int) $sla->limit_minutes);
-            $warningAt = now()->subMinutes((int) $sla->warning_minutes);
+            $overdueQuery = (clone $baseQuery)->whereIn('status', $statuses);
+            $this->slaClock->applyFilter($overdueQuery, 'overdue', $sla, $step);
+            $overdueCount += $overdueQuery->count();
 
-            $overdueCount += (clone $baseQuery)
-                ->whereIn('status', $statuses)
-                ->where('created_at', '<=', $limitAt)
-                ->count();
-
-            $warningCount += (clone $baseQuery)
-                ->whereIn('status', $statuses)
-                ->where('created_at', '<=', $warningAt)
-                ->where('created_at', '>', $limitAt)
-                ->count();
+            $warningQuery = (clone $baseQuery)->whereIn('status', $statuses);
+            $this->slaClock->applyFilter($warningQuery, 'warning', $sla, $step);
+            $warningCount += $warningQuery->count();
         }
 
         return [$warningCount, $overdueCount];

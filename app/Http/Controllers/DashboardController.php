@@ -5,12 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\CertificateRequest;
 use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
+use App\Services\SlaClockService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
+    public function __construct(private readonly SlaClockService $slaClock)
+    {
+    }
+
     public function index(): View
     {
         /** @var \App\Models\User $user */
@@ -345,16 +350,17 @@ class DashboardController extends Controller
             ->get();
 
         foreach ($waitingRequests as $item) {
-            $minutes = Carbon::parse($item->created_at)->diffInMinutes(now());
-            $sla = $item->status === 'WAIT_DVKH' ? $slaDvkh : $slaPtn;
+            $step = $item->status === 'WAIT_DVKH' ? 'DVKH' : 'PTN';
+            $sla = $step === 'DVKH' ? $slaDvkh : $slaPtn;
+            $minutes = $this->slaClock->elapsedMinutes($item, $step);
 
-            if (!$sla || $minutes < $sla->warning_minutes) {
+            if (!$sla || $minutes === null || $minutes < $sla->warning_minutes) {
                 continue;
             }
 
             $item->sla_level = $minutes >= $sla->limit_minutes ? 'danger' : 'warning';
             $item->sla_minutes = $minutes;
-            $item->sla_step_name = $item->status === 'WAIT_DVKH' ? 'DVKH kiểm tra' : 'PTN lập phiếu';
+            $item->sla_step_name = $step === 'DVKH' ? 'DVKH kiểm tra' : 'PTN lập phiếu';
             $item->sla_limit_minutes = $sla->limit_minutes;
 
             $alerts->push($item);

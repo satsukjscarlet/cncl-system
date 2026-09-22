@@ -8,6 +8,55 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 - Ghi rõ ngày, nhóm chức năng, file chính đã sửa, nội dung thay đổi và kết quả kiểm tra.
 - Nếu có lỗi chưa xử lý xong, ghi vào phần "Ghi chú".
 
+## 2026-09-22
+
+### Data test - cập nhật theo luồng nghiệp vụ và SLA mới
+
+File chính:
+- `database/seeders/WorkflowReportTestDataSeeder.php`
+
+Nội dung:
+- Cập nhật dữ liệu test nút thêm/xóa data test để bao phủ các thay đổi mới nhất.
+- Mỗi trung tâm có 15 yêu cầu gồm: nháp cũ chưa gửi DVKH, DVKH trả lại trung tâm, chờ DVKH bình thường/gần quá hạn/quá hạn, PTN trả lại DVKH, chờ PTN bình thường/gần quá hạn/quá hạn, chờ Trưởng PTN duyệt, chờ gửi ký số, SmartCA pending còn hạn/quá hạn, Trưởng PTN trả lại PTN.
+- Bổ sung dữ liệu `submitted_at`, `sent_to_ptn_at`, `last_returned_at` để test đúng logic SLA mới thay vì tính theo ngày tạo nháp.
+- Vẫn tạo thêm 5 phiếu đã ký số nhiều sản phẩm để test PDF, in ký tươi/in lại và báo cáo.
+- Dọn thêm thông báo/log test khi seed lại để tránh dữ liệu cũ gây nhiễu.
+
+Kiểm tra:
+- `php -l database/seeders/WorkflowReportTestDataSeeder.php`: pass.
+- `php artisan db:seed --class=WorkflowReportTestDataSeeder --force`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass, 23 tests.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+- Kiểm tra nhanh dữ liệu sau seed: 85 yêu cầu test, gồm 10 nháp, 20 chờ DVKH, 15 chờ PTN, 30 PTN xử lý, 5 hoàn tất; phiếu test gồm READY_TO_SIGN, PENDING, REJECTED, WAIT_PTN_MANAGER_APPROVAL và ISSUED/SIGNED.
+
+### SLA - tính từ thời điểm bắt đầu từng bước thay vì ngày tạo bản nháp
+
+File chính:
+- `app/Services/SlaClockService.php`
+- `app/Models/CertificateRequest.php`
+- `app/Http/Controllers/DvkhRequestController.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `app/Http/Controllers/DashboardController.php`
+- `app/Http/Controllers/ReportController.php`
+- `app/Exports/CertificateSummaryExport.php`
+- `database/migrations/2026_09_22_000002_add_sent_to_ptn_at_to_certificate_requests.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+
+Nội dung:
+- Tách logic tính SLA vào `SlaClockService` để DVKH, PTN, dashboard, báo cáo và export dùng cùng một công thức.
+- DVKH SLA tính từ `submitted_at`; nếu PTN/Trưởng PTN trả lại DVKH thì tính lại từ `last_returned_at`.
+- PTN SLA tính từ mốc mới `sent_to_ptn_at`; nếu Trưởng PTN trả lại PTN xử lý lại thì tính lại từ `last_returned_at`.
+- Thêm cột `sent_to_ptn_at` và ghi mốc này khi DVKH xác nhận chuyển yêu cầu sang PTN.
+- Bổ sung test tự động cho lỗi: yêu cầu tạo nháp nhiều ngày trước nhưng mới gửi DVKH hôm nay không được báo quá hạn SLA.
+
+Kiểm tra:
+- `php artisan migrate`: pass.
+- `php -l` các file PHP đã chỉnh: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass, 23 tests.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
 ## 2026-09-16
 
 ### Danh sách dữ liệu - bổ sung sắp xếp nhanh trên header bảng

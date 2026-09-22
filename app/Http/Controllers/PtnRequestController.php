@@ -11,6 +11,7 @@ use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
 use App\Models\UrgentReason;
 use App\Services\NotificationService;
+use App\Services\SlaClockService;
 use App\Services\WorkflowHistoryService;
 use App\Services\WorkflowStepService;
 use Illuminate\Http\Request;
@@ -19,6 +20,10 @@ use Illuminate\Support\Facades\DB;
 
 class PtnRequestController extends Controller
 {
+    public function __construct(private readonly SlaClockService $slaClock)
+    {
+    }
+
     public function index(Request $request)
     {
         $slaPtn = SlaConfig::where('code', 'SLA_PTN')->where('is_active', true)->first();
@@ -660,8 +665,8 @@ class PtnRequestController extends Controller
     private function attachSlaMeta($requests, ?SlaConfig $sla): void
     {
         $requests->each(function (CertificateRequest $item) use ($sla) {
-            $item->setAttribute('sla_level', $this->slaLevel($item, $sla));
-            $item->setAttribute('sla_elapsed_minutes', $item->created_at ? $item->created_at->diffInMinutes(now()) : null);
+            $item->setAttribute('sla_level', $this->slaClock->level($item, $sla, 'PTN'));
+            $item->setAttribute('sla_elapsed_minutes', $this->slaClock->elapsedMinutes($item, 'PTN'));
         });
     }
 
@@ -694,9 +699,8 @@ class PtnRequestController extends Controller
         }
 
         $query->where('status', 'WAIT_PTN');
-        $this->applySlaFilter($query, $level, $sla);
 
-        return $query->count();
+        return $this->slaClock->applyLevelCount($query, $sla, 'PTN', $level);
     }
 
     private function applySlaFilter($query, string $mode, ?SlaConfig $sla): void
@@ -705,49 +709,33 @@ class PtnRequestController extends Controller
             return;
         }
 
-        $limitAt = now()->subMinutes((int) $sla->limit_minutes);
-        $warningAt = now()->subMinutes((int) $sla->warning_minutes);
-
         if ($mode === 'overdue') {
-            $query->where('status', 'WAIT_PTN')
-                ->where('created_at', '<=', $limitAt);
+            $query->where('status', 'WAIT_PTN');
+            $this->slaClock->applyFilter($query, $mode, $sla, 'PTN');
 
             return;
         }
 
         if ($mode === 'warning') {
-            $query->where('status', 'WAIT_PTN')
-                ->where('created_at', '<=', $warningAt)
-                ->where('created_at', '>', $limitAt);
+            $query->where('status', 'WAIT_PTN');
+            $this->slaClock->applyFilter($query, $mode, $sla, 'PTN');
 
             return;
         }
 
         if ($mode === 'normal') {
-            $query->where(function ($q) use ($warningAt) {
+            $query->where(function ($q) use ($sla) {
                 $q->where('status', '!=', 'WAIT_PTN')
-                    ->orWhere('created_at', '>', $warningAt);
+                    ->orWhere(function ($normal) use ($sla) {
+                        $this->slaClock->applyFilter($normal, 'normal', $sla, 'PTN');
+                    });
             });
         }
     }
 
     private function slaLevel(CertificateRequest $item, ?SlaConfig $sla): ?string
     {
-        if (!$sla || $item->status !== 'WAIT_PTN' || !$item->created_at) {
-            return null;
-        }
-
-        $minutes = $item->created_at->diffInMinutes(now());
-
-        if ($minutes >= $sla->limit_minutes) {
-            return 'overdue';
-        }
-
-        if ($minutes >= $sla->warning_minutes) {
-            return 'warning';
-        }
-
-        return 'normal';
+        return $this->slaClock->level($item, $sla, 'PTN');
     }
 
     private function selectedProductsForForm(): \Illuminate\Support\Collection
