@@ -349,13 +349,8 @@
                         </td>
                         <td>
                             @include('certificate_requests.partials.status_badge', ['certificateRequest' => $item])
-                            @if($item->status === 'WAIT_DVKH' && $item->last_returned_to === 'DVKH')
-                                <div class="mt-1">
-                                    <span class="badge badge-warning">
-                                        <i class="fas fa-undo"></i>
-                                        {{ $item->last_returned_from === 'TRUONG_PTN' ? 'Trưởng PTN trả lại' : 'PTN trả lại' }}
-                                    </span>
-                                </div>
+                            @if($item->status === 'WAIT_DVKH' && $item->effectiveLastReturnedTo() === 'DVKH')
+                                @include('certificate_requests.partials.return_badge', ['certificateRequest' => $item])
                                 @if($item->last_returned_at)
                                     <div class="text-muted small mt-1">{{ $item->last_returned_at->format('d/m/Y H:i') }}</div>
                                 @endif

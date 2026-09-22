@@ -1,6 +1,10 @@
 @php
-    $returnTarget = $certificateRequest->last_returned_to ?? null;
-    $returnSource = $certificateRequest->last_returned_from ?? null;
+    $returnTarget = method_exists($certificateRequest, 'effectiveLastReturnedTo')
+        ? $certificateRequest->effectiveLastReturnedTo()
+        : ($certificateRequest->last_returned_to ?? null);
+    $returnSource = method_exists($certificateRequest, 'effectiveLastReturnedFrom')
+        ? $certificateRequest->effectiveLastReturnedFrom()
+        : ($certificateRequest->last_returned_from ?? null);
 
     $returnLabel = match ($returnTarget) {
         'TRUNG_TAM' => 'DVKH trả lại',

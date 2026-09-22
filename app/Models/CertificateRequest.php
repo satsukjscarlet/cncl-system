@@ -89,6 +89,60 @@ class CertificateRequest extends Model
         return $this->belongsTo(User::class, 'last_returned_by');
     }
 
+    public function effectiveLastReturnedTo(): ?string
+    {
+        if (filled($this->last_returned_to)) {
+            return $this->last_returned_to;
+        }
+
+        $note = (string) $this->note;
+
+        if ($this->status === 'DRAFT' && str_contains($note, '[DVKH trả lại]')) {
+            return 'TRUNG_TAM';
+        }
+
+        if ($this->status === 'WAIT_DVKH' && str_contains($note, 'trả lại DVKH]')) {
+            return 'DVKH';
+        }
+
+        if ($this->status === 'PTN_PROCESSING' && str_contains($note, 'Trưởng PTN trả lại') && str_contains($note, 'PTN xử lý lại')) {
+            return 'PTN';
+        }
+
+        return null;
+    }
+
+    public function effectiveLastReturnedFrom(): ?string
+    {
+        if (filled($this->last_returned_from)) {
+            return $this->last_returned_from;
+        }
+
+        $target = $this->effectiveLastReturnedTo();
+        $note = (string) $this->note;
+
+        if ($target === 'TRUNG_TAM') {
+            return 'DVKH';
+        }
+
+        if ($target === 'PTN') {
+            return 'TRUONG_PTN';
+        }
+
+        if ($target === 'DVKH') {
+            $ptnPosition = mb_strripos($note, '[PTN trả lại DVKH]');
+            $managerPosition = mb_strripos($note, '[Trưởng PTN trả lại');
+
+            if ($managerPosition !== false && ($ptnPosition === false || $managerPosition > $ptnPosition)) {
+                return 'TRUONG_PTN';
+            }
+
+            return 'PTN';
+        }
+
+        return null;
+    }
+
     public function urgentReason()
     {
         return $this->belongsTo(UrgentReason::class);

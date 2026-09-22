@@ -817,6 +817,28 @@ Kiểm tra:
 - `php artisan test --filter=CertificateWorkflowTest`: pass.
 - `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
 
+### Sửa hiển thị yêu cầu PTN/Trưởng PTN trả lại tại màn DVKH - 22/09/2026
+
+File chính:
+- `app/Models/CertificateRequest.php`
+- `resources/views/dvkh_requests/index.blade.php`
+- `resources/views/dvkh_requests/show.blade.php`
+- `resources/views/certificate_requests/partials/return_badge.blade.php`
+- `database/migrations/2026_09_22_000001_backfill_return_tracking_from_notes.php`
+
+Nội dung:
+- Bổ sung fallback `effectiveLastReturnedTo()` và `effectiveLastReturnedFrom()` để nhận diện dữ liệu lịch sử có ghi chú trả lại nhưng chưa có metadata `last_returned_*`.
+- Màn danh sách DVKH dùng fallback này để hiển thị badge `PTN trả lại DVKH` / `Trưởng PTN trả lại DVKH`.
+- Màn chi tiết DVKH cũng dùng fallback để hiển thị cảnh báo trả lại với dữ liệu cũ.
+- Thêm migration backfill metadata cho các yêu cầu cũ có ghi chú `[PTN trả lại DVKH]`, `[DVKH trả lại]`, hoặc `[Trưởng PTN trả lại ...]`.
+- Đã chạy migration, các yêu cầu `YC-20260917-0002`, `YC-20260917-0001`, `YC-20260916-0018`, `YC-20260916-0004` được backfill `PTN -> DVKH`.
+
+Kiểm tra:
+- `php artisan migrate`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
 ### Hiển thị rõ các yêu cầu/phiếu bị trả lại theo vai trò - 21/09/2026
 
 File chính:
