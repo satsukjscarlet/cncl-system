@@ -1,5 +1,8 @@
 <?php
 
+$smartCaEnv = strtolower((string) env('SMARTCA_ENV', 'test'));
+$smartCaPrefix = 'SMARTCA_' . strtoupper($smartCaEnv) . '_';
+
 return [
 
     /*
@@ -36,13 +39,14 @@ return [
     ],
 
     'smartca' => [
-        'base_url' => env('SMARTCA_BASE_URL', 'https://rmgateway.vnptit.vn/sca/sp769'),
-        'signature_base_url' => env('SMARTCA_SIGNATURE_BASE_URL'),
-        'sp_id' => env('SMARTCA_CLIENT_ID'),
-        'sp_password' => env('SMARTCA_CLIENT_SECRET'),
-        'serial_number' => env('SMARTCA_SERIAL_NUMBER'),
+        'env' => $smartCaEnv,
+        'base_url' => env($smartCaPrefix . 'BASE_URL', env('SMARTCA_BASE_URL', 'https://rmgateway.vnptit.vn/sca/sp769')),
+        'signature_base_url' => env($smartCaPrefix . 'SIGNATURE_BASE_URL', env('SMARTCA_SIGNATURE_BASE_URL')),
+        'sp_id' => env($smartCaPrefix . 'CLIENT_ID', env('SMARTCA_CLIENT_ID')),
+        'sp_password' => env($smartCaPrefix . 'CLIENT_SECRET', env('SMARTCA_CLIENT_SECRET')),
+        'serial_number' => env($smartCaPrefix . 'SERIAL_NUMBER', env('SMARTCA_SERIAL_NUMBER')),
         'user_id_field' => env('SMARTCA_USER_ID_FIELD', 'smartca_user_id'),
-        'default_user_id' => env('SMARTCA_DEFAULT_USER_ID'),
+        'default_user_id' => env($smartCaPrefix . 'DEFAULT_USER_ID', env('SMARTCA_DEFAULT_USER_ID')),
         'sign_type' => env('SMARTCA_SIGN_TYPE', 'hash'),
         'require_signed_pdf' => (bool) env('SMARTCA_REQUIRE_SIGNED_PDF', false),
         'pades_enabled' => (bool) env('SMARTCA_PADES_ENABLED', false),

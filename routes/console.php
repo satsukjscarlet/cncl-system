@@ -8,6 +8,6 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('smartca:check-pending-signatures --limit=30')
-    ->everyMinute()
+Schedule::command('smartca:check-pending-signatures --limit=10')
+    ->everyFifteenSeconds()
     ->withoutOverlapping();

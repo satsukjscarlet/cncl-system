@@ -523,7 +523,7 @@ class QualityCertificateController extends Controller
         }
 
         try {
-            $pdfContent = app(SignedCertificatePdfService::class)->render($qualityCertificate, false);
+            $pdfContent = app(SignedCertificatePdfService::class)->render($qualityCertificate, false, true);
             $serialNumber = config('services.smartca.serial_number');
             $certificateResult = $smartCaService->getCertificate($smartCaUserId, $serialNumber);
             $smartCaCertificate = $certificateResult['certificate'];
@@ -573,11 +573,13 @@ class QualityCertificateController extends Controller
             $smartCaResponse = [
                 'get_certificate' => [
                     'endpoint' => $certificateResult['endpoint'],
+                    'environment' => $certificateResult['environment'] ?? config('services.smartca.env'),
                     'request' => $certificateResult['request'],
                     'response' => $certificateResult['response'],
                 ],
                 'sign' => [
                     'endpoint' => $smartCaResult['endpoint'],
+                    'environment' => $smartCaResult['environment'] ?? config('services.smartca.env'),
                     'request' => $smartCaResult['request'],
                     'response' => $smartCaResult['response'],
                 ],
@@ -586,6 +588,7 @@ class QualityCertificateController extends Controller
             if ($calculateHashResult) {
                 $smartCaResponse['calculate_hash'] = [
                     'endpoint' => $calculateHashResult['endpoint'],
+                    'environment' => $calculateHashResult['environment'] ?? config('services.smartca.env'),
                     'request' => $calculateHashResult['request'],
                     'response' => $calculateHashResult['response'],
                     'transaction_id' => $calculateHashResult['transaction_id'],

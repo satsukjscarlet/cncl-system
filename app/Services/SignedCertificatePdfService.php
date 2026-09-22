@@ -39,7 +39,7 @@ class SignedCertificatePdfService
     // Nếu đặt quá thấp, dòng chữ "tiếp theo ở trang sau" và số trang có thể bị chồng lên bảng.
     private const TABLE_BOTTOM_NORMAL = 690.0;
     private const TABLE_BOTTOM_UNSIGNED_LAST = 694.0;
-    private const TABLE_BOTTOM_SIGNED_LAST = 640.0;
+    private const TABLE_BOTTOM_SIGNED_LAST = 560.0;
     private const SIGNATURE_Y = 676.0;
     private const CONTINUED_NOTE_Y = 702.0;
     private const PAGE_NUMBER_Y = 722.0;
@@ -48,7 +48,7 @@ class SignedCertificatePdfService
     private string $fontRegular = 'dejavuserif';
     private string $fontBold = 'dejavuserif';
 
-    public function render(QualityCertificate $certificate, ?bool $showSignature = null): string
+    public function render(QualityCertificate $certificate, ?bool $showSignature = null, bool $reserveSignatureSpace = false): string
     {
         $certificate->loadMissing([
             'request.distributionCenter',
@@ -67,7 +67,8 @@ class SignedCertificatePdfService
         $this->pdf->setFontSubsetting(true);
         $this->loadFonts();
 
-        $pages = $this->paginate($certificate, $showSignature);
+        $reserveLastPageForSignature = $showSignature || $reserveSignatureSpace;
+        $pages = $this->paginate($certificate, $reserveLastPageForSignature);
         $totalPages = max(1, count($pages));
         $rowOffset = 0;
 
@@ -79,7 +80,7 @@ class SignedCertificatePdfService
             $tableEndY = $this->drawProductTable($rows, $rowOffset, $tableY);
 
             if ($isLastPage) {
-                $this->drawNote($tableEndY, $showSignature);
+                $this->drawNote($tableEndY, $reserveLastPageForSignature);
 
                 if ($showSignature) {
                     $this->drawDigitalSignature($certificate);
@@ -386,9 +387,9 @@ class SignedCertificatePdfService
         return $y;
     }
 
-    private function drawNote(float $tableEndY, bool $showSignature): void
+    private function drawNote(float $tableEndY, bool $reserveSignatureSpace): void
     {
-        $y = $showSignature
+        $y = $reserveSignatureSpace
             ? min(max($tableEndY + 8, 570), 600)
             : min($tableEndY + 8, 655);
         $this->pdf->SetTextColor(0, 0, 0);

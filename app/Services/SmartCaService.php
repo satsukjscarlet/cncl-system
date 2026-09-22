@@ -46,6 +46,7 @@ class SmartCaService
             'response' => $response,
             'request' => $this->maskPayload($payload),
             'endpoint' => $this->url('/v1/credentials/get_certificate'),
+            'environment' => $this->environment(),
             'transaction_id' => $transactionId,
         ];
     }
@@ -101,6 +102,7 @@ class SmartCaService
             'response' => $response,
             'request' => $this->maskPayload($payload),
             'endpoint' => $this->url('/v1/signatures/sign'),
+            'environment' => $this->environment(),
         ];
     }
 
@@ -153,6 +155,7 @@ class SmartCaService
             'response' => $response,
             'request' => $this->maskPayload($payload),
             'endpoint' => $this->signatureUrl('/calculateHash'),
+            'environment' => $this->environment(),
         ];
     }
 
@@ -190,6 +193,7 @@ class SmartCaService
             'response' => $this->maskPayload($response),
             'request' => $this->maskPayload($payload),
             'endpoint' => $this->signatureUrl('/signExternal'),
+            'environment' => $this->environment(),
         ];
     }
 
@@ -204,6 +208,7 @@ class SmartCaService
             'endpoint' => $this->url($path),
             'request' => $this->maskPayload($payload),
             'response' => $this->post($path, $payload),
+            'environment' => $this->environment(),
         ];
     }
 
@@ -469,16 +474,21 @@ class SmartCaService
     private function ensureConfigured(): void
     {
         $envNames = [
-            'base_url' => 'SMARTCA_BASE_URL',
-            'sp_id' => 'SMARTCA_CLIENT_ID',
-            'sp_password' => 'SMARTCA_CLIENT_SECRET',
+            'base_url' => 'SMARTCA_' . strtoupper($this->environment()) . '_BASE_URL',
+            'sp_id' => 'SMARTCA_' . strtoupper($this->environment()) . '_CLIENT_ID',
+            'sp_password' => 'SMARTCA_' . strtoupper($this->environment()) . '_CLIENT_SECRET',
         ];
 
         foreach ($envNames as $key => $envName) {
             if (!filled(config('services.smartca.' . $key))) {
-                throw new RuntimeException('Thieu cau hinh ' . $envName . ' trong file .env.');
+                throw new RuntimeException('Thieu cau hinh ' . $envName . ' trong file .env cho moi truong SmartCA ' . $this->environment() . '.');
             }
         }
+    }
+
+    private function environment(): string
+    {
+        return (string) config('services.smartca.env', 'test');
     }
 
     private function makeTransactionId(QualityCertificate $certificate): string

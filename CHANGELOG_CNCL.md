@@ -10,6 +10,136 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-22
 
+### PDF ký số - chừa vùng chữ ký khi gửi SmartCA
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Bổ sung tham số chừa vùng chữ ký khi render PDF.
+- Luồng gửi ký VNPT SmartCA dùng PDF chưa vẽ chữ ký nội bộ nhưng vẫn phân trang theo vùng an toàn của trang cuối.
+- Tránh trường hợp bảng sản phẩm ở trang cuối kéo xuống đè vùng chữ ký SmartCA với phiếu nhiều dòng/dòng dài.
+- Hạ giới hạn đáy bảng trang cuối có chữ ký xuống `560pt` để phần ghi chú kết thúc trước vùng chữ ký SmartCA hiện tại.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- `php -l app/Http/Controllers/QualityCertificateController.php`: pass.
+- Mô phỏng 32 phiếu chưa ký với chế độ chừa vùng chữ ký: `risk_count=0`.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+- `php artisan view:cache`: pass.
+
+### SmartCA - giảm chu kỳ job kiểm tra ký tự động
+
+File chính:
+- `routes/console.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Đổi lịch `smartca:check-pending-signatures` từ mỗi 1 phút sang mỗi 15 giây.
+- Giảm giới hạn mỗi lượt từ 30 phiếu xuống 10 phiếu để tránh tăng tải API VNPT SmartCA và database đột ngột.
+- Giữ `withoutOverlapping()` để tránh chạy chồng job khi lượt trước chưa hoàn tất.
+
+Kiểm tra:
+- `php -l routes/console.php`: pass.
+- `php artisan schedule:list`: hiển thị `15s php artisan smartca:check-pending-signatures --limit=10`.
+
+### Tài liệu - hướng dẫn cài đặt VPS
+
+File chính:
+- `docs/HUONG_DAN_CAI_DAT_VPS.md`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Tạo tài liệu triển khai hệ thống CNCL trên VPS Ubuntu/Nginx/PHP-FPM/MySQL.
+- Bổ sung hướng dẫn cấu hình `.env`, VNPT SmartCA test/production, queue worker, scheduler, backup, deploy và checklist kiểm tra sau cài đặt.
+
+Kiểm tra:
+- Tài liệu được tạo mới, không thay đổi logic chương trình.
+
+### SmartCA - sửa endpoint production và xác nhận gửi ký
+
+File chính:
+- `.env`
+- `.env.example`
+- `app/Http/Controllers/QualityCertificateController.php`
+
+Nội dung:
+- Sửa `SMARTCA_PRODUCTION_BASE_URL` từ UAT `rmgateway.vnptit.vn` sang Production `https://gwsca.vnpt.vn/sca/sp769` theo tài liệu VNPT SmartCA v4.1.
+- Sửa `SMARTCA_USER_ID_FIELD` về `smartca_user_id`; CCCD/MST người ký nằm ở `SMARTCA_PRODUCTION_DEFAULT_USER_ID`.
+- `.env.example` cũng cập nhật endpoint production mẫu.
+- Lưu thêm `environment` vào các nhóm dữ liệu API `get_certificate`, `calculate_hash`, `sign` cho các giao dịch SmartCA mới.
+- Đã gọi thử `get_certificate` production thành công cho serial chính thức.
+- Đã gửi thử yêu cầu ký phiếu test `TEST-SLA-CNCL-TH-0011` thành công; trạng thái chuyển sang `SIGN_PENDING`, `smartca_status=PENDING`.
+
+Kiểm tra:
+- `php artisan config:clear`: pass.
+- `php -l app/Http/Controllers/QualityCertificateController.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
+### SmartCA - bổ sung ghi chú trong `.env.example`
+
+File chính:
+- `.env.example`
+
+Nội dung:
+- Đồng bộ chú thích SmartCA từ `.env` sang `.env.example`.
+- Giữ trống các trường key/secret/serial trong file mẫu, chỉ để sẵn endpoint test.
+- Tạo backup `.env.example.smartca-comment-backup-*`.
+
+Kiểm tra:
+- `php artisan config:clear`: pass.
+
+### SmartCA - bổ sung ghi chú trong `.env`
+
+File chính:
+- `.env`
+
+Nội dung:
+- Thêm chú thích cho `SMARTCA_ENV`, nhóm cấu hình `SMARTCA_TEST_*`, `SMARTCA_PRODUCTION_*`, fallback legacy và các tùy chọn PAdES.
+- Sửa lại định dạng `.env` sau khi thêm comment để bảo đảm các dòng vẫn đúng dạng `KEY=value`.
+- Tạo backup `.env.smartca-comment-backup-*` và `.env.smartca-comment-repair-backup-*`.
+
+Kiểm tra:
+- `php artisan config:clear`: pass.
+- `php artisan tinker --execute`: xác nhận SmartCA đang ở `production` và đủ base/client/secret/serial.
+
+### SmartCA - chuyển `.env` sang môi trường production
+
+File chính:
+- `.env`
+
+Nội dung:
+- Đặt `SMARTCA_ENV=production`.
+- Bổ sung nhóm `SMARTCA_TEST_*` để giữ lại cấu hình test.
+- Bổ sung nhóm `SMARTCA_PRODUCTION_*` để hệ thống dùng khi ký số chính thức.
+- Tạo backup `.env.smartca-backup-*`, `.env.smartca-profile2-backup-*`, `.env.smartca-repair-backup-*` trong quá trình chuyển đổi.
+
+Kiểm tra:
+- `php artisan config:clear`: pass.
+- `php artisan tinker --execute`: xác nhận `services.smartca.env = production` và các trường base/client/secret/serial đều có giá trị.
+
+### SmartCA - tách cấu hình test và chính thức
+
+File chính:
+- `config/services.php`
+- `app/Services/SmartCaService.php`
+- `.env.example`
+
+Nội dung:
+- Bổ sung `SMARTCA_ENV=test|production` để chọn môi trường ký số.
+- Bổ sung nhóm biến `SMARTCA_TEST_*` và `SMARTCA_PRODUCTION_*` để giữ song song cấu hình test và chính thức.
+- Vẫn giữ fallback cấu hình cũ `SMARTCA_BASE_URL`, `SMARTCA_CLIENT_ID`, `SMARTCA_CLIENT_SECRET`, `SMARTCA_SERIAL_NUMBER`.
+- Lưu thêm `environment` trong dữ liệu API SmartCA để biết giao dịch gửi qua test hay production.
+
+Kiểm tra:
+- `php -l config/services.php`: pass.
+- `php -l app/Services/SmartCaService.php`: pass.
+- `php artisan config:clear`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
 ### DVKH - tối ưu lọc và nhận diện yêu cầu cần xử lý
 
 File chính:
