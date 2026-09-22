@@ -64,6 +64,7 @@
 
         .ptn-row-warning { background: #fff8e1; }
         .ptn-row-overdue { background: #fff1f1; }
+        .ptn-row-returned { background: #fff6db; box-shadow: inset 4px 0 0 #f0ad4e; }
 
         .ptn-table {
             min-width: 1120px;
@@ -258,7 +259,7 @@
                     <a href="{{ route('ptn.requests.index') }}" class="btn btn-outline-secondary" title="Làm mới">
                         <i class="fas fa-sync"></i>
                     </a>
-                    @if(request()->hasAny(['keyword', 'distribution_center_id', 'status', 'urgent', 'sla']))
+                    @if(request()->hasAny(['keyword', 'distribution_center_id', 'status', 'urgent', 'returned', 'sla']))
                         <a href="{{ route('ptn.requests.index') }}" class="btn btn-outline-danger">
                             <i class="fas fa-times"></i> Xóa lọc
                         </a>
@@ -275,7 +276,7 @@
             <h3 class="card-title mb-0">
                 <i class="fas fa-vials"></i> Danh sách yêu cầu PTN
             </h3>
-            <div class="text-muted small mt-1">Mặc định chỉ hiển thị yêu cầu đang chờ PTN lập phiếu.</div>
+            <div class="text-muted small mt-1">Mặc định hiển thị yêu cầu chờ PTN lập phiếu và yêu cầu bị Trưởng PTN trả lại PTN xử lý lại.</div>
         </div>
 
         <div class="card-tools">
@@ -302,7 +303,9 @@
             <tbody>
                 @forelse($requests as $item)
                     @php
-                        $rowClass = $item->sla_level === 'overdue' ? 'ptn-row-overdue' : ($item->sla_level === 'warning' ? 'ptn-row-warning' : '');
+                        $rowClass = $item->effectiveLastReturnedTo() === 'PTN'
+                            ? 'ptn-row-returned'
+                            : ($item->sla_level === 'overdue' ? 'ptn-row-overdue' : ($item->sla_level === 'warning' ? 'ptn-row-warning' : ''));
                     @endphp
                     <tr class="{{ $rowClass }}">
                         <td>{{ $requests->firstItem() + $loop->index }}</td>
@@ -311,6 +314,13 @@
                             <div class="text-muted small">{{ optional($item->created_at)->format('d/m/Y H:i') }}</div>
                             @include('certificate_requests.partials.request_type_badge', ['certificateRequest' => $item])
                             @include('certificate_requests.partials.urgent_badge', ['urgentRequest' => $item])
+                            @if($item->effectiveLastReturnedTo() === 'PTN')
+                                <div class="mt-1">
+                                    <span class="badge badge-warning">
+                                        <i class="fas fa-undo"></i> Trưởng PTN trả lại
+                                    </span>
+                                </div>
+                            @endif
                             @if($item->sla_level === 'overdue')
                                 <div class="mt-1"><span class="badge badge-danger"><i class="fas fa-clock"></i> Quá SLA</span></div>
                             @elseif($item->sla_level === 'warning')

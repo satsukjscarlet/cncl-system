@@ -10,6 +10,24 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-22
 
+### PTN - hiển thị rõ yêu cầu bị Trưởng PTN trả lại
+
+File chính:
+- `app/Http/Controllers/PtnRequestController.php`
+- `resources/views/ptn_requests/index.blade.php`
+
+Nội dung:
+- Màn `/ptn/requests` mặc định hiển thị cả yêu cầu `WAIT_PTN` và yêu cầu `PTN_PROCESSING` có `last_returned_to = PTN`, để PTN nhìn thấy ngay các phiếu bị Trưởng PTN trả lại.
+- Dòng bị Trưởng PTN trả lại được tô nền vàng nhạt và có vạch nhấn bên trái.
+- Bổ sung badge “Trưởng PTN trả lại” ngay dưới số yêu cầu, ngoài badge chi tiết ở cột trạng thái.
+- Nút “Xóa lọc” nhận cả filter `returned`.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/PtnRequestController.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=CertificateWorkflowTest`: pass, 23 tests.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
 ### Data test - cập nhật theo luồng nghiệp vụ và SLA mới
 
 File chính:
