@@ -197,6 +197,22 @@ class QualityCertificate extends Model
             );
     }
 
+    public function shouldReserveSignatureSpaceForPdf(): bool
+    {
+        return !$this->signed_at
+            && !in_array($this->status, [self::STATUS_REJECTED, self::STATUS_REVOKED, self::STATUS_ISSUED], true)
+            && (
+                in_array($this->status, [
+                    self::STATUS_DRAFT,
+                    self::STATUS_WAIT_PTN_MANAGER_APPROVAL,
+                    self::STATUS_READY_TO_SIGN,
+                    self::STATUS_SIGN_PENDING,
+                    self::STATUS_SIGN_EXPIRED,
+                ], true)
+                || in_array($this->smartca_status, ['PENDING', 'EXPIRED'], true)
+            );
+    }
+
     public function canApproveForSigningQueue(): bool
     {
         return $this->isAwaitingManagerApproval();

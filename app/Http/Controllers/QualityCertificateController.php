@@ -861,7 +861,11 @@ class QualityCertificateController extends Controller
             ]);
         }
 
-        $pdfContent = app(SignedCertificatePdfService::class)->render($qualityCertificate);
+        $pdfContent = app(SignedCertificatePdfService::class)->render(
+            $qualityCertificate,
+            null,
+            $qualityCertificate->shouldReserveSignatureSpaceForPdf()
+        );
 
         return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',

@@ -10,6 +10,42 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-22
 
+### PDF ký số - đồng bộ layout xem trước với layout gửi ký
+
+File chính:
+- `app/Models/QualityCertificate.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Bổ sung `shouldReserveSignatureSpaceForPdf()` để xác định phiếu chưa ký nhưng sẽ/đang ký số cần chừa vùng ký khi xem PDF.
+- URL `/quality-certificates/{id}/pdf` dùng layout chừa vùng ký cho các trạng thái nháp cũ/chờ trưởng PTN duyệt/chờ gửi ký/đang chờ ký/quá hạn ký.
+- Tránh trường hợp màn xem trước hiện `3/3` nhưng file gửi ký đúng ra phải tách sang `4/4`.
+
+Kiểm tra:
+- `php -l app/Models/QualityCertificate.php`: pass.
+- `php -l app/Http/Controllers/QualityCertificateController.php`: pass.
+- Mô phỏng 25 phiếu cần chừa vùng ký theo logic route `/pdf`: `risk_count=0`.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+- `php artisan view:cache`: pass.
+
+### PDF ký số - sửa ghi chú bị đè lên bảng sản phẩm
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Sửa `drawNote()` để ghi chú luôn nằm sau điểm kết thúc bảng, không bị ép ngược lên `y=600`.
+- Giảm giới hạn đáy bảng trang cuối không có chữ ký từ `694pt` xuống `650pt` để phần ghi chú có vùng an toàn trước số trang/footer.
+- Giữ trang cuối có chữ ký ở giới hạn `560pt`.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- Mô phỏng 32 phiếu chưa ký: `risk_count=0`, ghi chú luôn nằm sau bảng và bảng không vượt vùng chữ ký.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+- `php artisan view:cache`: pass.
+
 ### PDF ký số - chừa vùng chữ ký khi gửi SmartCA
 
 File chính:

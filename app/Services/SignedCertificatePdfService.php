@@ -38,7 +38,7 @@ class SignedCertificatePdfService
     // Nội dung các trang thông thường phải kết thúc trước dòng ghi chú "tiếp theo ở trang sau" hoặc số trang.
     // Nếu đặt quá thấp, dòng chữ "tiếp theo ở trang sau" và số trang có thể bị chồng lên bảng.
     private const TABLE_BOTTOM_NORMAL = 690.0;
-    private const TABLE_BOTTOM_UNSIGNED_LAST = 694.0;
+    private const TABLE_BOTTOM_UNSIGNED_LAST = 650.0;
     private const TABLE_BOTTOM_SIGNED_LAST = 560.0;
     private const SIGNATURE_Y = 676.0;
     private const CONTINUED_NOTE_Y = 702.0;
@@ -390,8 +390,8 @@ class SignedCertificatePdfService
     private function drawNote(float $tableEndY, bool $reserveSignatureSpace): void
     {
         $y = $reserveSignatureSpace
-            ? min(max($tableEndY + 8, 570), 600)
-            : min($tableEndY + 8, 655);
+            ? max($tableEndY + 8, 570)
+            : $tableEndY + 8;
         $this->pdf->SetTextColor(0, 0, 0);
         $this->pdf->SetFont($this->fontBold, '', 12);
         $this->pdf->SetXY(self::LEFT, $y);
