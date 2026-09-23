@@ -10,6 +10,21 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-23
 
+### PDF ký số - kéo dòng trang cuối lên lấp trang kế cuối
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Sửa thuật toán `balanceSparseLastPage()` để trang kế cuối được kéo thêm dòng từ trang cuối nếu còn đủ chiều cao.
+- Không giới hạn chỉ xử lý trang cuối ít dòng; hệ thống kéo cho đến khi trang kế cuối đầy hoặc trang cuối chỉ còn 1 dòng.
+- Trang cuối giữ tối thiểu 1 dòng sản phẩm để vẫn có trang đặt ghi chú/chữ ký số.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
 ### PDF phiếu CNCL - chống cache khi xem lại
 
 File chính:

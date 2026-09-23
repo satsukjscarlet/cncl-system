@@ -223,7 +223,9 @@ class SignedCertificatePdfService
         $lastIndex = count($pages) - 1;
         $previousIndex = $lastIndex - 1;
 
-        if (count($pages[$lastIndex]) < 2 || count($pages[$lastIndex]) > 3) {
+        $lastPageOriginalCount = count($pages[$lastIndex]);
+
+        if ($lastPageOriginalCount < 2) {
             return $pages;
         }
 
