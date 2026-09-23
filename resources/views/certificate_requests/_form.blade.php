@@ -332,6 +332,7 @@
     <table class="table table-bordered" id="products-table">
         <thead class="thead-light">
             <tr>
+                <th style="width:64px" class="text-center">STT</th>
                 <th>Sản phẩm <span class="text-danger">*</span></th>
                 <th style="width:180px">Số lượng <span class="text-danger">*</span></th>
                 <th style="width:80px" class="text-center">Xóa</th>
@@ -356,6 +357,8 @@
 
             @foreach ($oldProducts as $index => $oldProductId)
                 <tr>
+                    <td class="text-center align-middle product-row-index">{{ $loop->iteration }}</td>
+
                     <td>
                         <select name="product_id[]"
                                 class="form-control product-select select2"
@@ -739,6 +742,16 @@
                 checkInvoiceDuplicate();
             }
 
+            function refreshProductRowIndexes() {
+                tableBody.querySelectorAll('tr').forEach(function(row, index) {
+                    const indexCell = row.querySelector('.product-row-index');
+
+                    if (indexCell) {
+                        indexCell.textContent = index + 1;
+                    }
+                });
+            }
+
             function addProductRow() {
                 const firstRow = tableBody.querySelector('tr');
                 const firstSelect = firstRow.querySelector('select.product-select');
@@ -779,6 +792,8 @@
                 } else if (newSelect) {
                     newSelect.focus();
                 }
+
+                refreshProductRowIndexes();
             }
 
             addRowBtn.addEventListener('click', addProductRow);
@@ -803,6 +818,7 @@
                     }
 
                     e.target.closest('tr').remove();
+                    refreshProductRowIndexes();
                 }
             });
 
@@ -853,6 +869,8 @@
                 if (window.initSelect2) {
                     window.initSelect2(row);
                 }
+
+                refreshProductRowIndexes();
             }
 
             function importShowErrors(errors) {
@@ -956,6 +974,8 @@
                                 items.forEach(importMergeRow);
                             }
 
+                            refreshProductRowIndexes();
+
                             pasteProductsText.value = '';
                             jQuery('#pasteProductsModal').modal('hide');
                         })
@@ -1019,6 +1039,8 @@
                                 items.forEach(importMergeRow);
                             }
 
+                            refreshProductRowIndexes();
+
                             importProductsFile.value = '';
                             jQuery('#importProductsModal').modal('hide');
                         })
@@ -1031,6 +1053,8 @@
                         });
                 });
             }
+
+            refreshProductRowIndexes();
         });
     </script>
 @stop

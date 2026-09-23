@@ -10,6 +10,21 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-22
 
+### Yêu cầu cấp phiếu - thêm STT dòng sản phẩm
+
+File chính:
+- `resources/views/certificate_requests/_form.blade.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Thêm cột `STT` vào bảng danh sách sản phẩm đề nghị cấp phiếu.
+- STT chỉ hiển thị trên giao diện, không gửi thêm dữ liệu lên server và không thay đổi cấu trúc database.
+- Bổ sung JS tự đánh lại STT sau khi thêm dòng, xóa dòng, import Excel hoặc dán từ Excel.
+
+Kiểm tra:
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
 ### PDF ký số - đưa ghi chú sát dưới bảng trang cuối
 
 File chính:
