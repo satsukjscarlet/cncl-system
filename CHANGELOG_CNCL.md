@@ -10,6 +10,23 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-22
 
+### PDF ký số - đưa ghi chú sát dưới bảng trang cuối
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Sửa vị trí ghi chú trong PDF ký số để luôn nằm ngay dưới đáy bảng trang cuối.
+- Bỏ mốc tối thiểu `570pt` vốn làm ghi chú bị cách xa bảng khi bảng trang cuối ít dòng.
+- Giữ nguyên giới hạn đáy bảng trang cuối để vẫn chừa vùng ký số.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- Mô phỏng 25 phiếu cần chừa vùng ký: `risk_count=0`, ghi chú nằm ngay sau bảng.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+- `php artisan view:cache`: pass.
+
 ### PDF ký số - đồng bộ layout xem trước với layout gửi ký
 
 File chính:

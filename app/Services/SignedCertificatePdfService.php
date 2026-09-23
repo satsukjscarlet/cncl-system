@@ -389,9 +389,7 @@ class SignedCertificatePdfService
 
     private function drawNote(float $tableEndY, bool $reserveSignatureSpace): void
     {
-        $y = $reserveSignatureSpace
-            ? max($tableEndY + 8, 570)
-            : $tableEndY + 8;
+        $y = $tableEndY + 8;
         $this->pdf->SetTextColor(0, 0, 0);
         $this->pdf->SetFont($this->fontBold, '', 12);
         $this->pdf->SetXY(self::LEFT, $y);
