@@ -10,6 +10,20 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-23
 
+### PDF phiếu CNCL - chống cache khi xem lại
+
+File chính:
+- `app/Http/Controllers/QualityCertificateController.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Bổ sung header `Cache-Control: no-store, no-cache` cho response PDF phiếu CNCL.
+- Tránh trình duyệt/PDF viewer giữ bản PDF cũ khi mở lại cùng URL sau khi cập nhật layout PDF.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/QualityCertificateController.php`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
 ### PDF ký số - cân bằng trang cuối ít dòng
 
 File chính:

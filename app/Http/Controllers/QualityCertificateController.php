@@ -855,10 +855,11 @@ class QualityCertificateController extends Controller
             && $qualityCertificate->pdf_path
             && Storage::disk('local')->exists($qualityCertificate->pdf_path)
         ) {
-            return response(Storage::disk('local')->get($qualityCertificate->pdf_path), 200, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $qualityCertificate->certificate_no . '.pdf"',
-            ]);
+            return response(
+                Storage::disk('local')->get($qualityCertificate->pdf_path),
+                200,
+                $this->pdfResponseHeaders($qualityCertificate)
+            );
         }
 
         $pdfContent = app(SignedCertificatePdfService::class)->render(
@@ -867,10 +868,18 @@ class QualityCertificateController extends Controller
             $qualityCertificate->shouldReserveSignatureSpaceForPdf()
         );
 
-        return response($pdfContent, 200, [
+        return response($pdfContent, 200, $this->pdfResponseHeaders($qualityCertificate));
+    }
+
+    private function pdfResponseHeaders(QualityCertificate $qualityCertificate): array
+    {
+        return [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $qualityCertificate->certificate_no . '.pdf"',
-        ]);
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ];
     }
 
     public function requestReissue(Request $request, QualityCertificate $qualityCertificate)
