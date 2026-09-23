@@ -37,12 +37,12 @@ class SignedCertificatePdfService
     // Các vùng an toàn cho bảng/chữ ký. Chỉ di chuyển các phần này xuống dưới nếu phần chân trang vẫn còn đủ chỗ.
     // Nội dung các trang thông thường phải kết thúc trước dòng ghi chú "tiếp theo ở trang sau" hoặc số trang.
     // Nếu đặt quá thấp, dòng chữ "tiếp theo ở trang sau" và số trang có thể bị chồng lên bảng.
-    private const TABLE_BOTTOM_NORMAL = 690.0;
+    private const TABLE_BOTTOM_NORMAL = 715.0;
     private const TABLE_BOTTOM_UNSIGNED_LAST = 650.0;
     private const TABLE_BOTTOM_SIGNED_LAST = 560.0;
     private const SIGNATURE_Y = 676.0;
-    private const CONTINUED_NOTE_Y = 702.0;
-    private const PAGE_NUMBER_Y = 722.0;
+    private const CONTINUED_NOTE_Y = 725.0;
+    private const PAGE_NUMBER_Y = 742.0;
 
     private TCPDF $pdf;
     private string $fontRegular = 'dejavuserif';
@@ -189,7 +189,9 @@ class SignedCertificatePdfService
             $pages[] = $movedRows;
         }
 
-        return $this->avoidSingleRowPages($pages, $normalBodyLimit, $lastBodyLimit);
+        $pages = $this->avoidSingleRowPages($pages, $normalBodyLimit, $lastBodyLimit);
+
+        return $this->balanceSparseLastPage($pages, $normalBodyLimit);
     }
 
     private function avoidSingleRowPages(array $pages, float $normalBodyLimit, float $lastBodyLimit): array
@@ -207,6 +209,39 @@ class SignedCertificatePdfService
                 array_pop($pages[$i - 1]);
                 array_unshift($pages[$i], $candidate);
             }
+        }
+
+        return $pages;
+    }
+
+    private function balanceSparseLastPage(array $pages, float $normalBodyLimit): array
+    {
+        if (count($pages) < 2) {
+            return $pages;
+        }
+
+        $lastIndex = count($pages) - 1;
+        $previousIndex = $lastIndex - 1;
+
+        if (count($pages[$lastIndex]) < 2 || count($pages[$lastIndex]) > 3) {
+            return $pages;
+        }
+
+        while (count($pages[$lastIndex]) > 1) {
+            $candidate = $pages[$lastIndex][0] ?? null;
+
+            if (!$candidate) {
+                break;
+            }
+
+            $previousHeight = array_sum(array_map(fn($detail) => $this->rowHeight($detail), $pages[$previousIndex]));
+            $candidateHeight = $this->rowHeight($candidate);
+
+            if ($previousHeight + $candidateHeight > $normalBodyLimit) {
+                break;
+            }
+
+            $pages[$previousIndex][] = array_shift($pages[$lastIndex]);
         }
 
         return $pages;

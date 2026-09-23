@@ -8,7 +8,45 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 - Ghi rõ ngày, nhóm chức năng, file chính đã sửa, nội dung thay đổi và kết quả kiểm tra.
 - Nếu có lỗi chưa xử lý xong, ghi vào phần "Ghi chú".
 
+## 2026-09-23
+
+### PDF ký số - cân bằng trang cuối ít dòng
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Bổ sung bước `balanceSparseLastPage()` sau khi phân trang.
+- Nếu trang cuối chỉ còn 2-3 dòng và trang kế cuối còn đủ sức chứa, hệ thống sẽ chuyển bớt dòng đầu của trang cuối lên cuối trang kế cuối.
+- Luôn giữ ít nhất 1 dòng ở trang cuối để còn vùng ghi chú/chữ ký số, tránh biến trang kế cuối thành trang cuối rồi thiếu chỗ ký.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- Mô phỏng phiếu `306`: dữ liệu local hiện có trang cuối 4 dòng nên không di chuyển; logic mới sẽ áp dụng khi trang cuối chỉ có 2-3 dòng và trang trước còn chỗ.
+- Mô phỏng 25 phiếu cần chừa vùng ký: `risk_count=0`.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+- `php artisan view:cache`: pass.
+
 ## 2026-09-22
+
+### PDF ký số - tận dụng khoảng trống các trang không phải trang cuối
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Tăng giới hạn đáy bảng cho các trang không phải trang cuối từ `690pt` lên `715pt`.
+- Mục tiêu là kéo thêm dòng sản phẩm xuống các trang trước, giảm khoảng trắng lớn trước dòng "Còn tiếp trang sau".
+- Kéo dòng "Còn tiếp trang sau" xuống `725pt` và số trang xuống `742pt` để không chồng với bảng khi trang thường tận dụng thêm chiều cao.
+- Giữ nguyên giới hạn trang cuối có chữ ký `560pt` để vẫn chừa vùng ghi chú và ký số an toàn.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- Mô phỏng 25 phiếu cần chừa vùng ký: `risk_count=0`, `max_table_end=713`.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+- `php artisan view:cache`: pass.
 
 ### Yêu cầu cấp phiếu - thêm STT dòng sản phẩm
 
