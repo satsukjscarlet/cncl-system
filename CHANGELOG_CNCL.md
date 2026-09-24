@@ -10,6 +10,24 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-24
 
+### Màn hình đăng nhập - cân lại bố cục 50/50 và nền nhận diện
+
+File chính:
+- `resources/views/auth/login.blade.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Chỉnh bố cục desktop về tỉ lệ 50/50 giữa khối thông tin và khối đăng nhập.
+- Tăng kích thước card đăng nhập, input, logo và nút đăng nhập để thao tác rõ hơn.
+- Giảm độ nặng phần giới thiệu bên trái, chuyển sang nền xanh nhận diện NTP thay vì toàn nền trắng.
+- Dùng lại logo NTP hiện có trong hệ thống; dự án hiện không có ảnh nền login riêng ngoài logo/ảnh ISO.
+- Giữ responsive mobile: ẩn phần giới thiệu, ưu tiên form đăng nhập.
+
+Kiểm tra:
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+- Rà chuỗi lỗi font `Ä/Ã` trong file login: không còn kết quả.
+
 ### Màn hình đăng nhập - tinh chỉnh theo form mới
 
 File chính:
