@@ -10,6 +10,40 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-24
 
+### Màn hình đăng nhập - tinh chỉnh theo form mới
+
+File chính:
+- `resources/views/auth/login.blade.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Giữ hướng bố cục hero bên trái và form đăng nhập bên phải theo bản chỉnh mới.
+- Tinh chỉnh nền, card đăng nhập, logo NTP, input, nút đăng nhập, trạng thái lỗi và responsive mobile.
+- Rà lại file login để không còn chuỗi lỗi font tiếng Việt dạng `Ä/Ã`.
+
+Kiểm tra:
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
+### Màn hình đăng nhập - thiết kế lại và Việt hóa
+
+File chính:
+- `resources/views/auth/login.blade.php`
+- `app/Http/Requests/Auth/LoginRequest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Thiết kế lại màn hình đăng nhập theo nhận diện CNCL NTP, dùng logo `public/images/logo.png` thay cho logo Laravel.
+- Việt hóa toàn bộ nhãn, nút, ghi nhớ đăng nhập, quên mật khẩu và mô tả trên màn hình login.
+- Việt hóa thông báo sai tên đăng nhập/mật khẩu, thiếu tên đăng nhập, thiếu mật khẩu và cảnh báo nhập sai quá nhiều lần.
+- Giữ màn hình responsive, trên mobile chỉ hiển thị khối đăng nhập gọn.
+
+Kiểm tra:
+- `php -l app/Http/Requests/Auth/LoginRequest.php`: pass.
+- `php -l app/Http/Controllers/Auth/AuthenticatedSessionController.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
 ### PDF phiếu CNCL - bỏ TIENPHONG năm và PCN khỏi header
 
 File chính:
