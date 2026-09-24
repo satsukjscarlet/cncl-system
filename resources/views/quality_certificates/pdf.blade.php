@@ -111,19 +111,6 @@
             padding-top: 3px;
         }
 
-        .pcn-label {
-            color: #d71920;
-            margin-top: 2px;
-            white-space: nowrap;
-        }
-
-        .pcn-number {
-            color: #e3342f;
-            font-size: 17px;
-            letter-spacing: .8px;
-            white-space: nowrap;
-        }
-
         .cert-title {
             text-align: center;
             font-size: 18pt;
@@ -572,9 +559,7 @@
             <td class="iso-cell">
                 QUACERT<br>
                 JAS-ANZ<br>
-                ISO 9001:2015<br>
-                TIENPHONG : {{ now()->year }}
-                <div class="pcn-label">PCN: <span class="pcn-number">{{ $pcnNo }}</span></div>
+                ISO 9001:2015
             </td>
         </tr>
     </table>

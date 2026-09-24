@@ -275,15 +275,6 @@ class SignedCertificatePdfService
         $this->pdf->Cell(388, 13, 'TIEN PHONG PLASTIC JOINT STOCK COMPANY', 0, 1, 'C');
 
         $this->drawIsoImage();
-
-        $this->pdf->SetTextColor(215, 25, 32);
-        $this->pdf->SetFont($this->fontBold, '', 12);
-        $this->pdf->SetXY(486, self::TOP + 65);
-        $this->pdf->Cell(34, 11, 'PCN:', 0, 0, 'R');
-
-        $this->pdf->SetFont($this->fontBold, '', 12);
-        $this->pdf->SetXY(523, self::TOP + 64.8);
-        $this->pdf->Cell(51, 13, str_pad((string) $certificate->id, 7, '0', STR_PAD_LEFT), 0, 0, 'L');
     }
 
     private function drawIsoImage(): void
@@ -295,13 +286,11 @@ class SignedCertificatePdfService
 
         if (is_file($png)) {
             $this->pdf->Image($png, self::ISO_IMAGE_X, self::ISO_IMAGE_Y, self::ISO_IMAGE_W, self::ISO_IMAGE_H, '', '', '', false, 300);
-            $this->drawTienPhongIsoYear();
             return;
         }
 
         if (is_file($svg)) {
             $this->pdf->ImageSVG($svg, self::ISO_IMAGE_X, self::ISO_IMAGE_Y, self::ISO_IMAGE_W, self::ISO_IMAGE_H);
-            $this->drawTienPhongIsoYear();
             return;
         }
 
@@ -309,16 +298,6 @@ class SignedCertificatePdfService
         $this->pdf->SetFont($this->fontBold, '', 7.4);
         $this->pdf->SetXY(self::ISO_IMAGE_X, self::ISO_IMAGE_Y);
         $this->pdf->MultiCell(self::ISO_IMAGE_W, 8.7, "QUACERT\nJAS-ANZ\nISO 9001:2015", 0, 'C');
-        $this->drawTienPhongIsoYear();
-    }
-
-    private function drawTienPhongIsoYear(): void
-    {
-        // Move this line up/down with ISO_IMAGE_H or this Y offset.
-        $this->pdf->SetTextColor(0, 105, 180);
-        $this->pdf->SetFont($this->fontBold, '', 8.4);
-        $this->pdf->SetXY(self::ISO_IMAGE_X, self::ISO_IMAGE_Y + self::ISO_IMAGE_H - 6);
-        $this->pdf->Cell(self::ISO_IMAGE_W, 8.5, 'TIENPHONG : ' . now()->year, 0, 0, 'C');
     }
 
     private function drawTitle(QualityCertificate $certificate): void

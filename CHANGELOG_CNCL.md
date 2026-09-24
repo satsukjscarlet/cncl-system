@@ -8,6 +8,26 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 - Ghi rõ ngày, nhóm chức năng, file chính đã sửa, nội dung thay đổi và kết quả kiểm tra.
 - Nếu có lỗi chưa xử lý xong, ghi vào phần "Ghi chú".
 
+## 2026-09-24
+
+### PDF phiếu CNCL - bỏ TIENPHONG năm và PCN khỏi header
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+- `resources/views/quality_certificates/pdf.blade.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Bỏ dòng `TIENPHONG : {năm}` dưới cụm ISO/QUACERT trên mẫu PDF ký số TCPDF.
+- Bỏ dòng `PCN: {id}` khỏi header mẫu phiếu.
+- Đồng bộ template Blade PDF cũ để không còn hiển thị hai nội dung này khi có fallback.
+
+Kiểm tra:
+- Render thử phiếu `309`: PDF sinh thành công, không còn chuỗi `TIENPHONG :` và `PCN:`.
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
 ## 2026-09-23
 
 ### PDF ký số - kéo dòng trang cuối lên lấp trang kế cuối
