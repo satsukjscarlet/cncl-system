@@ -179,7 +179,9 @@ class SmartCaService
         $signedData = (string) data_get($response, 'signResps.0.signedData');
 
         if (blank($signedData)) {
-            throw new RuntimeException('VNPT signExternal khong tra ve signedData.');
+            $code = data_get($response, 'signResps.0.code', data_get($response, 'responseCode', 'unknown'));
+            $message = data_get($response, 'signResps.0.message') ?: data_get($response, 'message') ?: 'Không có signedData';
+            throw new RuntimeException('VNPT signExternal thất bại [' . $code . ']: ' . $message);
         }
 
         $signedPdf = base64_decode($signedData, true);

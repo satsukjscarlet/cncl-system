@@ -19,6 +19,7 @@ use App\Services\WorkflowStepService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Activity;
@@ -1338,6 +1339,29 @@ class QualityCertificateController extends Controller
         SmartCaService $smartCaService,
         SmartCaPadesService $padesService
     ): array {
+        $lock = Cache::lock('smartca-finalize-' . $qualityCertificate->id, 300);
+        if (!$lock->get()) {
+            return ['status' => 'PENDING', 'level' => 'info', 'message' => 'Phiếu đang được kiểm tra kết quả ký.'];
+        }
+        try {
+            $qualityCertificate->refresh();
+            if ($qualityCertificate->signed_at) {
+                return ['status' => 'SIGNED_NO_EMAIL', 'level' => 'success', 'message' => 'Phiếu đã hoàn tất ký.'];
+            }
+            if ($qualityCertificate->pades_status === 'ERROR') {
+                return ['status' => 'ERROR', 'level' => 'error', 'message' => $qualityCertificate->pades_error];
+            }
+            return $this->processSmartCaStatusLocked($qualityCertificate, $smartCaService, $padesService);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function processSmartCaStatusLocked(
+        QualityCertificate $qualityCertificate,
+        SmartCaService $smartCaService,
+        SmartCaPadesService $padesService
+    ): array {
         $qualityCertificate->loadMissing([
             'request.distributionCenter',
             'request.customer',
@@ -1432,14 +1456,22 @@ class QualityCertificateController extends Controller
                     throw new \RuntimeException('Thieu tranId/fileID cua buoc VNPT calculateHash nen khong the goi signExternal.');
                 }
 
+                $signedPdfPath = 'quality-certificates-finalized/' . $qualityCertificate->id . '/' . $qualityCertificate->smartca_transaction_id . '_signed.pdf';
+                $probePath = dirname($signedPdfPath) . '/.write-check-' . bin2hex(random_bytes(8));
+                if (!Storage::disk('local')->put($probePath, 'write check')) {
+                    throw new \RuntimeException('Không thể ghi thư mục PDF đã ký; chưa gọi VNPT signExternal.');
+                }
+                Storage::disk('local')->delete($probePath);
+
                 $signExternalResult = $smartCaService->externalizePdfSignature(
                     (string) $hashTransactionId,
                     (string) $fileId,
                     (string) data_get($signature, 'signature_value')
                 );
 
-                $signedPdfPath = 'quality-certificates/smartca/' . $qualityCertificate->id . '/' . $qualityCertificate->smartca_transaction_id . '_signed.pdf';
-                Storage::disk('local')->put($signedPdfPath, $signExternalResult['signed_pdf']);
+                if (!Storage::disk('local')->put($signedPdfPath, $signExternalResult['signed_pdf'])) {
+                    throw new \RuntimeException('Không lưu được PDF đã ký từ VNPT.');
+                }
 
                 $storedStatusResponse['sign_external'] = [
                     'endpoint' => $signExternalResult['endpoint'],
@@ -1480,6 +1512,14 @@ class QualityCertificateController extends Controller
                 $qualityCertificate->fresh(['request.distributionCenter', 'request.customer'])
             );
         } catch (\Throwable $e) {
+            if (str_contains($e->getMessage(), 'Transaction expired or not completed before')) {
+                $qualityCertificate->update([
+                    'status' => 'SIGN_EXPIRED',
+                    'smartca_status' => 'EXPIRED',
+                    'pades_status' => 'ERROR',
+                    'pades_error' => $e->getMessage(),
+                ]);
+            }
             ActivityLogger::log(
                 'Phiếu CNCL',
                 'smartca_status_failed',

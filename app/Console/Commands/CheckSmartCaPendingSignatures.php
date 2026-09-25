@@ -25,6 +25,7 @@ class CheckSmartCaPendingSignatures extends Command
             'details.product',
         ])
             ->whereNull('signed_at')
+            ->where(fn ($query) => $query->whereNull('pades_status')->orWhere('pades_status', '!=', 'ERROR'))
             ->whereIn('smartca_status', ['PENDING', 'EXPIRED'])
             ->whereNotNull('smartca_transaction_id')
             ->oldest('smartca_requested_at')
