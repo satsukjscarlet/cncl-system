@@ -42,4 +42,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(DistributionCenter::class);
     }
+
+    public function adminlte_profile_url(): string
+    {
+        return route('profile.edit');
+    }
 }

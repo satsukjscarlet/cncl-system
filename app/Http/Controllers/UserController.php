@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ActivityLogger;
 use App\Models\DistributionCenter;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -103,15 +105,7 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name' => 'required|max:255',
-            'username' => 'required|max:100|unique:users,username',
-            'email' => 'nullable|email',
-            'smartca_user_id' => 'nullable|string|max:100',
-            'distribution_center_id' => 'nullable|exists:distribution_centers,id',
-            'role' => 'required|exists:roles,name',
-            'password' => 'required|min:6|confirmed',
-        ]);
+        $data = $this->validatedUserData($request, null, true);
 
         $user = User::create([
             'name' => $data['name'],
@@ -124,6 +118,15 @@ class UserController extends Controller
         ]);
 
         $user->syncRoles([$data['role']]);
+
+        ActivityLogger::log(
+            'Người dùng',
+            'create',
+            'Tạo người dùng: ' . $user->username,
+            null,
+            $this->userAuditData($user),
+            $user
+        );
 
         return redirect()
             ->route('users.index')
@@ -145,14 +148,8 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        $data = $request->validate([
-            'name' => 'required|max:255',
-            'username' => 'required|max:100|unique:users,username,' . $user->id,
-            'email' => 'nullable|email',
-            'smartca_user_id' => 'nullable|string|max:100',
-            'distribution_center_id' => 'nullable|exists:distribution_centers,id',
-            'role' => 'required|exists:roles,name',
-        ]);
+        $oldData = $this->userAuditData($user);
+        $data = $this->validatedUserData($request, $user);
 
         $user->update([
             'name' => $data['name'],
@@ -165,6 +162,15 @@ class UserController extends Controller
 
         $user->syncRoles([$data['role']]);
 
+        ActivityLogger::log(
+            'Người dùng',
+            'update',
+            'Cập nhật người dùng: ' . $user->username,
+            $oldData,
+            $this->userAuditData($user->fresh(['roles', 'distributionCenter'])),
+            $user
+        );
+
         return redirect()
             ->route('users.index')
             ->with('success', 'Cập nhật người dùng thành công.');
@@ -176,7 +182,16 @@ class UserController extends Controller
             return back()->with('error', 'Không thể xóa tài khoản đang đăng nhập.');
         }
 
+        $oldData = $this->userAuditData($user);
+
         $user->delete();
+
+        ActivityLogger::log(
+            'Người dùng',
+            'delete',
+            'Xóa người dùng: ' . $oldData['username'],
+            $oldData
+        );
 
         return redirect()
             ->route('users.index')
@@ -186,12 +201,21 @@ class UserController extends Controller
     public function resetPassword(Request $request, User $user)
     {
         $data = $request->validate([
-            'password' => 'required|min:6|confirmed',
+            'password' => ['required', Password::min(8), 'confirmed'],
         ]);
 
         $user->update([
             'password' => Hash::make($data['password']),
         ]);
+
+        ActivityLogger::log(
+            'Người dùng',
+            'reset_password',
+            'Reset mật khẩu người dùng: ' . $user->username,
+            null,
+            ['username' => $user->username],
+            $user
+        );
 
         return redirect()
             ->route('users.edit', $user)
@@ -204,13 +228,49 @@ class UserController extends Controller
             return back()->with('error', 'Không thể khóa chính tài khoản đang đăng nhập.');
         }
 
+        $oldData = $this->userAuditData($user);
+
         $user->update([
             'is_active' => !$user->is_active,
         ]);
 
+        ActivityLogger::log(
+            'Người dùng',
+            $user->is_active ? 'activate' : 'deactivate',
+            ($user->is_active ? 'Mở khóa tài khoản: ' : 'Khóa tài khoản: ') . $user->username,
+            $oldData,
+            $this->userAuditData($user->fresh(['roles', 'distributionCenter'])),
+            $user
+        );
+
         return redirect()
             ->route('users.index')
             ->with('success', 'Cập nhật trạng thái tài khoản thành công.');
+    }
+
+    private function validatedUserData(Request $request, ?User $user = null, bool $creating = false): array
+    {
+        $data = $request->validate([
+            'name' => 'required|max:255',
+            'username' => 'required|max:100|unique:users,username' . ($user ? ',' . $user->id : ''),
+            'email' => 'nullable|email',
+            'smartca_user_id' => 'nullable|string|max:100',
+            'distribution_center_id' => 'nullable|exists:distribution_centers,id',
+            'role' => 'required|exists:roles,name',
+            'password' => $creating ? ['required', Password::min(8), 'confirmed'] : ['nullable'],
+        ]);
+
+        if ($data['role'] === 'TrungTam' && empty($data['distribution_center_id'])) {
+            validator([], [])->after(function ($validator) {
+                $validator->errors()->add('distribution_center_id', 'Tài khoản Trung tâm phải được gán trung tâm phân phối.');
+            })->validate();
+        }
+
+        if ($data['role'] !== 'TrungTam') {
+            $data['distribution_center_id'] = null;
+        }
+
+        return $data;
     }
 
     private function userOptionText(User $user): string
@@ -222,5 +282,21 @@ class UserController extends Controller
         ])
             ->filter()
             ->implode(' - ');
+    }
+
+    private function userAuditData(User $user): array
+    {
+        $user->loadMissing(['roles', 'distributionCenter']);
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'smartca_user_id' => $user->smartca_user_id,
+            'role' => $user->roles->pluck('name')->implode(', '),
+            'distribution_center' => $user->distributionCenter?->code,
+            'is_active' => $user->is_active,
+        ];
     }
 }

@@ -3,7 +3,7 @@
         <strong>{{ $title ?? 'Dashboard' }}</strong>
     </div>
 
-    <div class="d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center" style="gap: 12px;">
         <span>
             {{ auth()->user()->name ?? '' }}
             @if(auth()->check())
@@ -13,7 +13,11 @@
             @endif
         </span>
 
-        <form method="POST" action="{{ route('logout') }}">
+        <a href="{{ route('profile.edit') }}" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-user-circle"></i> Tài khoản của tôi
+        </a>
+
+        <form method="POST" action="{{ route('logout') }}" class="mb-0">
             @csrf
             <button class="btn btn-sm btn-outline-danger">
                 Đăng xuất

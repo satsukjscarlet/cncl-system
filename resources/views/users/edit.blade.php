@@ -64,6 +64,7 @@
                         @error('password')
                             <span class="invalid-feedback">{{ $message }}</span>
                         @enderror
+                        <small class="text-muted">Tối thiểu 8 ký tự.</small>
                     </div>
 
                     <div class="form-group">

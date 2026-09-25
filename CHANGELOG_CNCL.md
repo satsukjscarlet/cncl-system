@@ -8,6 +8,67 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 - Ghi rõ ngày, nhóm chức năng, file chính đã sửa, nội dung thay đổi và kết quả kiểm tra.
 - Nếu có lỗi chưa xử lý xong, ghi vào phần "Ghi chú".
 
+## 2026-09-25
+
+### Màn tài khoản cá nhân và tự đổi mật khẩu
+
+File chính:
+- `config/adminlte.php`
+- `app/Models/User.php`
+- `app/Http/Controllers/ProfileController.php`
+- `app/Http/Controllers/Auth/PasswordController.php`
+- `app/Http/Requests/ProfileUpdateRequest.php`
+- `resources/views/profile/edit.blade.php`
+- `resources/views/partials/topbar.blade.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Chuyển màn `/profile` sang giao diện AdminLTE để đồng bộ với toàn hệ thống.
+- Thêm mục `Tài khoản của tôi` vào menu để người dùng dễ vào tự cập nhật thông tin.
+- Bổ sung `adminlte_profile_url()` cho model User để user menu góc phải của AdminLTE mở đúng màn profile.
+- Người dùng tự cập nhật được họ tên, email và SmartCA User ID; tên đăng nhập, vai trò, trung tâm chỉ hiển thị đọc.
+- Giữ chức năng tự đổi mật khẩu bằng mật khẩu hiện tại.
+- Ghi activity log khi người dùng cập nhật hồ sơ cá nhân hoặc tự đổi mật khẩu.
+
+Kiểm tra:
+- `php -l` các file PHP đã sửa: pass.
+- `php artisan view:cache`: pass.
+- `php artisan route:list | rg "profile|password|login|logout|register|forgot"`: xác nhận có `GET /profile`, `PATCH /profile`, `PUT /password`, không có register/forgot public.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
+### Tối ưu đăng nhập, đăng xuất và quản lý tài khoản
+
+File chính:
+- `routes/auth.php`
+- `routes/web.php`
+- `app/Http/Controllers/UserController.php`
+- `app/Http/Controllers/ProfileController.php`
+- `app/Http/Requests/ProfileUpdateRequest.php`
+- `resources/views/users/_form.blade.php`
+- `resources/views/users/create.blade.php`
+- `resources/views/users/edit.blade.php`
+- `resources/views/profile/edit.blade.php`
+- `resources/views/profile/partials/update-profile-information-form.blade.php`
+- `resources/views/profile/partials/update-password-form.blade.php`
+- `resources/views/profile/partials/delete-user-form.blade.php`
+- `resources/views/layouts/navigation.blade.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Tắt đăng ký tài khoản công khai, quên mật khẩu và reset mật khẩu qua email công khai để phù hợp hệ thống nội bộ và tránh rủi ro email trùng.
+- Bỏ chức năng người dùng tự xóa tài khoản; tài khoản chỉ nên được quản trị viên khóa/xóa.
+- Việt hóa màn profile và bỏ khối `Delete Account` mặc định của Breeze.
+- Email hồ sơ cá nhân chuyển sang không bắt buộc, đồng bộ với cấu hình cho phép email trùng/để trống khi test.
+- Mật khẩu khi tạo/reset người dùng tối thiểu 8 ký tự.
+- Tài khoản vai trò Trung tâm bắt buộc phải gán Trung tâm phân phối; vai trò khác tự bỏ gán trung tâm.
+- Ghi activity log cho các thao tác tạo, cập nhật, xóa, khóa/mở khóa và reset mật khẩu người dùng.
+
+Kiểm tra:
+- `php -l` các file PHP đã sửa: pass.
+- `php artisan view:cache`: pass.
+- `php artisan route:list | rg "register|forgot-password|reset-password|profile.destroy|login|logout|profile"`: không còn route đăng ký/quên mật khẩu/reset public/tự xóa profile.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+
 ## 2026-09-24
 
 ### Màn hình đăng nhập - cân lại bố cục 50/50 và nền nhận diện

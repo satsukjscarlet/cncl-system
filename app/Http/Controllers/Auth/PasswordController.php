@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\ActivityLogger;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,15 @@ class PasswordController extends Controller
         $request->user()->update([
             'password' => Hash::make($validated['password']),
         ]);
+
+        ActivityLogger::log(
+            'Tài khoản cá nhân',
+            'change_password',
+            'Người dùng tự đổi mật khẩu',
+            null,
+            ['username' => $request->user()->username],
+            $request->user()
+        );
 
         return back()->with('status', 'password-updated');
     }

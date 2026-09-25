@@ -15,7 +15,7 @@
 
     <div class="col-md-6">
         <div class="form-group">
-            <label>Username <span class="text-danger">*</span></label>
+            <label>Tên đăng nhập <span class="text-danger">*</span></label>
             <input type="text" name="username"
                 class="form-control @error('username') is-invalid @enderror"
                 value="{{ old('username', $user->username ?? '') }}" required>
@@ -36,6 +36,7 @@
             @error('email')
                 <span class="invalid-feedback">{{ $message }}</span>
             @enderror
+            <small class="text-muted">Email có thể để trống hoặc dùng chung trong giai đoạn test.</small>
         </div>
     </div>
 
@@ -58,7 +59,6 @@
     </div>
 </div>
 
-
 <div class="row">
     <div class="col-md-6">
         <div class="form-group">
@@ -66,12 +66,12 @@
             <input type="text" name="smartca_user_id"
                 class="form-control @error('smartca_user_id') is-invalid @enderror"
                 value="{{ old('smartca_user_id', $user->smartca_user_id ?? '') }}"
-                placeholder="CCCD/MST/So dien thoai theo tai khoan VNPT SmartCA">
+                placeholder="CCCD/MST/Số điện thoại theo tài khoản VNPT SmartCA">
             @error('smartca_user_id')
                 <span class="invalid-feedback">{{ $message }}</span>
             @enderror
             <small class="text-muted">
-                Dung khi ky so VNPT SmartCA. Khong nhap username noi bo nhu admin neu SmartCA khong cap dinh danh do.
+                Dùng khi ký số VNPT SmartCA. Không nhập username nội bộ nếu SmartCA không cấp định danh đó.
             </small>
         </div>
     </div>
@@ -81,7 +81,7 @@
     <div class="col-md-6">
         <div class="form-group">
             <label>Trung tâm phân phối</label>
-            <select name="distribution_center_id" class="form-control select2">
+            <select name="distribution_center_id" class="form-control @error('distribution_center_id') is-invalid @enderror select2">
                 <option value="">-- Không gán trung tâm --</option>
                 @foreach($centers as $center)
                     <option value="{{ $center->id }}"
@@ -90,8 +90,11 @@
                     </option>
                 @endforeach
             </select>
+            @error('distribution_center_id')
+                <span class="invalid-feedback d-block">{{ $message }}</span>
+            @enderror
             <small class="text-muted">
-                Chỉ cần chọn khi tài khoản thuộc nhóm Trung tâm phân phối.
+                Bắt buộc chọn khi vai trò là Trung tâm phân phối. Vai trò khác sẽ không gán trung tâm.
             </small>
         </div>
     </div>
@@ -121,6 +124,7 @@
                 @error('password')
                     <span class="invalid-feedback">{{ $message }}</span>
                 @enderror
+                <small class="text-muted">Tối thiểu 8 ký tự.</small>
             </div>
         </div>
 

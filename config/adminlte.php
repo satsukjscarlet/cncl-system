@@ -136,7 +136,7 @@ return [
     'usermenu_header_class' => 'bg-primary',
     'usermenu_image' => false,
     'usermenu_desc' => false,
-    'usermenu_profile_url' => false,
+    'usermenu_profile_url' => 'profile',
 
     /*
     |--------------------------------------------------------------------------
@@ -261,7 +261,7 @@ return [
     'register_url' => 'register',
     'password_reset_url' => 'password/reset',
     'password_email_url' => 'password/email',
-    'profile_url' => false,
+    'profile_url' => 'profile',
     'disable_darkmode_routes' => false,
 
     /*
@@ -338,6 +338,11 @@ return [
             'url'  => 'dashboard',
             'icon' => 'fas fa-tachometer-alt',
             'can'  => 'dashboard.view',
+        ],
+        [
+            'text' => 'Tài khoản của tôi',
+            'url'  => 'profile',
+            'icon' => 'fas fa-user-circle',
         ],
 
         ['header' => 'DANH MỤC', 'can' => 'customer.view'],
