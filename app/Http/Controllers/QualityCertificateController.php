@@ -863,6 +863,12 @@ class QualityCertificateController extends Controller
             );
         }
 
+        abort_if(
+            $qualityCertificate->signed_at && $qualityCertificate->pades_status === 'SIGNED_PDF',
+            503,
+            'Không đọc được file PDF đã ký. Vui lòng kiểm tra quyền truy cập file.'
+        );
+
         $pdfContent = app(SignedCertificatePdfService::class)->render(
             $qualityCertificate,
             null,

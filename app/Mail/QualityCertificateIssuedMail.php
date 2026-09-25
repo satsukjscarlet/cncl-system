@@ -43,6 +43,10 @@ class QualityCertificateIssuedMail extends Mailable
             );
         }
 
+        if ($this->certificate->signed_at && $this->certificate->pades_status === 'SIGNED_PDF') {
+            throw new \RuntimeException('Không đọc được file PDF đã ký để đính kèm email.');
+        }
+
         $pdfContent = app(SignedCertificatePdfService::class)->render($this->certificate);
 
         return $mail->attachData(
