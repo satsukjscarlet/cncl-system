@@ -28,7 +28,9 @@ class CheckSmartCaPendingSignatures extends Command
             ->where(fn ($query) => $query->whereNull('pades_status')->orWhere('pades_status', '!=', 'ERROR'))
             ->whereIn('smartca_status', ['PENDING', 'EXPIRED'])
             ->whereNotNull('smartca_transaction_id')
-            ->oldest('smartca_requested_at')
+            ->where(fn ($query) => $query->whereNull('smartca_response->test_data')->orWhere('smartca_response->test_data', false))
+            ->orderByRaw("CASE WHEN smartca_status = 'PENDING' THEN 0 ELSE 1 END")
+            ->oldest('updated_at')
             ->limit($limit)
             ->get();
 
@@ -46,6 +48,9 @@ class CheckSmartCaPendingSignatures extends Command
             $summary['checked']++;
 
             $result = $controller->processSmartCaStatus($certificate, $smartCaService, $padesService);
+
+            // Rotate unsuccessful checks so one batch cannot starve later requests.
+            $certificate->touch();
 
             match ($result['status'] ?? null) {
                 'SIGNED_EMAIL_SENT', 'SIGNED_NO_EMAIL', 'SIGNED_EMAIL_MISSING', 'SIGNED_EMAIL_FAILED' => $summary['signed']++,

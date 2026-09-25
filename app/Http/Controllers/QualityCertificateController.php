@@ -851,23 +851,15 @@ class QualityCertificateController extends Controller
             'Xuất PDF phiếu CNCL: ' . $qualityCertificate->certificate_no
         );
 
-        if (
-            $qualityCertificate->signed_at
-            && $qualityCertificate->pdf_path
-            && Storage::disk('local')->exists($qualityCertificate->pdf_path)
-        ) {
-            return response(
-                Storage::disk('local')->get($qualityCertificate->pdf_path),
-                200,
-                $this->pdfResponseHeaders($qualityCertificate)
-            );
+        $storedPdf = app(\App\Services\StoredSignedCertificatePdf::class);
+        if ($storedPdf->isSigned($qualityCertificate)) {
+            try {
+                $content = $storedPdf->read($qualityCertificate);
+            } catch (\Throwable $exception) {
+                abort(503, $exception->getMessage());
+            }
+            return response($content, 200, $this->pdfResponseHeaders($qualityCertificate));
         }
-
-        abort_if(
-            $qualityCertificate->signed_at && $qualityCertificate->pades_status === 'SIGNED_PDF',
-            503,
-            'Không đọc được file PDF đã ký. Vui lòng kiểm tra quyền truy cập file.'
-        );
 
         $pdfContent = app(SignedCertificatePdfService::class)->render(
             $qualityCertificate,

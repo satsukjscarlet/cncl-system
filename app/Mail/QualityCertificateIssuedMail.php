@@ -7,7 +7,6 @@ use App\Services\SignedCertificatePdfService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
 
 class QualityCertificateIssuedMail extends Mailable
 {
@@ -30,21 +29,13 @@ class QualityCertificateIssuedMail extends Mailable
         $mail = $this->subject('Phiếu Chứng nhận Chất lượng - ' . $this->certificate->certificate_no)
             ->view('emails.quality_certificate_issued');
 
-        if (
-            $this->certificate->signed_at
-            && $this->certificate->pdf_path
-            && Storage::disk('local')->exists($this->certificate->pdf_path)
-        ) {
-            return $mail->attachFromStorageDisk(
-                'local',
-                $this->certificate->pdf_path,
+        $storedPdf = app(\App\Services\StoredSignedCertificatePdf::class);
+        if ($storedPdf->isSigned($this->certificate)) {
+            return $mail->attachData(
+                $storedPdf->read($this->certificate),
                 $this->certificate->certificate_no . '.pdf',
                 ['mime' => 'application/pdf']
             );
-        }
-
-        if ($this->certificate->signed_at && $this->certificate->pades_status === 'SIGNED_PDF') {
-            throw new \RuntimeException('Không đọc được file PDF đã ký để đính kèm email.');
         }
 
         $pdfContent = app(SignedCertificatePdfService::class)->render($this->certificate);

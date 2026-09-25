@@ -1,3 +1,12 @@
+## 2026-09-25 - Dùng thống nhất PDF ký số gốc và xử lý hàng đợi kiểm tra ký
+
+- Trang xem PDF và email dùng chung `StoredSignedCertificatePdf`: đọc nguyên nội dung file đã nhúng chữ ký; không dựng PDF thay thế cho phiếu đã ký/phát hành.
+- Thiếu file, thiếu trạng thái nhúng chữ ký hoặc không có cấu trúc chữ ký PDF thì báo lỗi, không gửi bản dựng lại.
+- Job bỏ qua giao dịch giả lập có `smartca_response.test_data=true`, ưu tiên giao dịch đang chờ và luân phiên các phiếu đã kiểm tra để một nhóm lỗi không chặn các phiếu sau.
+- Giữ nguyên thuật toán phân trang/cân bằng trang cuối theo thiết kế trước đây (cho phép giữ một dòng ở trang cuối).
+- Kiểm tra PDF bản nháp của 5 phiếu mới nhất NP/TP/HP/HD/TH-0011: lần lượt 78/56/40/99/66 dòng, 9/7/5/11/7 trang; đủ thứ tự dòng, phần bảng và ghi chú nằm trước khung ký hiện tại. Không thay đổi file đã gửi ký.
+- Kiểm tra file phiếu số 5 và dữ liệu đính kèm email: trùng từng byte; kiểm tra trường hợp không có PDF gốc bị chặn. Máy chủ chưa có PHPUnit; đã chạy kiểm tra PHP trực tiếp và kiểm tra cú pháp.
+
 # CNCL Update Log
 
 File này dùng để ghi lại các cập nhật chức năng/kỹ thuật của hệ thống CNCL từ ngày 2026-08-29.
