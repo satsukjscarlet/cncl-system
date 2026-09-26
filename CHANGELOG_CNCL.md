@@ -19,6 +19,23 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 
 ## 2026-09-26
 
+### In ký tươi - đồng bộ font thông tin khách hàng giữa In đơn và In bộ
+
+File chính:
+- `app/Services/HardCopyCertificatePdfService.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Đồng bộ phần giá trị `Tên khách hàng`, `Tên công trình`, `Địa điểm công trình`, `Ngày xuất hàng` của mẫu `In đơn` theo mẫu `In bộ`.
+- Giá trị thông tin chuyển sang Times New Roman đậm, màu đen, cỡ 13; nhãn vẫn giữ Times New Roman thường, màu đen, cỡ 13.
+- Chuẩn hóa text trước khi vẽ để hạn chế lỗi chữ dài/liền ký tự.
+
+Kiểm tra:
+- `php -l app/Services/HardCopyCertificatePdfService.php`: pass.
+- Render thử PDF `In đơn` và `In bộ` bằng phiếu đã ký gần nhất: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
 ### In ký tươi - tách In đơn và In bộ
 
 File chính:

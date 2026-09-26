@@ -164,9 +164,10 @@ class HardCopyCertificatePdfService
             $this->pdf->SetXY($x + $indexW, $y);
             $this->pdf->MultiCell($labelW, $height, $label, 0, 'L', false, 0, '', '', true, 0, false, true, $height, 'T');
 
-            $this->pdf->SetTextColor(255, 0, 0);
+            $this->pdf->SetTextColor(0, 0, 0);
+            $this->pdf->SetFont($this->fontBold, '', 13);
             $this->pdf->SetXY($x + $indexW + $labelW, $y);
-            $this->pdf->MultiCell($valueW, $height, $value, 0, 'L', false, 1, '', '', true, 0, false, true, $height, 'T');
+            $this->pdf->MultiCell($valueW, $height, $this->normalizeText($value), 0, 'L', false, 1, '', '', true, 0, false, true, $height, 'T');
 
             $y += $height;
         }
