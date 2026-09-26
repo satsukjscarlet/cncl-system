@@ -11,6 +11,7 @@ use App\Models\QualityCertificate;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\HardCopyCertificatePdfService;
+use App\Services\HardCopyBatchCertificatePdfService;
 use App\Services\NotificationService;
 use App\Services\SignedCertificatePdfService;
 use App\Services\SmartCaPadesService;
@@ -117,6 +118,14 @@ class QualityCertificateController extends Controller
                             });
                     });
             }
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('quality_certificates.created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('quality_certificates.created_at', '<=', $request->date_to);
         }
 
         [$sort, $direction] = $this->sortInput($request, [
@@ -1166,7 +1175,10 @@ class QualityCertificateController extends Controller
 
         $data = $request->validate([
             'reason' => ['required', 'string', 'max:2000'],
+            'print_template' => ['nullable', 'in:single,batch'],
         ]);
+
+        $printTemplate = $data['print_template'] ?? 'single';
 
         $qualityCertificate->load([
             'request.distributionCenter',
@@ -1184,6 +1196,7 @@ class QualityCertificateController extends Controller
             'user_id' => Auth::id(),
             'reason' => $data['reason'],
             'print_no' => $printNo,
+            'print_template' => $printTemplate,
         ]);
 
         $qualityCertificate->update([
@@ -1193,24 +1206,26 @@ class QualityCertificateController extends Controller
         ActivityLogger::log(
             'Phiếu CNCL',
             'print_hard_copy',
-            'In phiếu ký tươi: ' . $qualityCertificate->certificate_no . '. Lý do: ' . $data['reason'],
+            'In phiếu ký tươi (' . ($printTemplate === 'batch' ? 'In bộ' : 'In đơn') . '): ' . $qualityCertificate->certificate_no . '. Lý do: ' . $data['reason'],
             $oldData,
             $qualityCertificate->fresh()->toArray(),
             $qualityCertificate
         );
 
-        $pdfContent = app(HardCopyCertificatePdfService::class)->render(
-            $qualityCertificate->fresh()->load([
-                'request.distributionCenter',
-                'request.customer',
-                'details.product',
-                'creator',
-            ])
-        );
+        $freshCertificate = $qualityCertificate->fresh()->load([
+            'request.distributionCenter',
+            'request.customer',
+            'details.product',
+            'creator',
+        ]);
+
+        $pdfContent = $printTemplate === 'batch'
+            ? app(HardCopyBatchCertificatePdfService::class)->render($freshCertificate)
+            : app(HardCopyCertificatePdfService::class)->render($freshCertificate);
 
         return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $qualityCertificate->certificate_no . '_ky_tuoi_lan_' . $printNo . '.pdf"',
+            'Content-Disposition' => 'inline; filename="' . $qualityCertificate->certificate_no . '_ky_tuoi_' . $printTemplate . '_lan_' . $printNo . '.pdf"',
         ]);
     }
 

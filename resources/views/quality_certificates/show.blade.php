@@ -152,8 +152,23 @@
 
                         @can('certificate.print')
                             @if($qualityCertificate->status !== 'REVOKED')
-                                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#printHardCopyModal">
-                                    <i class="fas fa-print"></i> In ký tươi
+                                <button type="button"
+                                        class="btn btn-warning js-print-hard-copy"
+                                        data-toggle="modal"
+                                        data-target="#printHardCopyModal"
+                                        data-template="single"
+                                        data-label="In đơn"
+                                        data-description="In theo mẫu ký tươi hiện tại, giữ vùng ghi chú/chữ ký cố định trên tất cả các trang.">
+                                    <i class="fas fa-print"></i> In đơn
+                                </button>
+                                <button type="button"
+                                        class="btn btn-info js-print-hard-copy"
+                                        data-toggle="modal"
+                                        data-target="#printHardCopyModal"
+                                        data-template="batch"
+                                        data-label="In bộ"
+                                        data-description="In theo mẫu phân trang mới, các trang trước tận dụng diện tích bảng và chỉ chừa khoảng ký ở trang cuối.">
+                                    <i class="fas fa-layer-group"></i> In bộ
                                 </button>
                             @endif
                         @endcan
@@ -432,6 +447,7 @@
             <thead class="thead-light">
                 <tr>
                     <th style="width:80px">Lần in</th>
+                    <th style="width:110px">Mẫu in</th>
                     <th>Người in</th>
                     <th>Lý do</th>
                     <th>Thời gian</th>
@@ -442,13 +458,20 @@
                 @forelse($qualityCertificate->printLogs as $log)
                     <tr>
                         <td>{{ $log->print_no }}</td>
+                        <td>
+                            @if(($log->print_template ?? 'single') === 'batch')
+                                <span class="badge badge-info">In bộ</span>
+                            @else
+                                <span class="badge badge-warning">In đơn</span>
+                            @endif
+                        </td>
                         <td>{{ $log->user->name ?? '-' }}</td>
                         <td>{{ $log->reason }}</td>
                         <td>{{ optional($log->created_at)->format('d/m/Y H:i') }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-3">
+                        <td colspan="5" class="text-center text-muted py-3">
                             Chưa có lịch sử in ký tươi.
                         </td>
                     </tr>
@@ -464,9 +487,10 @@
         <form method="POST" action="{{ route('quality-certificates.print-hard-copy', $qualityCertificate) }}"
               target="_blank" class="modal-content">
             @csrf
+            <input type="hidden" name="print_template" id="printHardCopyTemplate" value="single">
 
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-print"></i> In phiếu ký tươi</h5>
+                <h5 class="modal-title"><i class="fas fa-print"></i> <span id="printHardCopyTitle">In đơn</span></h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
 
@@ -475,6 +499,9 @@
                     Mỗi lần in phiếu ký tươi phải nhập lý do và sẽ được lưu lịch sử.
                     <br>
                     Phiếu này đã in: <strong>{{ $qualityCertificate->print_count }}</strong> lần.
+                    <div class="mt-2" id="printHardCopyDescription">
+                        In theo mẫu ký tươi hiện tại, giữ vùng ghi chú/chữ ký cố định trên tất cả các trang.
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -486,7 +513,7 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Đóng</button>
-                <button class="btn btn-warning"><i class="fas fa-print"></i> In phiếu</button>
+                <button class="btn btn-warning" id="printHardCopySubmit"><i class="fas fa-print"></i> In đơn</button>
             </div>
         </form>
     </div>
@@ -627,4 +654,39 @@
 </div>
 @endif
 @endcan
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.js-print-hard-copy').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var template = button.getAttribute('data-template') || 'single';
+                var label = button.getAttribute('data-label') || 'In đơn';
+                var description = button.getAttribute('data-description') || '';
+                var submitClass = template === 'batch' ? 'btn btn-info' : 'btn btn-warning';
+
+                var templateInput = document.getElementById('printHardCopyTemplate');
+                var title = document.getElementById('printHardCopyTitle');
+                var descriptionBox = document.getElementById('printHardCopyDescription');
+                var submit = document.getElementById('printHardCopySubmit');
+
+                if (templateInput) {
+                    templateInput.value = template;
+                }
+
+                if (title) {
+                    title.textContent = label;
+                }
+
+                if (descriptionBox) {
+                    descriptionBox.textContent = description;
+                }
+
+                if (submit) {
+                    submit.className = submitClass;
+                    submit.innerHTML = '<i class="fas fa-print"></i> ' + label;
+                }
+            });
+        });
+    });
+</script>
 @stop

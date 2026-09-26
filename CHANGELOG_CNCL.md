@@ -17,7 +17,66 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 - Ghi rõ ngày, nhóm chức năng, file chính đã sửa, nội dung thay đổi và kết quả kiểm tra.
 - Nếu có lỗi chưa xử lý xong, ghi vào phần "Ghi chú".
 
+## 2026-09-26
+
+### In ký tươi - tách In đơn và In bộ
+
+File chính:
+- `app/Http/Controllers/QualityCertificateController.php`
+- `app/Services/HardCopyBatchCertificatePdfService.php`
+- `app/Models/PrintLog.php`
+- `database/migrations/2026_09_26_000001_add_print_template_to_print_logs_table.php`
+- `resources/views/quality_certificates/show.blade.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Đổi nút in ký tươi hiện tại thành `In đơn`, vẫn dùng mẫu cũ có vùng ghi chú/chữ ký cố định trên tất cả các trang.
+- Bổ sung nút `In bộ`, dùng mẫu phân trang mới theo hướng phiếu điện tử: các trang trước tận dụng diện tích bảng, trang cuối chừa khoảng trống bên dưới để ký/in trên phôi mới.
+- Bổ sung service render PDF riêng cho mẫu `In bộ` để không ảnh hưởng mẫu `In đơn`.
+- Lưu loại mẫu in vào lịch sử in bằng trường `print_template` để phân biệt `In đơn` và `In bộ`.
+
+Kiểm tra:
+- `php -l` controller, model và service mới: pass.
+- `php artisan migrate`: pass.
+- `php artisan view:cache`: pass.
+- Render thử PDF `In đơn` và `In bộ` bằng phiếu đã ký gần nhất: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
+### Danh sách phiếu CNCL - tối ưu giao diện lọc và thao tác
+
+File chính:
+- `resources/views/quality_certificates/index.blade.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Thiết kế lại vùng bộ lọc theo dạng lưới responsive, dễ thao tác hơn trên màn hình rộng và màn hình nhỏ.
+- Bổ sung chip hiển thị nhanh các bộ lọc đang áp dụng: từ khóa, trung tâm, khoảng ngày và trạng thái.
+- Tối ưu bảng danh sách phiếu: nhấn mạnh số phiếu, gom thông tin phụ thành dòng nhỏ, canh lại cụm thao tác.
+- Nút `Gom cấp lại` hiển thị số phiếu đã chọn và trạng thái chọn tất cả rõ hơn.
+- Giữ nguyên phân quyền: tài khoản Trung tâm không hiển thị bộ lọc Trung tâm.
+
+Kiểm tra:
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
 ## 2026-09-25
+
+### Danh sách phiếu CNCL - bổ sung lọc từ ngày đến ngày
+
+File chính:
+- `app/Http/Controllers/QualityCertificateController.php`
+- `resources/views/quality_certificates/index.blade.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Bổ sung bộ lọc `Từ ngày lập` và `Đến ngày lập` tại màn danh sách phiếu CNCL.
+- Bộ lọc áp dụng theo ngày lập phiếu `quality_certificates.created_at`.
+- Giữ nguyên phân quyền: tài khoản Trung tâm vẫn không hiển thị bộ lọc Trung tâm.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/QualityCertificateController.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
 
 ### Màn tài khoản cá nhân và tự đổi mật khẩu
 
