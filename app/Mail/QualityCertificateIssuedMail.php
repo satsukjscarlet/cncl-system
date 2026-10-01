@@ -22,8 +22,12 @@ class QualityCertificateIssuedMail extends Mailable
         $this->certificate->load([
             'request.distributionCenter',
             'request.customer',
+            'request.reissueOfCertificate.revokedBy',
+            'request.reissueCertificates.revokedBy',
             'details.product',
             'creator',
+            'replacesCertificate.revokedBy',
+            'replacedByCertificate',
         ]);
 
         $mail = $this->subject('Phiếu Chứng nhận Chất lượng - ' . $this->certificate->certificate_no)

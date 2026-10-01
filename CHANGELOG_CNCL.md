@@ -1479,6 +1479,8 @@ Kiểm tra:
 File chính:
 - `app/Services/SignedCertificatePdfService.php`
 - `resources/views/quality_certificates/show.blade.php`
+- `app/Mail/QualityCertificateIssuedMail.php`
+- `resources/views/emails/quality_certificate_issued.blade.php`
 
 Nội dung:
 - Sửa cách tính chiều cao dòng thông tin khách hàng/công trình trong mẫu PDF ký điện tử.
@@ -1486,6 +1488,8 @@ Nội dung:
 - Tránh trường hợp tên khách hàng hoặc tên công trình dài bị cắt mất dòng cuối trong ô `Tên khách hàng`.
 - Tạm bỏ khối debug `Dữ liệu API VNPT SmartCA` khỏi màn chi tiết phiếu vì khối này gây lỗi ParseError trên Blade runtime, làm vỡ toàn bộ màn chi tiết.
 - Dữ liệu SmartCA vẫn giữ trong DB; chỉ ẩn phần debug admin khỏi giao diện để khôi phục màn hình chính ổn định trước.
+- Email phát hành phiếu hiển thị rõ khi phiếu là phiếu cấp lại: phiếu mới thay cho phiếu cũ nào, lý do cấp lại, trạng thái phiếu cũ, ngày hủy/thu hồi và lý do hủy/thu hồi.
+- Mail class load thêm quan hệ `reissueOfCertificate`, `reissueCertificates`, `replacesCertificate` để template email có đủ dữ liệu cấp lại/hủy.
 
 Kiểm tra:
 - `php -l app/Services/SignedCertificatePdfService.php`: pass.
@@ -1494,6 +1498,8 @@ Kiểm tra:
 - Render thử PDF bằng dữ liệu thật: pass, đã tạo các file kiểm tra trong `storage/app/pdf-render-check-*.pdf` và `storage/app/pdf-render-long-customer-195.pdf`.
 - `php artisan optimize:clear`: pass.
 - Render trực tiếp view `quality_certificates.show` cho phiếu `306`: pass.
+- Render thử email phiếu cấp lại `201`: pass, có thông tin cấp lại, phiếu cũ và trạng thái hủy.
+- `php artisan test --filter=CertificateWorkflowTest`: pass.
 
 ### Sửa hiển thị yêu cầu PTN/Trưởng PTN trả lại tại màn DVKH - 22/09/2026
 

@@ -7,6 +7,17 @@
 <body style="font-family: Arial, sans-serif; font-size: 14px; color: #222; line-height: 1.5;">
     @php
         $lookupUrl = route('quality-certificates.show', $certificate);
+        $reissueCertificates = collect();
+
+        if ($certificate->request?->reissueCertificates?->isNotEmpty()) {
+            $reissueCertificates = $certificate->request->reissueCertificates;
+        } elseif ($certificate->request?->reissueOfCertificate) {
+            $reissueCertificates = collect([$certificate->request->reissueOfCertificate]);
+        } elseif ($certificate->replacesCertificate) {
+            $reissueCertificates = collect([$certificate->replacesCertificate]);
+        }
+
+        $isReissue = $reissueCertificates->isNotEmpty();
     @endphp
 
     <p>Kính gửi Trung tâm phân phối,</p>
@@ -46,6 +57,52 @@
             <td>{{ $certificate->request->invoice_no ?? '' }}</td>
         </tr>
     </table>
+
+    @if($isReissue)
+        <div style="border: 1px solid #f0c36d; background: #fff8e5; padding: 12px 14px; margin: 18px 0; border-radius: 4px;">
+            <p style="margin: 0 0 8px 0;">
+                <strong>Lưu ý:</strong> Phiếu này là phiếu <strong>cấp lại</strong>.
+                Vui lòng sử dụng phiếu mới <strong>{{ $certificate->certificate_no }}</strong> thay cho phiếu cũ.
+            </p>
+
+            @if($certificate->request?->reissue_reason)
+                <p style="margin: 0 0 8px 0;">
+                    <strong>Lý do cấp lại:</strong> {{ $certificate->request->reissue_reason }}
+                </p>
+            @endif
+
+            <table cellpadding="6" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; background: #fff;">
+                <thead>
+                    <tr>
+                        <th align="left" style="border: 1px solid #ead28f;">Phiếu cũ</th>
+                        <th align="left" style="border: 1px solid #ead28f;">Trạng thái</th>
+                        <th align="left" style="border: 1px solid #ead28f;">Ngày hủy/thu hồi</th>
+                        <th align="left" style="border: 1px solid #ead28f;">Lý do hủy/thu hồi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($reissueCertificates as $oldCertificate)
+                        <tr>
+                            <td style="border: 1px solid #ead28f;">{{ $oldCertificate->certificate_no }}</td>
+                            <td style="border: 1px solid #ead28f;">
+                                @if($oldCertificate->status === 'REVOKED')
+                                    Đã hủy/thu hồi
+                                @else
+                                    {{ $oldCertificate->status ?: '-' }}
+                                @endif
+                            </td>
+                            <td style="border: 1px solid #ead28f;">
+                                {{ $oldCertificate->revoked_at ? $oldCertificate->revoked_at->format('d/m/Y H:i') : '-' }}
+                            </td>
+                            <td style="border: 1px solid #ead28f;">
+                                {{ $oldCertificate->revoked_reason ?: '-' }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 
     <p>
         Phiếu Chứng nhận Chất lượng được đính kèm trong email này dưới dạng file PDF.
