@@ -19,7 +19,7 @@ class HardCopyBatchCertificatePdfService
     private const TITLE_TOP = 92.0;
     private const NORMAL_TABLE_BOTTOM = 690.0;
     private const LAST_TABLE_BOTTOM = 505.0;
-    private const FOOTER_SAFE_TOP = 705.0;
+    private const FOOTER_SAFE_TOP = 725.0;
 
     private TCPDF $pdf;
     private string $fontRegular = 'times';
