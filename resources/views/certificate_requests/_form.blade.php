@@ -322,8 +322,25 @@
         <button type="button" class="btn btn-sm btn-outline-success" data-toggle="modal" data-target="#importProductsModal">
             <i class="fas fa-file-import"></i> Import Excel
         </button>
-        <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#pasteProductsModal">
+        <button type="button"
+                class="btn btn-sm btn-outline-primary js-open-paste-products"
+                data-toggle="modal"
+                data-target="#pasteProductsModal"
+                data-lookup-by="code"
+                data-title="Dán danh sách sản phẩm theo mã"
+                data-description="Copy 2 cột từ Excel: mã sản phẩm và số lượng. Có thể giữ dòng tiêu đề. Nếu mã sản phẩm trùng, hệ thống sẽ tự cộng dồn số lượng."
+                data-placeholder="ma_san_pham	so_luong&#10;PE2516100	44&#10;PE2516	22">
             <i class="fas fa-paste"></i> Dán từ Excel
+        </button>
+        <button type="button"
+                class="btn btn-sm btn-outline-info js-open-paste-products"
+                data-toggle="modal"
+                data-target="#pasteProductsModal"
+                data-lookup-by="name"
+                data-title="Dán danh sách sản phẩm theo tên"
+                data-description="Copy 2 cột từ Excel: tên sản phẩm và số lượng. Tên sản phẩm phải khớp chính xác với danh mục. Nếu tên bị trùng trong danh mục, hãy dán theo mã sản phẩm."
+                data-placeholder="ten_san_pham	so_luong&#10;Ống HDPE(PE100) DN 25 PN16 - DN25	44&#10;Ống HDPE(PE100) DN 32 PN16 - DN32	22">
+            <i class="fas fa-paste"></i> Dán theo tên
         </button>
     </div>
 </div>
@@ -406,14 +423,14 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">
+                <h5 class="modal-title" id="paste-products-title">
                     <i class="fas fa-paste"></i> Dán danh sách sản phẩm từ Excel
                 </h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
 
             <div class="modal-body">
-                <div class="alert alert-info">
+                <div class="alert alert-info" id="paste-products-description">
                     Copy 2 cột từ Excel rồi dán vào ô bên dưới: <strong>mã sản phẩm</strong> và <strong>số lượng</strong>.
                     Có thể giữ dòng tiêu đề. Nếu mã sản phẩm trùng, hệ thống sẽ tự cộng dồn số lượng.
                 </div>
@@ -565,6 +582,9 @@
             const pasteProductsSubmit = document.getElementById('paste-products-submit');
             const pasteProductsText = document.getElementById('paste_products_text');
             const pasteProductsErrors = document.getElementById('paste-products-errors');
+            const pasteProductsTitle = document.getElementById('paste-products-title');
+            const pasteProductsDescription = document.getElementById('paste-products-description');
+            const pasteProductOpenButtons = document.querySelectorAll('.js-open-paste-products');
             const commitmentCheckbox = document.getElementById('customer_commitment_confirmed');
             const submitRequestButton = document.getElementById('request-submit-button');
             const hardCopySwitch = document.getElementById('require_hard_copy');
@@ -922,6 +942,30 @@
                 quantityInput.value = parseFloat(quantityInput.value || '0') + parseFloat(item.quantity || '0');
             }
 
+            pasteProductOpenButtons.forEach(function(button) {
+                button.addEventListener('click', function() {
+                    const lookupBy = button.dataset.lookupBy || 'code';
+
+                    if (pasteProductsSubmit) {
+                        pasteProductsSubmit.dataset.lookupBy = lookupBy;
+                    }
+
+                    if (pasteProductsTitle && button.dataset.title) {
+                        pasteProductsTitle.innerHTML = '<i class="fas fa-paste"></i> ' + button.dataset.title;
+                    }
+
+                    if (pasteProductsDescription && button.dataset.description) {
+                        pasteProductsDescription.textContent = button.dataset.description;
+                    }
+
+                    if (pasteProductsText && button.dataset.placeholder) {
+                        pasteProductsText.placeholder = button.dataset.placeholder;
+                    }
+
+                    pasteShowErrors([]);
+                });
+            });
+
             if (pasteProductsSubmit) {
                 pasteProductsSubmit.addEventListener('click', function() {
                     pasteShowErrors([]);
@@ -929,7 +973,9 @@
                     const text = (pasteProductsText.value || '').trim();
 
                     if (!text) {
-                        pasteShowErrors(['Vui lòng dán danh sách mã sản phẩm và số lượng từ Excel.']);
+                        const lookupBy = pasteProductsSubmit.dataset.lookupBy || 'code';
+                        const lookupLabel = lookupBy === 'name' ? 'tên sản phẩm' : 'mã sản phẩm';
+                        pasteShowErrors(['Vui lòng dán danh sách ' + lookupLabel + ' và số lượng từ Excel.']);
                         return;
                     }
 
@@ -944,7 +990,8 @@
                             'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
                         },
                         body: JSON.stringify({
-                            products_text: text
+                            products_text: text,
+                            lookup_by: pasteProductsSubmit.dataset.lookupBy || 'code'
                         })
                     })
                         .then(function(response) {

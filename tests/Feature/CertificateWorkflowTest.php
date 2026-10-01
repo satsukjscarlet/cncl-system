@@ -1113,6 +1113,44 @@ class CertificateWorkflowTest extends TestCase
             ->assertJsonFragment(['Dòng 4: Chưa nhập mã sản phẩm.']);
     }
 
+    public function test_request_product_paste_can_map_exact_product_names(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $secondProduct = $this->createProductVariant('PVC-DN75', 'Ong PVC-U DN75', 'DN75');
+
+        $response = $this->actingAs($centerUser)
+            ->postJson(route('certificate-requests.paste-products'), [
+                'lookup_by' => 'name',
+                'products_text' => "ten_san_pham\tso_luong\n{$this->product->product_name}\t10\n{$this->product->product_name}\t7\n{$secondProduct->product_name}\t5",
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('count', 2);
+
+        $items = collect($response->json('items'));
+        $this->assertEquals(17, (float) $items->firstWhere('product_id', $this->product->id)['quantity']);
+        $this->assertEquals(5, (float) $items->firstWhere('product_id', $secondProduct->id)['quantity']);
+    }
+
+    public function test_request_product_paste_by_name_reports_unknown_and_duplicate_names(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $duplicateName = 'Ong PVC-U trung ten';
+        $this->createProductVariant('PVC-DUP-1', $duplicateName, 'DN21');
+        $this->createProductVariant('PVC-DUP-2', $duplicateName, 'DN21');
+
+        $this->actingAs($centerUser)
+            ->postJson(route('certificate-requests.paste-products'), [
+                'lookup_by' => 'name',
+                'products_text' => "ten_san_pham\tso_luong\nKhong co trong danh muc\t3\n{$duplicateName}\t5\n\t7",
+            ])
+            ->assertStatus(422)
+            ->assertJsonFragment(['Dòng 2: Không tìm thấy tên sản phẩm "Khong co trong danh muc".'])
+            ->assertJsonFragment(['Dòng 3: Tên sản phẩm "Ong PVC-U trung ten" đang trùng 2 sản phẩm trong danh mục (PVC-DUP-1, PVC-DUP-2). Vui lòng dùng chức năng dán theo mã sản phẩm.'])
+            ->assertJsonFragment(['Dòng 4: Chưa nhập tên sản phẩm.']);
+    }
+
     public function test_single_reissue_request_can_be_edited_before_dvkh_revokes_old_certificate(): void
     {
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();

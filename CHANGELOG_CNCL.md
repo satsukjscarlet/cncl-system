@@ -1,3 +1,25 @@
+## 2026-10-01 - Dán Excel sản phẩm theo tên trong yêu cầu cấp phiếu
+
+File chính:
+- `app/Http/Controllers/CertificateRequestController.php`
+- `resources/views/certificate_requests/_form.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Thêm nút `Dán theo tên` cạnh nút `Dán từ Excel` tại danh sách sản phẩm đề nghị cấp phiếu.
+- API dán Excel nhận `lookup_by=code|name`; chế độ theo tên yêu cầu tên sản phẩm khớp chính xác với danh mục.
+- Nếu tên sản phẩm không tồn tại hoặc bị trùng nhiều mã trong danh mục, hệ thống trả lỗi rõ ràng và hướng dẫn dùng dán theo mã sản phẩm.
+- Bổ sung test cho dán theo mã, dán theo tên, lỗi tên không tồn tại và lỗi tên trùng.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/CertificateRequestController.php`
+- `php -l resources/views/certificate_requests/_form.blade.php`
+- `php artisan view:cache`
+- `php artisan test --filter=request_product_paste`
+- `php artisan test --filter=CertificateWorkflowTest`
+- `php artisan test --filter=RoleWorkspaceAccessTest`
+
 ## 2026-09-25 - Dùng thống nhất PDF ký số gốc và xử lý hàng đợi kiểm tra ký
 
 - Trang xem PDF và email dùng chung `StoredSignedCertificatePdf`: đọc nguyên nội dung file đã nhúng chữ ký; không dựng PDF thay thế cho phiếu đã ký/phát hành.

@@ -268,15 +268,19 @@ class CertificateRequestController extends Controller
     {
         $data = $request->validate([
             'products_text' => ['required', 'string', 'max:200000'],
+            'lookup_by' => ['nullable', 'in:code,name'],
         ]);
 
+        $lookupBy = $data['lookup_by'] ?? 'code';
+        $productColumn = $lookupBy === 'name' ? 'ten_san_pham' : 'ma_san_pham';
+
         $rows = collect(preg_split('/\R/u', trim($data['products_text'])))
-            ->map(function ($line) {
+            ->map(function ($line) use ($productColumn) {
                 $line = rtrim((string) $line);
 
                 if (trim($line) === '') {
                     return [
-                        'ma_san_pham' => '',
+                        $productColumn => '',
                         'so_luong' => null,
                     ];
                 }
@@ -288,7 +292,7 @@ class CertificateRequestController extends Controller
                 }
 
                 return [
-                    'ma_san_pham' => trim((string) ($columns[0] ?? '')),
+                    $productColumn => trim((string) ($columns[0] ?? '')),
                     'so_luong' => trim((string) ($columns[1] ?? '')),
                 ];
             });
@@ -303,6 +307,13 @@ class CertificateRequestController extends Controller
         $errors = [];
         $lineNo = 1;
         $parsedRows = collect();
+        $lookupBy = $rows->contains(fn ($row) => array_key_exists('ten_san_pham', (array) $row) || array_key_exists('product_name', (array) $row))
+            ? 'name'
+            : 'code';
+        $lookupLabel = $lookupBy === 'name' ? 'tên sản phẩm' : 'mã sản phẩm';
+        $headerValues = $lookupBy === 'name'
+            ? ['ten_san_pham', 'tên sản phẩm', 'ten san pham', 'product_name']
+            : ['ma_san_pham', 'mã sản phẩm', 'ma san pham', 'product_code'];
 
         if ($rows->count() > 1000) {
             return response()->json([
@@ -312,35 +323,34 @@ class CertificateRequestController extends Controller
         }
 
         foreach ($rows as $row) {
-            $productCode = trim((string) ($row['ma_san_pham'] ?? $row['product_code'] ?? ''));
+            $productLookup = trim((string) ($row['ma_san_pham'] ?? $row['product_code'] ?? $row['ten_san_pham'] ?? $row['product_name'] ?? ''));
             $quantityRaw = $row['so_luong'] ?? $row['quantity'] ?? null;
+            $normalizedLookup = mb_strtolower($productLookup);
 
-            if (
-                $lineNo === 1
-                && in_array(mb_strtolower($productCode), ['ma_san_pham', 'mã sản phẩm', 'ma san pham', 'product_code'], true)
-            ) {
+            if ($lineNo === 1 && in_array($normalizedLookup, $headerValues, true)) {
                 $lineNo++;
                 continue;
             }
 
-            if ($productCode === '' && blank($quantityRaw)) {
+            if ($productLookup === '' && blank($quantityRaw)) {
                 $lineNo++;
                 continue;
             }
 
-            if ($productCode === '') {
-                $errors[] = 'Dòng ' . $lineNo . ': Chưa nhập mã sản phẩm.';
+            if ($productLookup === '') {
+                $errors[] = 'Dòng ' . $lineNo . ': Chưa nhập ' . $lookupLabel . '.';
             }
 
             if (!is_numeric($quantityRaw) || (float) $quantityRaw <= 0) {
                 $errors[] = 'Dòng ' . $lineNo . ': Số lượng phải là số lớn hơn 0.';
             }
 
-            if ($productCode !== '' && is_numeric($quantityRaw) && (float) $quantityRaw > 0) {
+            if ($productLookup !== '' && is_numeric($quantityRaw) && (float) $quantityRaw > 0) {
                 $parsedRows->push([
                     'line' => $lineNo,
-                    'product_code' => $productCode,
-                    'product_code_normalized' => mb_strtoupper($productCode),
+                    'product_lookup' => $productLookup,
+                    'product_code_normalized' => mb_strtoupper($productLookup),
+                    'product_name_normalized' => $this->normalizeProductName($productLookup),
                     'quantity' => (float) $quantityRaw,
                 ]);
             }
@@ -352,6 +362,57 @@ class CertificateRequestController extends Controller
             $errors[] = $sourceLabel . ' không có dòng sản phẩm hợp lệ.';
         }
 
+        if ($lookupBy === 'name') {
+            $productsByName = Product::with('qualityStandard')
+                ->where('is_active', true)
+                ->get()
+                ->groupBy(fn (Product $product) => $this->normalizeProductName($product->product_name))
+                ->map(fn ($products) => $products->values());
+
+            foreach ($parsedRows as $row) {
+                $matchedProducts = $productsByName->get($row['product_name_normalized'], collect());
+
+                if ($matchedProducts->isEmpty()) {
+                    $errors[] = 'Dòng ' . $row['line'] . ': Không tìm thấy tên sản phẩm "' . $row['product_lookup'] . '".';
+                    continue;
+                }
+
+                if ($matchedProducts->count() > 1) {
+                    $errors[] = 'Dòng ' . $row['line'] . ': Tên sản phẩm "' . $row['product_lookup'] . '" đang trùng '
+                        . $matchedProducts->count() . ' sản phẩm trong danh mục ('
+                        . $matchedProducts->pluck('product_code')->implode(', ')
+                        . '). Vui lòng dùng chức năng dán theo mã sản phẩm.';
+                }
+            }
+
+            if (!empty($errors)) {
+                return [
+                    'errors' => $errors,
+                    'items' => collect(),
+                ];
+            }
+
+            $items = $parsedRows
+                ->groupBy('product_name_normalized')
+                ->map(function ($rows, $normalizedName) use ($productsByName) {
+                    $product = $productsByName->get($normalizedName)->first();
+
+                    return [
+                        'product_id' => $product->id,
+                        'product_code' => $product->product_code,
+                        'product_name' => $product->product_name,
+                        'product_text' => $this->productOptionDisplayText($product),
+                        'quantity' => $rows->sum('quantity'),
+                    ];
+                })
+                ->values();
+
+            return [
+                'errors' => [],
+                'items' => $items,
+            ];
+        }
+
         $products = Product::with('qualityStandard')
             ->where('is_active', true)
             ->whereIn(DB::raw('UPPER(product_code)'), $parsedRows->pluck('product_code_normalized')->unique()->values())
@@ -360,7 +421,7 @@ class CertificateRequestController extends Controller
 
         foreach ($parsedRows as $row) {
             if (!$products->has($row['product_code_normalized'])) {
-                $errors[] = 'Dòng ' . $row['line'] . ': Không tìm thấy mã sản phẩm "' . $row['product_code'] . '".';
+                $errors[] = 'Dòng ' . $row['line'] . ': Không tìm thấy mã sản phẩm "' . $row['product_lookup'] . '".';
             }
         }
 
@@ -390,6 +451,11 @@ class CertificateRequestController extends Controller
             'errors' => [],
             'items' => $items,
         ];
+    }
+
+    private function normalizeProductName(string $name): string
+    {
+        return mb_strtolower(trim(preg_replace('/\s+/u', ' ', $name) ?? $name));
     }
 
     private function productsImportResponse(array|\Illuminate\Http\JsonResponse $result)
@@ -1216,4 +1282,3 @@ class CertificateRequestController extends Controller
         ];
     }
 }
-
