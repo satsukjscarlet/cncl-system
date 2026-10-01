@@ -12,6 +12,7 @@ class PrintLog extends Model
         'reason',
         'print_no',
         'print_template',
+        'print_mode',
     ];
 
     public function certificate()

@@ -41,7 +41,20 @@
     $statusMeta = $qualityCertificate->displayStatusMeta();
     $canApproveForSigning = $qualityCertificate->canApproveForSigningQueue();
     $canSendSignature = $qualityCertificate->canSendSignatureRequest();
+    $canEmergencyPrintHardCopy = $qualityCertificate->canEmergencyPrintHardCopy();
+    $emergencyPrintLogs = $qualityCertificate->printLogs->where('print_mode', 'emergency');
 @endphp
+
+@if($emergencyPrintLogs->isNotEmpty())
+    @php($latestEmergencyPrintLog = $emergencyPrintLogs->sortByDesc('created_at')->first())
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        Phiếu này đã từng được in ký tươi khẩn cấp
+        lúc {{ optional($latestEmergencyPrintLog->created_at)->format('d/m/Y H:i') }}
+        bởi {{ $latestEmergencyPrintLog->user->name ?? '-' }}.
+        Lý do: {{ $latestEmergencyPrintLog->reason }}
+    </div>
+@endif
 
 <div class="row">
     <div class="col-md-4">
@@ -152,24 +165,49 @@
 
                         @can('certificate.print')
                             @if($qualityCertificate->status !== 'REVOKED')
-                                <button type="button"
-                                        class="btn btn-warning js-print-hard-copy"
-                                        data-toggle="modal"
-                                        data-target="#printHardCopyModal"
-                                        data-template="single"
-                                        data-label="In đơn"
-                                        data-description="In theo mẫu ký tươi hiện tại, giữ vùng ghi chú/chữ ký cố định trên tất cả các trang.">
-                                    <i class="fas fa-print"></i> In đơn
-                                </button>
-                                <button type="button"
-                                        class="btn btn-info js-print-hard-copy"
-                                        data-toggle="modal"
-                                        data-target="#printHardCopyModal"
-                                        data-template="batch"
-                                        data-label="In bộ"
-                                        data-description="In theo mẫu phân trang mới, các trang trước tận dụng diện tích bảng và chỉ chừa khoảng ký ở trang cuối.">
-                                    <i class="fas fa-layer-group"></i> In bộ
-                                </button>
+                                @if($qualityCertificate->signed_at)
+                                    <button type="button"
+                                            class="btn btn-warning js-print-hard-copy"
+                                            data-toggle="modal"
+                                            data-target="#printHardCopyModal"
+                                            data-template="single"
+                                            data-mode="normal"
+                                            data-label="In đơn"
+                                            data-description="In theo mẫu ký tươi hiện tại, giữ vùng ghi chú/chữ ký cố định trên tất cả các trang.">
+                                        <i class="fas fa-print"></i> In đơn
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-info js-print-hard-copy"
+                                            data-toggle="modal"
+                                            data-target="#printHardCopyModal"
+                                            data-template="batch"
+                                            data-mode="normal"
+                                            data-label="In bộ"
+                                            data-description="In theo mẫu phân trang mới, các trang trước tận dụng diện tích bảng và chỉ chừa khoảng ký ở trang cuối.">
+                                        <i class="fas fa-layer-group"></i> In bộ
+                                    </button>
+                                @elseif($canEmergencyPrintHardCopy)
+                                    <button type="button"
+                                            class="btn btn-outline-warning js-print-hard-copy"
+                                            data-toggle="modal"
+                                            data-target="#printHardCopyModal"
+                                            data-template="single"
+                                            data-mode="emergency"
+                                            data-label="In đơn khẩn cấp"
+                                            data-description="Phiếu chưa ký số. Chỉ dùng khi SmartCA lỗi/quá hạn hoặc khách hàng cần gấp và phiếu đã vào bước chờ ký số. Thao tác sẽ được lưu lịch sử in khẩn cấp.">
+                                        <i class="fas fa-print"></i> In đơn khẩn cấp
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-outline-info js-print-hard-copy"
+                                            data-toggle="modal"
+                                            data-target="#printHardCopyModal"
+                                            data-template="batch"
+                                            data-mode="emergency"
+                                            data-label="In bộ khẩn cấp"
+                                            data-description="Phiếu chưa ký số. In theo mẫu phân trang mới và chỉ chừa khoảng ký ở trang cuối. Thao tác sẽ được lưu lịch sử in khẩn cấp.">
+                                        <i class="fas fa-layer-group"></i> In bộ khẩn cấp
+                                    </button>
+                                @endif
                             @endif
                         @endcan
 
@@ -355,49 +393,6 @@
 </div>
 
 
-@role('Admin')
-@if (!empty($qualityCertificate->smartca_response))
-<div class="card">
-    <div class="card-header bg-white">
-        <h3 class="card-title"><i class="fas fa-code"></i> Du lieu API VNPT SmartCA</h3>
-    </div>
-
-    <div class="card-body">
-        @foreach ($qualityCertificate->smartca_response as $apiName => $apiData)
-            @php
-                $apiData = is_array($apiData) ? $apiData : ['response' => $apiData];
-                $hasStructuredApiLog = array_key_exists('request', $apiData) || array_key_exists('response', $apiData);
-                $requestPayload = $hasStructuredApiLog ? ($apiData['request'] ?? []) : [];
-                $responsePayload = $hasStructuredApiLog ? ($apiData['response'] ?? []) : $apiData;
-            @endphp
-            <div class="mb-4">
-                <h5 class="mb-2">
-                    <span class="badge badge-info">{{ strtoupper(str_replace('_', ' ', $apiName)) }}</span>
-                </h5>
-
-                <div class="mb-2">
-                    <strong>Endpoint:</strong>
-                    <code>{{ $apiData['endpoint'] ?? '-' }}</code>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <label>Request gui di</label>
-                        <pre class="bg-light border rounded p-3 small" style="max-height:360px; overflow:auto; white-space:pre-wrap;">{{ json_encode($requestPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label>Response nhan ve</label>
-                        <pre class="bg-light border rounded p-3 small" style="max-height:360px; overflow:auto; white-space:pre-wrap;">{{ json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
-                    </div>
-                </div>
-            </div>
-        @endforeach
-    </div>
-</div>
-@endif
-@endrole
-
 <div class="card">
     <div class="card-header bg-white">
         <h3 class="card-title"><i class="fas fa-box"></i> Danh sách sản phẩm trên phiếu</h3>
@@ -448,6 +443,7 @@
                 <tr>
                     <th style="width:80px">Lần in</th>
                     <th style="width:110px">Mẫu in</th>
+                    <th style="width:120px">Loại in</th>
                     <th>Người in</th>
                     <th>Lý do</th>
                     <th>Thời gian</th>
@@ -465,13 +461,20 @@
                                 <span class="badge badge-warning">In đơn</span>
                             @endif
                         </td>
+                        <td>
+                            @if(($log->print_mode ?? 'normal') === 'emergency')
+                                <span class="badge badge-danger">Khẩn cấp</span>
+                            @else
+                                <span class="badge badge-success">Sau ký số</span>
+                            @endif
+                        </td>
                         <td>{{ $log->user->name ?? '-' }}</td>
                         <td>{{ $log->reason }}</td>
                         <td>{{ optional($log->created_at)->format('d/m/Y H:i') }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-3">
+                        <td colspan="6" class="text-center text-muted py-3">
                             Chưa có lịch sử in ký tươi.
                         </td>
                     </tr>
@@ -488,6 +491,7 @@
               target="_blank" class="modal-content">
             @csrf
             <input type="hidden" name="print_template" id="printHardCopyTemplate" value="single">
+            <input type="hidden" name="print_mode" id="printHardCopyMode" value="normal">
 
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-print"></i> <span id="printHardCopyTitle">In đơn</span></h5>
@@ -501,6 +505,9 @@
                     Phiếu này đã in: <strong>{{ $qualityCertificate->print_count }}</strong> lần.
                     <div class="mt-2" id="printHardCopyDescription">
                         In theo mẫu ký tươi hiện tại, giữ vùng ghi chú/chữ ký cố định trên tất cả các trang.
+                    </div>
+                    <div class="mt-2 d-none" id="printHardCopyEmergencyWarning">
+                        <strong>Lưu ý:</strong> Phiếu này chưa được ký số điện tử. In ký tươi khẩn cấp chỉ dùng khi SmartCA lỗi/quá hạn hoặc khách hàng cần gấp. Hệ thống sẽ lưu lịch sử thao tác này.
                     </div>
                 </div>
 
@@ -660,17 +667,26 @@
         document.querySelectorAll('.js-print-hard-copy').forEach(function (button) {
             button.addEventListener('click', function () {
                 var template = button.getAttribute('data-template') || 'single';
+                var mode = button.getAttribute('data-mode') || 'normal';
                 var label = button.getAttribute('data-label') || 'In đơn';
                 var description = button.getAttribute('data-description') || '';
-                var submitClass = template === 'batch' ? 'btn btn-info' : 'btn btn-warning';
+                var submitClass = mode === 'emergency'
+                    ? (template === 'batch' ? 'btn btn-outline-info' : 'btn btn-outline-warning')
+                    : (template === 'batch' ? 'btn btn-info' : 'btn btn-warning');
 
                 var templateInput = document.getElementById('printHardCopyTemplate');
+                var modeInput = document.getElementById('printHardCopyMode');
                 var title = document.getElementById('printHardCopyTitle');
                 var descriptionBox = document.getElementById('printHardCopyDescription');
+                var emergencyWarning = document.getElementById('printHardCopyEmergencyWarning');
                 var submit = document.getElementById('printHardCopySubmit');
 
                 if (templateInput) {
                     templateInput.value = template;
+                }
+
+                if (modeInput) {
+                    modeInput.value = mode;
                 }
 
                 if (title) {
@@ -681,9 +697,20 @@
                     descriptionBox.textContent = description;
                 }
 
+                if (emergencyWarning) {
+                    emergencyWarning.classList.toggle('d-none', mode !== 'emergency');
+                }
+
                 if (submit) {
                     submit.className = submitClass;
                     submit.innerHTML = '<i class="fas fa-print"></i> ' + label;
+                    submit.onclick = function () {
+                        if (mode !== 'emergency') {
+                            return true;
+                        }
+
+                        return confirm('Phiếu chưa ký số điện tử. Xác nhận in ký tươi khẩn cấp và lưu lịch sử thao tác này?');
+                    };
                 }
             });
         });
