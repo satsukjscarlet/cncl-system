@@ -14,10 +14,15 @@ class HardCopyBatchCertificatePdfService
     // Coordinates are tuned for the new pre-printed hard-copy stock:
     // header and green footer are already printed on paper, so this PDF only
     // draws the middle certificate content.
+    //Lề trái vùng in nội dung. Tăng số này thì toàn bộ bảng/nội dung dịch sang phải.
     private const LEFT = 24.0;
+    //Lề phải vùng in nội dung. Tăng số này thì bảng hẹp lại từ bên phải.
     private const RIGHT = 34.0;
+    //Vị trí bắt đầu in tiêu đề “PHIẾU CHỨNG NHẬN CHẤT LƯỢNG”. Tăng số này thì tiêu đề và phần thông tin bên dưới dịch xuống.
     private const TITLE_TOP = 92.0;
+    //Giới hạn đáy bảng ở các trang không phải trang cuối. Tăng số này thì bảng ở các trang giữa được kéo xuống sâu hơn, chứa thêm sản phẩm.
     private const NORMAL_TABLE_BOTTOM = 690.0;
+    //Giới hạn đáy bảng ở trang cuối. Số này thấp hơn để chừa khoảng trắng phía dưới cho ký tươi. Tăng số này thì trang cuối chứa được nhiều sản phẩm hơn nhưng khoảng ký bị ít đi.
     private const LAST_TABLE_BOTTOM = 505.0;
     private const FOOTER_SAFE_TOP = 725.0;
 

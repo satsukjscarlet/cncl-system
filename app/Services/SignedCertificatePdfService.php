@@ -548,10 +548,14 @@ class SignedCertificatePdfService
 
     private function infoRowHeight(string $value, float $valueW): float
     {
-        $this->pdf->SetFont($this->fontRegular, '', 13);
-        $textHeight = $this->pdf->getStringHeight($valueW, $this->normalizeText($value), false, true, '', 1);
+        // Values in the info block are rendered in bold. Measure with the same
+        // font and a slightly smaller width than the visible cell, otherwise
+        // long customer/project names can wrap into one more line at render time
+        // and TCPDF clips the last line inside the fixed-height MultiCell.
+        $this->pdf->SetFont($this->fontBold, '', 13);
+        $textHeight = $this->pdf->getStringHeight(max(20.0, $valueW - 6.0), $this->normalizeText($value), false, true, '', 1);
 
-        return max(18.0, ceil($textHeight + 4));
+        return max(18.0, ceil($textHeight + 7));
     }
 
     private function columns(): array

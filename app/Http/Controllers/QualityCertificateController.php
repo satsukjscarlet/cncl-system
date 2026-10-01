@@ -263,6 +263,14 @@ class QualityCertificateController extends Controller
                 }),
         };
 
+        $resendCount = (clone $query)->where(function ($q) use ($expiredBefore) {
+            $q->where('smartca_status', 'EXPIRED')
+                ->orWhere(function ($pending) use ($expiredBefore) {
+                    $pending->where('smartca_status', 'PENDING')
+                        ->where('smartca_requested_at', '<=', $expiredBefore);
+                });
+        })->count();
+
         $certificates = $query
             ->orderByRaw(
                 "CASE
@@ -285,6 +293,8 @@ class QualityCertificateController extends Controller
 
     public function readyToSignQueue(Request $request)
     {
+        $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
+
         $query = QualityCertificate::with([
             'request.distributionCenter',
             'request.customer',
@@ -292,10 +302,20 @@ class QualityCertificateController extends Controller
             'creator',
         ])
             ->whereNull('signed_at')
-            ->where('status', 'READY_TO_SIGN')
-            ->where(function ($q) {
-                $q->whereNull('smartca_status')
-                    ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+            ->whereNotIn('status', ['ISSUED', 'REVOKED', 'REJECTED'])
+            ->where(function ($q) use ($expiredBefore) {
+                $q->where(function ($ready) {
+                    $ready->where('status', 'READY_TO_SIGN')
+                        ->where(function ($statusQuery) {
+                            $statusQuery->whereNull('smartca_status')
+                                ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+                        });
+                })
+                    ->orWhere('smartca_status', 'EXPIRED')
+                    ->orWhere(function ($pending) use ($expiredBefore) {
+                        $pending->where('smartca_status', 'PENDING')
+                            ->where('smartca_requested_at', '<=', $expiredBefore);
+                    });
             });
 
         if ($request->filled('keyword')) {
@@ -322,7 +342,23 @@ class QualityCertificateController extends Controller
             $query->whereHas('request', fn ($q) => $q->where('is_urgent', true));
         }
 
+        $resendCount = (clone $query)->where(function ($q) use ($expiredBefore) {
+            $q->where('smartca_status', 'EXPIRED')
+                ->orWhere(function ($pending) use ($expiredBefore) {
+                    $pending->where('smartca_status', 'PENDING')
+                        ->where('smartca_requested_at', '<=', $expiredBefore);
+                });
+        })->count();
+
         $certificates = $query
+            ->orderByRaw(
+                "CASE
+                    WHEN smartca_status = 'EXPIRED' THEN 0
+                    WHEN smartca_status = 'PENDING' AND smartca_requested_at <= ? THEN 0
+                    ELSE 1
+                END",
+                [$expiredBefore->toDateTimeString()]
+            )
             ->oldest('created_at')
             ->paginate(20)
             ->withQueryString();
@@ -333,7 +369,7 @@ class QualityCertificateController extends Controller
 
         $readyCount = $certificates->total();
 
-        return view('quality_certificates.ready_to_sign', compact('certificates', 'centers', 'readyCount'));
+        return view('quality_certificates.ready_to_sign', compact('certificates', 'centers', 'readyCount', 'resendCount'));
     }
 
     public function show(QualityCertificate $qualityCertificate)
@@ -1161,12 +1197,6 @@ class QualityCertificateController extends Controller
     {
         $this->authorizeCenter($qualityCertificate);
 
-        if (!$qualityCertificate->signed_at) {
-            return redirect()
-                ->route('quality-certificates.show', $qualityCertificate)
-                ->with('error', 'Chỉ được in ký tươi khi phiếu đã ký số/phát hành.');
-        }
-
         if ($qualityCertificate->status === 'REVOKED') {
             return redirect()
                 ->route('quality-certificates.show', $qualityCertificate)
@@ -1176,9 +1206,29 @@ class QualityCertificateController extends Controller
         $data = $request->validate([
             'reason' => ['required', 'string', 'max:2000'],
             'print_template' => ['nullable', 'in:single,batch'],
+            'print_mode' => ['nullable', 'in:normal,emergency'],
         ]);
 
         $printTemplate = $data['print_template'] ?? 'single';
+        $printMode = $data['print_mode'] ?? 'normal';
+
+        if ($printMode === 'normal' && !$qualityCertificate->signed_at) {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Chỉ được in ký tươi thường khi phiếu đã ký số/phát hành.');
+        }
+
+        if ($printMode === 'emergency' && !$qualityCertificate->canEmergencyPrintHardCopy()) {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Chỉ được in ký tươi khẩn cấp khi phiếu đã vào bước chờ ký số/đang chờ ký/quá hạn ký và chưa bị trả lại hoặc hủy.');
+        }
+
+        if ($printMode === 'emergency' && $qualityCertificate->signed_at) {
+            return redirect()
+                ->route('quality-certificates.show', $qualityCertificate)
+                ->with('error', 'Phiếu đã ký số/phát hành, vui lòng dùng In đơn hoặc In bộ thường.');
+        }
 
         $qualityCertificate->load([
             'request.distributionCenter',
@@ -1197,6 +1247,7 @@ class QualityCertificateController extends Controller
             'reason' => $data['reason'],
             'print_no' => $printNo,
             'print_template' => $printTemplate,
+            'print_mode' => $printMode,
         ]);
 
         $qualityCertificate->update([
@@ -1205,8 +1256,11 @@ class QualityCertificateController extends Controller
 
         ActivityLogger::log(
             'Phiếu CNCL',
-            'print_hard_copy',
-            'In phiếu ký tươi (' . ($printTemplate === 'batch' ? 'In bộ' : 'In đơn') . '): ' . $qualityCertificate->certificate_no . '. Lý do: ' . $data['reason'],
+            $printMode === 'emergency' ? 'print_hard_copy_emergency' : 'print_hard_copy',
+            'In phiếu ký tươi '
+                . ($printMode === 'emergency' ? 'khẩn cấp ' : '')
+                . '(' . ($printTemplate === 'batch' ? 'In bộ' : 'In đơn') . '): '
+                . $qualityCertificate->certificate_no . '. Lý do: ' . $data['reason'],
             $oldData,
             $qualityCertificate->fresh()->toArray(),
             $qualityCertificate
@@ -1225,7 +1279,7 @@ class QualityCertificateController extends Controller
 
         return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $qualityCertificate->certificate_no . '_ky_tuoi_' . $printTemplate . '_lan_' . $printNo . '.pdf"',
+            'Content-Disposition' => 'inline; filename="' . $qualityCertificate->certificate_no . '_ky_tuoi_' . $printMode . '_' . $printTemplate . '_lan_' . $printNo . '.pdf"',
         ]);
     }
 

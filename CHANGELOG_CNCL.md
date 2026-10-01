@@ -17,7 +17,68 @@ File này dùng để ghi lại các cập nhật chức năng/kỹ thuật củ
 - Ghi rõ ngày, nhóm chức năng, file chính đã sửa, nội dung thay đổi và kết quả kiểm tra.
 - Nếu có lỗi chưa xử lý xong, ghi vào phần "Ghi chú".
 
+## 2026-09-29
+
+### Ký tươi khẩn cấp và bổ sung phiếu quá hạn vào danh sách chờ gửi ký
+
+File chính:
+- `app/Models/QualityCertificate.php`
+- `app/Models/PrintLog.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+- `resources/views/quality_certificates/show.blade.php`
+- `resources/views/quality_certificates/ready_to_sign.blade.php`
+- `database/migrations/2026_09_29_000001_add_print_mode_to_print_logs_table.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Bổ sung điều kiện `canEmergencyPrintHardCopy()` cho phiếu chưa ký số nhưng đã vào luồng chờ ký/đang chờ ký/quá hạn ký, không áp dụng cho phiếu nháp, chờ Trưởng PTN duyệt, bị trả lại, đã hủy hoặc đã phát hành.
+- Thêm chế độ `print_mode=emergency` cho in ký tươi khẩn cấp; in thường vẫn chỉ dùng cho phiếu đã ký số/phát hành.
+- Màn chi tiết phiếu hiển thị `In đơn khẩn cấp` và `In bộ khẩn cấp` khi phiếu đủ điều kiện; modal có cảnh báo phiếu chưa ký số và bắt nhập lý do.
+- Lịch sử in hiển thị rõ loại in `Sau ký số` hoặc `Khẩn cấp`; chi tiết phiếu có cảnh báo nếu đã từng in ký tươi khẩn cấp.
+- Màn `Phiếu chờ gửi ký` lấy thêm các phiếu SmartCA quá hạn/hết hạn để Trưởng PTN có thể gửi lại đơn lẻ hoặc gửi lại hàng loạt.
+- Bổ sung thống kê số phiếu quá hạn cần gửi lại và cột trạng thái ký `Chờ gửi` / `Cần gửi lại`.
+
+Kiểm tra:
+- `php -l app/Models/QualityCertificate.php`: pass.
+- `php -l app/Models/PrintLog.php`: pass.
+- `php -l app/Http/Controllers/QualityCertificateController.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan migrate`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass, 6 tests.
+- Kiểm tra dữ liệu nhanh: 5 phiếu chờ gửi ký lần đầu, 10 phiếu quá hạn/cần gửi lại, 15 phiếu đủ điều kiện in ký tươi khẩn cấp.
+
 ## 2026-09-26
+
+### Tài liệu - hướng dẫn sử dụng cho Trung tâm phân phối
+
+File chính:
+- `docs/HUONG_DAN_TRUNG_TAM_PHAN_PHOI.md`
+- `docs/KICH_BAN_VIDEO_HUONG_DAN_TRUNG_TAM.md`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Tạo tài liệu hướng dẫn riêng cho tài khoản Trung tâm phân phối: đăng nhập, dashboard, khách hàng - công trình, tạo yêu cầu cấp phiếu, import sản phẩm, lưu nháp/gửi DVKH, theo dõi trạng thái, tải phiếu và yêu cầu cấp lại.
+- Tạo kịch bản video hướng dẫn theo từng phân cảnh, có gợi ý hình ảnh cần quay, lời thoại và checklist cảnh quay.
+
+Kiểm tra:
+- Đã rà nội dung tài liệu bằng text Markdown.
+
+### In ký tươi - đồng bộ font thông tin khách hàng giữa In đơn và In bộ
+
+File chính:
+- `app/Services/HardCopyCertificatePdfService.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Đồng bộ phần giá trị `Tên khách hàng`, `Tên công trình`, `Địa điểm công trình`, `Ngày xuất hàng` của mẫu `In đơn` theo mẫu `In bộ`.
+- Giá trị thông tin chuyển sang Times New Roman đậm, màu đen, cỡ 13; nhãn vẫn giữ Times New Roman thường, màu đen, cỡ 13.
+- Chuẩn hóa text trước khi vẽ để hạn chế lỗi chữ dài/liền ký tự.
+
+Kiểm tra:
+- `php -l app/Services/HardCopyCertificatePdfService.php`: pass.
+- Render thử PDF `In đơn` và `In bộ` bằng phiếu đã ký gần nhất: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
 
 ### In ký tươi - tách In đơn và In bộ
 
@@ -1412,6 +1473,27 @@ Kiểm tra:
 - `php artisan view:cache`: pass.
 - `php artisan test --filter=CertificateWorkflowTest`: pass.
 - `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
+### Sửa hiển thị tên khách hàng trên PDF ký điện tử - 01/10/2026
+
+File chính:
+- `app/Services/SignedCertificatePdfService.php`
+- `resources/views/quality_certificates/show.blade.php`
+
+Nội dung:
+- Sửa cách tính chiều cao dòng thông tin khách hàng/công trình trong mẫu PDF ký điện tử.
+- Chiều cao dòng hiện được đo bằng đúng font đậm đang dùng để in dữ liệu và trừ phần padding nội bộ của TCPDF.
+- Tránh trường hợp tên khách hàng hoặc tên công trình dài bị cắt mất dòng cuối trong ô `Tên khách hàng`.
+- Tạm bỏ khối debug `Dữ liệu API VNPT SmartCA` khỏi màn chi tiết phiếu vì khối này gây lỗi ParseError trên Blade runtime, làm vỡ toàn bộ màn chi tiết.
+- Dữ liệu SmartCA vẫn giữ trong DB; chỉ ẩn phần debug admin khỏi giao diện để khôi phục màn hình chính ổn định trước.
+
+Kiểm tra:
+- `php -l app/Services/SignedCertificatePdfService.php`: pass.
+- `php artisan view:cache`: pass.
+- `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+- Render thử PDF bằng dữ liệu thật: pass, đã tạo các file kiểm tra trong `storage/app/pdf-render-check-*.pdf` và `storage/app/pdf-render-long-customer-195.pdf`.
+- `php artisan optimize:clear`: pass.
+- Render trực tiếp view `quality_certificates.show` cho phiếu `306`: pass.
 
 ### Sửa hiển thị yêu cầu PTN/Trưởng PTN trả lại tại màn DVKH - 22/09/2026
 

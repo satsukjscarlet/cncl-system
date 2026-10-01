@@ -106,7 +106,11 @@
 <div class="ready-summary">
     <div class="ready-summary-card">
         <strong>{{ $readyCount }}</strong>
-        <span>Phiếu đang chờ gửi ký</span>
+        <span>Phiếu có thể gửi ký/gửi lại</span>
+    </div>
+    <div class="ready-summary-card" style="border-left-color:#dc3545">
+        <strong>{{ $resendCount ?? 0 }}</strong>
+        <span>Phiếu quá hạn cần gửi lại</span>
     </div>
     <div class="ready-summary-card">
         <strong>10</strong>
@@ -173,7 +177,7 @@
     <div class="card-header bg-white">
         <div>
             <h3 class="card-title"><i class="fas fa-paper-plane"></i> Danh sách chờ gửi ký</h3>
-            <div class="text-muted small mt-1">Chỉ gồm các phiếu đã duyệt nội dung, chưa gửi VNPT SmartCA.</div>
+            <div class="text-muted small mt-1">Gồm phiếu đã duyệt nội dung chưa gửi ký và phiếu SmartCA quá hạn cần gửi lại.</div>
         </div>
         <div class="card-tools">
             @if($certificates->count() > 0)
@@ -206,6 +210,7 @@
                     <th style="width:160px">Trung tâm</th>
                     <th style="width:150px">PTN lập</th>
                     <th style="width:145px">Ngày duyệt</th>
+                    <th style="width:145px">Trạng thái ký</th>
                     <th style="width:190px" class="text-center">Thao tác</th>
                 </tr>
             </thead>
@@ -242,6 +247,16 @@
                         <td>{{ $certificate->request->distributionCenter->name ?? '-' }}</td>
                         <td>{{ $certificate->creator->name ?? '-' }}</td>
                         <td>{{ optional($certificate->updated_at)->format('d/m/Y H:i') }}</td>
+                        <td>
+                            @if($certificate->smartcaStatusExpired())
+                                <span class="badge badge-danger"><i class="fas fa-hourglass-end"></i> Cần gửi lại</span>
+                                @if($certificate->smartca_requested_at)
+                                    <div class="text-muted small">{{ $certificate->smartca_requested_at->format('d/m/Y H:i') }}</div>
+                                @endif
+                            @else
+                                <span class="badge badge-warning"><i class="fas fa-paper-plane"></i> Chờ gửi</span>
+                            @endif
+                        </td>
                         <td class="text-center">
                             <div class="ready-actions">
                                 <a href="{{ route('quality-certificates.show', $certificate) }}" class="btn btn-sm btn-info" title="Xem chi tiết">
@@ -255,9 +270,9 @@
                                       class="d-inline"
                                       data-loading-lock
                                       data-loading-message="Đang gửi yêu cầu ký sang VNPT SmartCA. Vui lòng chờ..."
-                                      onsubmit="if (!confirm('Gửi yêu cầu ký phiếu này sang VNPT SmartCA?')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
+                                      onsubmit="if (!confirm('{{ $certificate->smartcaStatusExpired() ? 'Gửi lại yêu cầu ký phiếu này sang VNPT SmartCA? Hệ thống sẽ kiểm tra giao dịch cũ trước khi gửi lại.' : 'Gửi yêu cầu ký phiếu này sang VNPT SmartCA?' }}')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
                                     @csrf
-                                    <button class="btn btn-sm btn-success" title="Gửi ký SmartCA">
+                                    <button class="btn btn-sm {{ $certificate->smartcaStatusExpired() ? 'btn-warning' : 'btn-success' }}" title="{{ $certificate->smartcaStatusExpired() ? 'Gửi lại SmartCA' : 'Gửi ký SmartCA' }}">
                                         <i class="fas fa-file-signature"></i>
                                     </button>
                                 </form>
@@ -273,7 +288,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-5">
+                        <td colspan="10" class="text-center text-muted py-5">
                             <i class="fas fa-database fa-2x mb-2"></i>
                             <br>
                             Không có phiếu nào đang chờ gửi ký.
