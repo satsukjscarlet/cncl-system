@@ -392,9 +392,9 @@ class HardCopyBatchCertificatePdfService
     private function infoRowHeight(string $value, float $valueW): float
     {
         $this->pdf->SetFont($this->fontRegular, '', 13);
-        $textHeight = $this->pdf->getStringHeight($valueW, $this->normalizeText($value), false, true, '', 1);
+        $textHeight = $this->pdf->getStringHeight($valueW - 4, $this->normalizeText($value), false, true, '', 1);
 
-        return max(18.0, ceil($textHeight + 3));
+        return max(20.0, ceil($textHeight + 8));
     }
 
     private function columns(): array

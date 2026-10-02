@@ -1,3 +1,37 @@
+## 2026-10-02 - Điều chỉnh ghi chú mẫu In đơn theo đáy bảng
+
+File chính:
+- `app/Services/HardCopyCertificatePdfService.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Mẫu `In đơn` trả về tọa độ đáy bảng sản phẩm sau khi vẽ bảng.
+- Với phiếu 1 trang, trang cuối và trang kế cuối, phần ghi chú được đặt ngay dưới bảng sản phẩm.
+- Các trang trước trang kế cuối vẫn giữ ghi chú theo vị trí cố định cũ để không phá bố cục phôi in.
+- Vùng tên ký tươi bên dưới vẫn giữ tọa độ cố định.
+
+Kiểm tra:
+- `php -l app/Services/HardCopyCertificatePdfService.php`
+- Render thử mẫu `In đơn` với phiếu `310`.
+- Render thử mẫu `In đơn` với phiếu nhiều dòng `215`.
+
+## 2026-10-02 - Sửa thiếu thông tin khách hàng trên mẫu in đơn/in bộ
+
+File chính:
+- `app/Services/HardCopyCertificatePdfService.php`
+- `app/Services/HardCopyBatchCertificatePdfService.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Tăng biên an toàn khi tính chiều cao dòng thông tin khách hàng/công trình/địa điểm trên mẫu `In đơn` và `In bộ`.
+- Tính chiều cao theo vùng chữ nhỏ hơn một chút so với vùng in thực tế để tránh TCPDF cắt dòng cuối với tên khách hàng, tên công trình hoặc địa điểm công trình dài.
+- Bảng sản phẩm sẽ bắt đầu thấp hơn tương ứng khi phần thông tin phía trên cần nhiều dòng hơn.
+
+Kiểm tra:
+- `php -l app/Services/HardCopyCertificatePdfService.php`
+- `php -l app/Services/HardCopyBatchCertificatePdfService.php`
+- Render thử mẫu `In đơn` và `In bộ` với phiếu `310` và `308`.
+
 ## 2026-10-02 - Xóa hẳn danh mục chưa phát sinh liên kết
 
 File chính:

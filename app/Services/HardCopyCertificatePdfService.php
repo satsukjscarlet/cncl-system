@@ -15,6 +15,7 @@ class HardCopyCertificatePdfService
     private const RIGHT = 34.0;
     private const NOTE_TOP = 490.0;
     private const NOTE_SAFE_GAP = 10.0;
+    private const NOTE_AFTER_TABLE_GAP = 7.0;
     private const SIGNER_TOP = 630.0;
 
     private TCPDF $pdf;
@@ -118,8 +119,8 @@ class HardCopyCertificatePdfService
     {
         $this->drawCertificateNo($certificate);
         $tableY = $this->drawInfo($certificate);
-        $this->drawProductTable($rows, $rowOffset, $tableY);
-        $this->drawFixedFooter($certificate, $pageIndex, $totalPages);
+        $tableBottom = $this->drawProductTable($rows, $rowOffset, $tableY);
+        $this->drawFixedFooter($certificate, $pageIndex, $totalPages, $tableBottom);
     }
 
     private function drawCertificateNo(QualityCertificate $certificate): void
@@ -175,7 +176,7 @@ class HardCopyCertificatePdfService
         return $y + 14;
     }
 
-    private function drawProductTable(array $rows, int $rowOffset, float $y): void
+    private function drawProductTable(array $rows, int $rowOffset, float $y): float
     {
         $columns = $this->columns();
         $x = self::LEFT;
@@ -224,13 +225,16 @@ class HardCopyCertificatePdfService
         // Hard-copy reprint is printed on pre-printed paper, so only actual
         // product rows are drawn. Empty rows below the product list would make
         // the software output look unlike the Excel/pre-printed form.
+        return $y;
     }
 
-    private function drawFixedFooter(QualityCertificate $certificate, int $pageIndex, int $totalPages): void
+    private function drawFixedFooter(QualityCertificate $certificate, int $pageIndex, int $totalPages, float $tableBottom): void
     {
+        $noteY = $this->noteYForPage($pageIndex, $totalPages, $tableBottom);
+
         $this->pdf->SetTextColor(0, 0, 0);
         $this->pdf->SetFont($this->fontBold, '', 11);
-        $this->pdf->SetXY(self::LEFT, $this->noteY());
+        $this->pdf->SetXY(self::LEFT, $noteY);
         $this->pdf->Write(14, 'Ghi chú: ', '', false, '', false);
         $this->pdf->SetFont($this->fontRegular, '', 11);
         $this->pdf->Write(14, 'Phiếu này thay thế cho phiếu chứng nhận xuất xưởng hàng hóa', '', false, '', true);
@@ -238,7 +242,7 @@ class HardCopyCertificatePdfService
         $this->pdf->Write(14, 'Sản phẩm đạt yêu cầu theo tiêu chuẩn sản phẩm công ty đã công bố', '', false, '', true);
 
         $this->pdf->SetFont($this->fontRegular, '', 10);
-        $this->pdf->SetXY(self::PAGE_WIDTH - self::RIGHT - 70, $this->noteY());
+        $this->pdf->SetXY(self::PAGE_WIDTH - self::RIGHT - 70, $noteY);
         $this->pdf->Cell(70, 12, 'Trang ' . ($pageIndex + 1) . '/' . $totalPages, 0, 0, 'R');
 
         $this->pdf->SetFont($this->fontBold, '', 13);
@@ -249,6 +253,17 @@ class HardCopyCertificatePdfService
     private function tableStartY(QualityCertificate $certificate): float
     {
         return max(214.0, $this->drawInfoDryRunY($certificate));
+    }
+
+    private function noteYForPage(int $pageIndex, int $totalPages, float $tableBottom): float
+    {
+        $shouldFollowTable = $totalPages === 1 || $pageIndex >= $totalPages - 2;
+
+        if (!$shouldFollowTable) {
+            return $this->noteY();
+        }
+
+        return min($this->noteY(), $tableBottom + self::NOTE_AFTER_TABLE_GAP);
     }
 
     private function drawInfoDryRunY(QualityCertificate $certificate): float
@@ -295,9 +310,9 @@ class HardCopyCertificatePdfService
     private function infoRowHeight(string $value, float $valueW): float
     {
         $this->pdf->SetFont($this->fontRegular, '', 13);
-        $textHeight = $this->pdf->getStringHeight($valueW, $this->normalizeText($value), false, true, '', 1);
+        $textHeight = $this->pdf->getStringHeight($valueW - 4, $this->normalizeText($value), false, true, '', 1);
 
-        return max(18.0, ceil($textHeight + 3));
+        return max(20.0, ceil($textHeight + 8));
     }
 
     private function columns(): array
