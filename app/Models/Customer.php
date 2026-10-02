@@ -31,4 +31,9 @@ class Customer extends Model
     {
         return $this->belongsTo(DistributionCenter::class);
     }
+
+    public function certificateRequests()
+    {
+        return $this->hasMany(CertificateRequest::class);
+    }
 }

@@ -3,14 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ActivityLogger;
+use App\Models\CertificateRequest;
 use App\Models\UrgentReason;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class UrgentReasonController extends Controller
 {
     public function index(Request $request)
     {
-        $query = UrgentReason::query();
+        $query = UrgentReason::query()
+            ->withCount([
+                'certificateRequests as certificate_requests_total_count' => fn ($query) => $query->withTrashed(),
+            ]);
 
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
@@ -120,5 +125,31 @@ class UrgentReasonController extends Controller
         return redirect()
             ->route('urgent-reasons.index')
             ->with('success', 'Đã ngừng sử dụng lý do gấp.');
+    }
+
+    public function forceDestroy(UrgentReason $urgentReason)
+    {
+        abort_unless(Auth::user()?->hasRole('Admin'), 403);
+
+        if (CertificateRequest::withTrashed()->where('urgent_reason_id', $urgentReason->id)->exists()) {
+            return redirect()
+                ->route('urgent-reasons.index')
+                ->with('error', 'Không thể xóa hẳn lý do gấp đã được dùng trong yêu cầu cấp phiếu.');
+        }
+
+        $oldData = $urgentReason->toArray();
+        $urgentReason->forceDelete();
+
+        ActivityLogger::log(
+            'Danh mục lý do gấp',
+            'force_delete',
+            'Xóa hẳn lý do gấp: ' . ($oldData['code'] ?? '') . ' - ' . ($oldData['name'] ?? ''),
+            $oldData,
+            null
+        );
+
+        return redirect()
+            ->route('urgent-reasons.index')
+            ->with('success', 'Đã xóa hẳn lý do gấp chưa phát sinh liên kết.');
     }
 }

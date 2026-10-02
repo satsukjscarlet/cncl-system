@@ -132,7 +132,7 @@
                     <th style="width:120px">@include('partials.sort_link', ['column' => 'nominal_size', 'label' => 'Kích thước'])</th>
                     <th>@include('partials.sort_link', ['column' => 'quality_standard', 'label' => 'Tiêu chuẩn'])</th>
                     <th style="width:120px">@include('partials.sort_link', ['column' => 'is_active', 'label' => 'Trạng thái'])</th>
-                    <th style="width:140px" class="text-center">Thao tác</th>
+                    <th style="width:170px" class="text-center">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
@@ -169,6 +169,14 @@
                                     <button class="btn btn-sm btn-secondary" title="Đã ngừng sử dụng" disabled><i class="fas fa-ban"></i></button>
                                 @endif
                             @endcan
+                            @if(auth()->user()->hasRole('Admin') && (int) $product->request_details_count === 0 && (int) $product->certificate_details_count === 0)
+                                <form action="{{ route('products.force-destroy', $product) }}" method="POST"
+                                    class="d-inline" onsubmit="return confirm('Xóa hẳn sản phẩm này khỏi CSDL? Chỉ nên dùng khi chắc chắn sản phẩm chưa phát sinh dữ liệu.')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="btn btn-sm btn-outline-danger" title="Xóa hẳn"><i class="fas fa-trash-alt"></i></button>
+                                </form>
+                            @endif
                         </td>
                     </tr>
                 @empty

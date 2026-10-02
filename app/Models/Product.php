@@ -36,4 +36,14 @@ class Product extends Model
     {
         return $this->belongsTo(QualityStandard::class, 'quality_standard_id')->withTrashed();
     }
+
+    public function requestDetails()
+    {
+        return $this->hasMany(CertificateRequestDetail::class);
+    }
+
+    public function certificateDetails()
+    {
+        return $this->hasMany(QualityCertificateDetail::class);
+    }
 }

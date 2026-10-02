@@ -93,7 +93,7 @@
                     <th>@include('partials.sort_link', ['column' => 'name', 'label' => 'Tên lý do'])</th>
                     <th>Mô tả</th>
                     <th style="width:140px">@include('partials.sort_link', ['column' => 'is_active', 'label' => 'Trạng thái'])</th>
-                    <th style="width:140px" class="text-center">Thao tác</th>
+                    <th style="width:170px" class="text-center">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
@@ -131,6 +131,16 @@
                                     <button class="btn btn-sm btn-secondary" title="Đã ngừng sử dụng" disabled><i class="fas fa-ban"></i></button>
                                 @endif
                             @endcan
+                            @if(auth()->user()->hasRole('Admin') && (int) $urgentReason->certificate_requests_total_count === 0)
+                                <form action="{{ route('urgent-reasons.force-destroy', $urgentReason) }}"
+                                      method="POST"
+                                      class="d-inline"
+                                      onsubmit="return confirm('Xóa hẳn lý do gấp này khỏi CSDL? Chỉ nên dùng khi lý do chưa được dùng trong yêu cầu.')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="btn btn-sm btn-outline-danger" title="Xóa hẳn"><i class="fas fa-trash-alt"></i></button>
+                                </form>
+                            @endif
                         </td>
                     </tr>
                 @empty

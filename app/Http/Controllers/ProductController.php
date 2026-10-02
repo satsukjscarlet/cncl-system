@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Exports\ProductsExport;
 use App\Helpers\ActivityLogger;
+use App\Models\CertificateRequestDetail;
 use App\Models\Product;
 use App\Models\ProductGroup;
+use App\Models\QualityCertificateDetail;
 use App\Models\QualityStandard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -17,7 +20,8 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::with(['group', 'qualityStandard']);
+        $query = Product::with(['group', 'qualityStandard'])
+            ->withCount(['requestDetails', 'certificateDetails']);
 
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
@@ -182,6 +186,35 @@ class ProductController extends Controller
         return redirect()
             ->route('products.index')
             ->with('success', 'Đã ngừng sử dụng sản phẩm.');
+    }
+
+    public function forceDestroy(Product $product)
+    {
+        abort_unless(Auth::user()?->hasRole('Admin'), 403);
+
+        if (
+            CertificateRequestDetail::where('product_id', $product->id)->exists()
+            || QualityCertificateDetail::where('product_id', $product->id)->exists()
+        ) {
+            return redirect()
+                ->route('products.index')
+                ->with('error', 'Không thể xóa hẳn sản phẩm đã được dùng trong yêu cầu hoặc phiếu CNCL.');
+        }
+
+        $oldData = $product->toArray();
+        $product->forceDelete();
+
+        ActivityLogger::log(
+            'Sản phẩm',
+            'force_delete',
+            'Xóa hẳn sản phẩm: ' . ($oldData['product_code'] ?? '') . ' - ' . ($oldData['product_name'] ?? ''),
+            $oldData,
+            null
+        );
+
+        return redirect()
+            ->route('products.index')
+            ->with('success', 'Đã xóa hẳn sản phẩm chưa phát sinh liên kết.');
     }
 
     public function export(): BinaryFileResponse

@@ -128,7 +128,7 @@
                     <th>@include('partials.sort_link', ['column' => 'email', 'label' => 'Email'])</th>
                     <th>@include('partials.sort_link', ['column' => 'phone', 'label' => 'Điện thoại'])</th>
                     <th style="width:130px">@include('partials.sort_link', ['column' => 'is_active', 'label' => 'Trạng thái'])</th>
-                    <th style="width:130px" class="text-center">Thao tác</th>
+                    <th style="width:170px" class="text-center">Thao tác</th>
                 </tr>
             </thead>
 
@@ -176,6 +176,14 @@
                                     <button class="btn btn-sm btn-secondary" title="Đã ngừng sử dụng" disabled><i class="fas fa-ban"></i></button>
                                 @endif
                             @endcan
+                            @if(auth()->user()->hasRole('Admin') && (int) $customer->certificate_requests_total_count === 0)
+                                <form action="{{ route('customers.force-destroy', $customer) }}" method="POST"
+                                      class="d-inline" onsubmit="return confirm('Xóa hẳn khách hàng/công trình này khỏi CSDL? Chỉ nên dùng khi chưa phát sinh yêu cầu cấp phiếu.')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="btn btn-sm btn-outline-danger" title="Xóa hẳn"><i class="fas fa-trash-alt"></i></button>
+                                </form>
+                            @endif
                         </td>
                     </tr>
                 @empty

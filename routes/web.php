@@ -102,6 +102,10 @@ Route::middleware(['auth'])->group(function () {
         ->only(['destroy'])
         ->middleware('permission:product_group.delete');
 
+    Route::delete('product-groups/{product_group}/force-delete', [ProductGroupController::class, 'forceDestroy'])
+        ->middleware('permission:product_group.delete')
+        ->name('product-groups.force-destroy');
+
     Route::get('products-export', [ProductController::class, 'export'])
         ->middleware('permission:product.export')
         ->name('products.export');
@@ -129,6 +133,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('products', ProductController::class)
         ->only(['destroy'])
         ->middleware('permission:product.delete');
+
+    Route::delete('products/{product}/force-delete', [ProductController::class, 'forceDestroy'])
+        ->middleware('permission:product.delete')
+        ->name('products.force-destroy');
 
     Route::get('quality-standards-export', [QualityStandardController::class, 'export'])
         ->middleware('permission:quality_standard.export')
@@ -158,6 +166,10 @@ Route::middleware(['auth'])->group(function () {
         ->only(['destroy'])
         ->middleware('permission:quality_standard.delete');
 
+    Route::delete('quality-standards/{quality_standard}/force-delete', [QualityStandardController::class, 'forceDestroy'])
+        ->middleware('permission:quality_standard.delete')
+        ->name('quality-standards.force-destroy');
+
     Route::resource('urgent-reasons', UrgentReasonController::class)
         ->only(['index'])
         ->middleware('permission:urgent_reason.view');
@@ -173,6 +185,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('urgent-reasons', UrgentReasonController::class)
         ->only(['destroy'])
         ->middleware('permission:urgent_reason.delete');
+
+    Route::delete('urgent-reasons/{urgent_reason}/force-delete', [UrgentReasonController::class, 'forceDestroy'])
+        ->middleware('permission:urgent_reason.delete')
+        ->name('urgent-reasons.force-destroy');
 
     Route::get('customers-export', [CustomerController::class, 'export'])
         ->middleware('permission:customer.export')
@@ -201,6 +217,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('customers', CustomerController::class)
         ->only(['destroy'])
         ->middleware('permission:customer.delete');
+
+    Route::delete('customers/{customer}/force-delete', [CustomerController::class, 'forceDestroy'])
+        ->middleware('permission:customer.delete')
+        ->name('customers.force-destroy');
 
     Route::resource('certificate-requests', CertificateRequestController::class)
         ->only(['index'])

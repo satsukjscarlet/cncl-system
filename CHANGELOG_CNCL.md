@@ -1,3 +1,32 @@
+## 2026-10-02 - Xóa hẳn danh mục chưa phát sinh liên kết
+
+File chính:
+- `routes/web.php`
+- `app/Http/Controllers/ProductGroupController.php`
+- `app/Http/Controllers/ProductController.php`
+- `app/Http/Controllers/QualityStandardController.php`
+- `app/Http/Controllers/UrgentReasonController.php`
+- `app/Http/Controllers/CustomerController.php`
+- `app/Models/Product.php`
+- `app/Models/Customer.php`
+- `resources/views/product_groups/index.blade.php`
+- `resources/views/products/index.blade.php`
+- `resources/views/quality_standards/index.blade.php`
+- `resources/views/urgent_reasons/index.blade.php`
+- `resources/views/customers/index.blade.php`
+- `tests/Feature/MasterDataForceDeleteTest.php`
+
+Nội dung:
+- Thêm route và controller action `forceDestroy` cho nhóm sản phẩm, sản phẩm, tiêu chuẩn chất lượng, lý do yêu cầu gấp, khách hàng/công trình.
+- Chỉ tài khoản `Admin` được xóa hẳn; quyền xóa mềm/đình chỉ hiện tại vẫn giữ nguyên.
+- Backend chặn xóa hẳn nếu danh mục đã được liên kết: nhóm sản phẩm còn sản phẩm, sản phẩm đã vào yêu cầu/phiếu, tiêu chuẩn còn sản phẩm, lý do gấp/khách hàng đã vào yêu cầu cấp phiếu.
+- Giao diện danh sách chỉ hiển thị nút `Xóa hẳn` cho Admin khi bộ đếm liên kết bằng 0.
+
+Kiểm tra:
+- `php -l` các controller/model/route liên quan.
+- `php artisan view:cache`
+- `php artisan test tests/Feature/MasterDataForceDeleteTest.php`
+
 ## 2026-10-01 - Hiển thị yêu cầu ký tươi và link yêu cầu trên phiếu CNCL
 
 File chính:

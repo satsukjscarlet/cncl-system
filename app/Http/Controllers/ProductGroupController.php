@@ -7,6 +7,8 @@ use App\Models\ProductGroup;
 use Illuminate\Http\Request;
 use App\Exports\ProductGroupsExport;
 use App\Imports\ProductGroupsImport;
+use App\Models\Product;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -14,7 +16,10 @@ class ProductGroupController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ProductGroup::query();
+        $query = ProductGroup::query()
+            ->withCount([
+                'products as products_total_count' => fn ($query) => $query->withTrashed(),
+            ]);
 
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
@@ -128,6 +133,32 @@ class ProductGroupController extends Controller
             ->route('product-groups.index')
             ->with('success', 'Xóa nhóm sản phẩm thành công.');
     }
+    public function forceDestroy(ProductGroup $productGroup)
+    {
+        abort_unless(Auth::user()?->hasRole('Admin'), 403);
+
+        if (Product::withTrashed()->where('product_group_id', $productGroup->id)->exists()) {
+            return redirect()
+                ->route('product-groups.index')
+                ->with('error', 'Không thể xóa hẳn nhóm sản phẩm đã có sản phẩm liên kết.');
+        }
+
+        $oldData = $productGroup->toArray();
+        $productGroup->forceDelete();
+
+        ActivityLogger::log(
+            'Nhóm sản phẩm',
+            'force_delete',
+            'Xóa hẳn nhóm sản phẩm: ' . ($oldData['name'] ?? $oldData['code']),
+            $oldData,
+            null
+        );
+
+        return redirect()
+            ->route('product-groups.index')
+            ->with('success', 'Đã xóa hẳn nhóm sản phẩm chưa phát sinh liên kết.');
+    }
+
     public function export(): BinaryFileResponse
     {
         ActivityLogger::log('Nhóm sản phẩm', 'export', 'Xuất Excel nhóm sản phẩm');

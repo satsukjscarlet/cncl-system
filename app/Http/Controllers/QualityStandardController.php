@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Exports\QualityStandardsExport;
 use App\Helpers\ActivityLogger;
 use App\Imports\QualityStandardsImport;
+use App\Models\Product;
 use App\Models\QualityStandard;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -14,7 +16,10 @@ class QualityStandardController extends Controller
 {
     public function index(Request $request)
     {
-        $query = QualityStandard::query();
+        $query = QualityStandard::query()
+            ->withCount([
+                'products as products_total_count' => fn ($query) => $query->withTrashed(),
+            ]);
 
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
@@ -126,6 +131,32 @@ class QualityStandardController extends Controller
         return redirect()
             ->route('quality-standards.index')
             ->with('success', 'Đã ngừng sử dụng tiêu chuẩn chất lượng.');
+    }
+
+    public function forceDestroy(QualityStandard $qualityStandard)
+    {
+        abort_unless(Auth::user()?->hasRole('Admin'), 403);
+
+        if (Product::withTrashed()->where('quality_standard_id', $qualityStandard->id)->exists()) {
+            return redirect()
+                ->route('quality-standards.index')
+                ->with('error', 'Không thể xóa hẳn tiêu chuẩn đã có sản phẩm liên kết.');
+        }
+
+        $oldData = $qualityStandard->toArray();
+        $qualityStandard->forceDelete();
+
+        ActivityLogger::log(
+            'Tiêu chuẩn chất lượng',
+            'force_delete',
+            'Xóa hẳn tiêu chuẩn chất lượng: ' . ($oldData['code'] ?? '') . ' - ' . ($oldData['name'] ?? ''),
+            $oldData,
+            null
+        );
+
+        return redirect()
+            ->route('quality-standards.index')
+            ->with('success', 'Đã xóa hẳn tiêu chuẩn chưa phát sinh liên kết.');
     }
 
     public function export(): BinaryFileResponse

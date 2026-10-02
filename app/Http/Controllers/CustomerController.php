@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\CustomersExport;
 use App\Exports\CustomersTemplateExport;
 use App\Helpers\ActivityLogger;
+use App\Models\CertificateRequest;
 use App\Models\Customer;
 use App\Models\DistributionCenter;
 use Illuminate\Http\Request;
@@ -19,7 +20,10 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Customer::with('distributionCenter');
+        $query = Customer::with('distributionCenter')
+            ->withCount([
+                'certificateRequests as certificate_requests_total_count' => fn ($query) => $query->withTrashed(),
+            ]);
 
         $this->scopeCustomersForCurrentUser($query);
 
@@ -169,6 +173,33 @@ class CustomerController extends Controller
         return redirect()
             ->route('customers.index')
             ->with('success', 'Đã ngừng sử dụng khách hàng - công trình.');
+    }
+
+    public function forceDestroy(Customer $customer)
+    {
+        abort_unless(Auth::user()?->hasRole('Admin'), 403);
+        $this->authorizeCustomerCenter($customer);
+
+        if (CertificateRequest::withTrashed()->where('customer_id', $customer->id)->exists()) {
+            return redirect()
+                ->route('customers.index')
+                ->with('error', 'Không thể xóa hẳn khách hàng/công trình đã được dùng trong yêu cầu cấp phiếu.');
+        }
+
+        $oldData = $customer->toArray();
+        $customer->forceDelete();
+
+        ActivityLogger::log(
+            'Khách hàng - Công trình',
+            'force_delete',
+            'Xóa hẳn khách hàng/công trình: ' . ($oldData['customer_name'] ?? ''),
+            $oldData,
+            null
+        );
+
+        return redirect()
+            ->route('customers.index')
+            ->with('success', 'Đã xóa hẳn khách hàng/công trình chưa phát sinh liên kết.');
     }
 
     public function export(): BinaryFileResponse
