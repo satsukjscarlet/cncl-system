@@ -175,7 +175,7 @@
                             </div>
                             <input id="keyword" type="text" name="keyword" class="form-control"
                                    value="{{ request('keyword') }}"
-                                   placeholder="Số yêu cầu, hóa đơn, khách hàng, công trình">
+                                   placeholder="Số yêu cầu, hóa đơn, người tạo, khách hàng, công trình">
                         </div>
                     </div>
                 </div>
@@ -279,6 +279,7 @@
                             Khách hàng / Công trình {!! $sortIcon('customer') !!}
                         </a>
                     </th>
+                    <th>Người tạo yêu cầu</th>
                     <th>
                         <a class="sort-link" href="{{ $sortUrl('delivery_date') }}">
                             Ngày xuất hàng {!! $sortIcon('delivery_date') !!}
@@ -318,6 +319,7 @@
                             <strong>{{ $item->customer->customer_name ?? '-' }}</strong>
                             <div class="text-muted small">{{ $item->customer->project_name ?? '' }}</div>
                         </td>
+                        <td>{{ $item->requester_name ?: '-' }}</td>
                         <td>{{ $item->delivery_date ? $item->delivery_date->format('d/m/Y') : '-' }}</td>
                         <td>{{ $item->invoice_no ?: '-' }}</td>
                         <td>
@@ -356,7 +358,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">
+                        <td colspan="10" class="text-center text-muted py-4">
                             <i class="fas fa-database fa-2x mb-2"></i><br>
                             Chưa có yêu cầu cấp phiếu phù hợp.
                         </td>

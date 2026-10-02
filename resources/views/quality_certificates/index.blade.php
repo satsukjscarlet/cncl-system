@@ -246,7 +246,7 @@
                        name="keyword"
                        class="form-control"
                        value="{{ request('keyword') }}"
-                       placeholder="Số phiếu, số yêu cầu, khách hàng, công trình, hóa đơn">
+                       placeholder="Số phiếu, số yêu cầu, người tạo, khách hàng, công trình, hóa đơn">
             </div>
 
             @unless($isCenterUser)
@@ -371,6 +371,7 @@
                     <th style="width:60px">STT</th>
                     <th>@include('partials.sort_link', ['column' => 'certificate_no', 'label' => 'Số phiếu'])</th>
                     <th>Số yêu cầu</th>
+                    <th>Người tạo yêu cầu</th>
                     <th>Khách hàng / Công trình</th>
                     <th>Trung tâm</th>
                     <th>Người lập</th>
@@ -446,6 +447,8 @@
                                 -
                             @endif
                         </td>
+
+                        <td>{{ $certificate->request->requester_name ?? '-' }}</td>
 
                         <td>
                             <div class="certificate-customer">
@@ -533,7 +536,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="@can('request.create') 10 @else 9 @endcan">
+                        <td colspan="@can('request.create') 11 @else 10 @endcan">
                             <div class="certificate-empty-state">
                                 <i class="fas fa-database fa-2x mb-2"></i>
                                 <div>Chưa có phiếu CNCL phù hợp với bộ lọc.</div>

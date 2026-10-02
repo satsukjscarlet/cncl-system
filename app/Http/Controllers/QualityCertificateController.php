@@ -56,7 +56,8 @@ class QualityCertificateController extends Controller
                 $q->where('certificate_no', 'like', '%' . $request->keyword . '%')
                     ->orWhereHas('request', function ($r) use ($request) {
                         $r->where('request_no', 'like', '%' . $request->keyword . '%')
-                            ->orWhere('invoice_no', 'like', '%' . $request->keyword . '%');
+                            ->orWhere('invoice_no', 'like', '%' . $request->keyword . '%')
+                            ->orWhere('requester_name', 'like', '%' . $request->keyword . '%');
                     })
                     ->orWhereHas('request.customer', function ($c) use ($request) {
                         $c->where('customer_name', 'like', '%' . $request->keyword . '%')

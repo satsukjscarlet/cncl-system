@@ -1350,8 +1350,15 @@ class CertificateWorkflowTest extends TestCase
             ->get(route('quality-certificates.index'))
             ->assertOk()
             ->assertSee($certificate->request->request_no)
+            ->assertSee($certificate->request->requester_name)
             ->assertSee($requestUrl, false)
             ->assertSee('Yêu cầu ký tươi: 2 bản');
+
+        $this->actingAs($admin)
+            ->get(route('certificate-requests.index', ['status_group' => 'all']))
+            ->assertOk()
+            ->assertSee($certificate->request->request_no)
+            ->assertSee($certificate->request->requester_name);
 
         $this->actingAs($admin)
             ->get(route('quality-certificates.show', $certificate))

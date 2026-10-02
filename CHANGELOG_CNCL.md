@@ -1,3 +1,24 @@
+## 2026-10-02 - Hiển thị người tạo yêu cầu trên danh sách
+
+File chính:
+- `app/Http/Controllers/CertificateRequestController.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+- `resources/views/certificate_requests/index.blade.php`
+- `resources/views/quality_certificates/index.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Danh sách yêu cầu cấp phiếu hiển thị thêm cột `Người tạo yêu cầu` từ trường `requester_name`.
+- Danh sách phiếu CNCL hiển thị thêm cột `Người tạo yêu cầu` lấy từ yêu cầu gốc của phiếu.
+- Ô tìm kiếm ở hai màn hình hỗ trợ tìm theo tên người tạo yêu cầu.
+- Cập nhật colspan dòng rỗng để không vỡ bảng sau khi thêm cột.
+
+Kiểm tra:
+- `php -l` controller/view/test liên quan.
+- `php artisan view:cache`
+- `php artisan test --filter=quality_certificate_list_and_detail_show_request_link_and_hard_copy_requirement`
+
 ## 2026-10-02 - Điều chỉnh ghi chú mẫu In đơn theo đáy bảng
 
 File chính:
