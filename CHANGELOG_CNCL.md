@@ -1,3 +1,20 @@
+## 2026-10-01 - Hiển thị yêu cầu ký tươi và link yêu cầu trên phiếu CNCL
+
+File chính:
+- `resources/views/quality_certificates/index.blade.php`
+- `resources/views/quality_certificates/show.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Hoàn nguyên phần thay đổi nghiệp vụ in ký tươi khẩn cấp: in ký tươi không tự chuyển phiếu sang `ISSUED` và không tự hoàn tất yêu cầu.
+- Danh sách phiếu hiển thị `Số yêu cầu` dưới dạng link về chi tiết yêu cầu cấp phiếu.
+- Danh sách phiếu hiển thị badge `Yêu cầu ký tươi: X bản` ngay dưới số yêu cầu nếu yêu cầu gốc có tích ký tươi.
+- Chi tiết phiếu hiển thị link `Số yêu cầu` và dòng `Yêu cầu ký tươi: Có - X bản` hoặc `Không`.
+
+Kiểm tra:
+- Bổ sung test danh sách/chi tiết phiếu hiển thị link yêu cầu và thông tin yêu cầu ký tươi.
+
 ## 2026-10-01 - Dán Excel sản phẩm theo tên trong yêu cầu cấp phiếu
 
 File chính:

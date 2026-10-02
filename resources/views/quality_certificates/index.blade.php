@@ -430,7 +430,22 @@
                             @endif
                         </td>
 
-                        <td>{{ $certificate->request->request_no ?? '-' }}</td>
+                        <td>
+                            @if($certificate->request)
+                                <a href="{{ route('certificate-requests.show', $certificate->request) }}" class="font-weight-bold">
+                                    {{ $certificate->request->request_no }}
+                                </a>
+                                @if($certificate->request->require_hard_copy)
+                                    <div class="mt-1">
+                                        <span class="badge badge-warning">
+                                            <i class="fas fa-print"></i> Yêu cầu ký tươi: {{ $certificate->request->hard_copy_quantity }} bản
+                                        </span>
+                                    </div>
+                                @endif
+                            @else
+                                -
+                            @endif
+                        </td>
 
                         <td>
                             <div class="certificate-customer">

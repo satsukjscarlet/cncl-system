@@ -1331,6 +1331,37 @@ class CertificateWorkflowTest extends TestCase
         $this->assertSame(1, $certificate->fresh()->print_count);
     }
 
+    public function test_quality_certificate_list_and_detail_show_request_link_and_hard_copy_requirement(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $customer = $this->createCustomerForCenter($centerUser, 'KH-HARD-COPY-DISPLAY');
+        $certificate = $this->createIssuedCertificate($centerUser, $customer, 'INV-HARD-COPY-DISPLAY', [
+            [$this->product, 12],
+        ]);
+        $certificate->request->update([
+            'require_hard_copy' => true,
+            'hard_copy_quantity' => 2,
+        ]);
+
+        $requestUrl = route('certificate-requests.show', $certificate->request);
+
+        $this->actingAs($admin)
+            ->get(route('quality-certificates.index'))
+            ->assertOk()
+            ->assertSee($certificate->request->request_no)
+            ->assertSee($requestUrl, false)
+            ->assertSee('Yêu cầu ký tươi: 2 bản');
+
+        $this->actingAs($admin)
+            ->get(route('quality-certificates.show', $certificate))
+            ->assertOk()
+            ->assertSee($certificate->request->request_no)
+            ->assertSee($requestUrl, false)
+            ->assertSee('Yêu cầu ký tươi')
+            ->assertSee('Có - 2 bản');
+    }
+
     private function createProduct(): Product
     {
         $group = ProductGroup::create([

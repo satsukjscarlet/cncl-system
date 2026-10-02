@@ -65,7 +65,26 @@
 
             <div class="card-body">
                 <p><strong>Số phiếu:</strong> {{ $qualityCertificate->certificate_no }}</p>
-                <p><strong>Số yêu cầu:</strong> {{ $qualityCertificate->request->request_no ?? '-' }}</p>
+                <p>
+                    <strong>Số yêu cầu:</strong>
+                    @if($qualityCertificate->request)
+                        <a href="{{ route('certificate-requests.show', $qualityCertificate->request) }}">
+                            {{ $qualityCertificate->request->request_no }}
+                        </a>
+                    @else
+                        -
+                    @endif
+                </p>
+                <p>
+                    <strong>Yêu cầu ký tươi:</strong>
+                    @if($qualityCertificate->request?->require_hard_copy)
+                        <span class="badge badge-warning">
+                            <i class="fas fa-print"></i> Có - {{ $qualityCertificate->request->hard_copy_quantity }} bản
+                        </span>
+                    @else
+                        <span class="text-muted">Không</span>
+                    @endif
+                </p>
                 <p><strong>Người lập:</strong> {{ $qualityCertificate->creator->name ?? '-' }}</p>
                 <p><strong>Ngày lập:</strong> {{ optional($qualityCertificate->created_at)->format('d/m/Y H:i') }}</p>
                 <p>
