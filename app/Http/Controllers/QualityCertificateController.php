@@ -12,6 +12,7 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\HardCopyCertificatePdfService;
 use App\Services\HardCopyBatchCertificatePdfService;
+use App\Services\DocumentNumberService;
 use App\Services\NotificationService;
 use App\Services\SignedCertificatePdfService;
 use App\Services\SmartCaPadesService;
@@ -920,7 +921,7 @@ class QualityCertificateController extends Controller
     {
         return [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $qualityCertificate->certificate_no . '.pdf"',
+            'Content-Disposition' => 'inline; filename="' . app(DocumentNumberService::class)->safeFileName($qualityCertificate->certificate_no) . '"',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
             'Pragma' => 'no-cache',
             'Expires' => '0',
@@ -961,9 +962,10 @@ class QualityCertificateController extends Controller
         try {
             $oldData = $qualityCertificate->toArray();
             $oldRequest = $qualityCertificate->request;
+            $numberService = app(DocumentNumberService::class);
 
             $newRequest = CertificateRequest::create([
-                'request_no' => $this->generateRequestNo(),
+                'request_no' => $numberService->generateRequestNo((int) $oldRequest->distribution_center_id),
                 'request_type' => 'REISSUE',
                 'reissue_of_certificate_id' => $qualityCertificate->id,
                 'reissue_reason' => $data['reissue_reason'],
@@ -1280,7 +1282,7 @@ class QualityCertificateController extends Controller
 
         return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $qualityCertificate->certificate_no . '_ky_tuoi_' . $printMode . '_' . $printTemplate . '_lan_' . $printNo . '.pdf"',
+            'Content-Disposition' => 'inline; filename="' . app(DocumentNumberService::class)->safeFileName($qualityCertificate->certificate_no . '_ky_tuoi_' . $printMode . '_' . $printTemplate . '_lan_' . $printNo) . '"',
         ]);
     }
 
@@ -1804,7 +1806,7 @@ class QualityCertificateController extends Controller
         $certificateNos = $certificates->pluck('certificate_no')->implode(', ');
 
         $newRequest = CertificateRequest::create([
-            'request_no' => $this->generateRequestNo(),
+            'request_no' => app(DocumentNumberService::class)->generateRequestNo((int) $oldRequest->distribution_center_id),
             'request_type' => 'REISSUE',
             'reissue_of_certificate_id' => $primaryCertificate->id,
             'reissue_reason' => $reason,
@@ -1839,23 +1841,6 @@ class QualityCertificateController extends Controller
         }
 
         return $newRequest;
-    }
-
-    private function generateRequestNo(): string
-    {
-        $prefix = 'YC-' . date('Ymd') . '-';
-
-        $lastRequestNo = CertificateRequest::withTrashed()
-            ->where('request_no', 'like', $prefix . '%')
-            ->lockForUpdate()
-            ->orderByDesc('request_no')
-            ->value('request_no');
-
-        $nextNumber = $lastRequestNo
-            ? ((int) substr($lastRequestNo, strlen($prefix))) + 1
-            : 1;
-
-        return $prefix . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     private function authorizeCenter(QualityCertificate $qualityCertificate): void

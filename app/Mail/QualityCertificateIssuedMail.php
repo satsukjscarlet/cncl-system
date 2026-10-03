@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\QualityCertificate;
+use App\Services\DocumentNumberService;
 use App\Services\SignedCertificatePdfService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -34,10 +35,12 @@ class QualityCertificateIssuedMail extends Mailable
             ->view('emails.quality_certificate_issued');
 
         $storedPdf = app(\App\Services\StoredSignedCertificatePdf::class);
+        $attachmentName = app(DocumentNumberService::class)->safeFileName($this->certificate->certificate_no);
+
         if ($storedPdf->isSigned($this->certificate)) {
             return $mail->attachData(
                 $storedPdf->read($this->certificate),
-                $this->certificate->certificate_no . '.pdf',
+                $attachmentName,
                 ['mime' => 'application/pdf']
             );
         }
@@ -46,7 +49,7 @@ class QualityCertificateIssuedMail extends Mailable
 
         return $mail->attachData(
             $pdfContent,
-            $this->certificate->certificate_no . '.pdf',
+            $attachmentName,
             [
                 'mime' => 'application/pdf',
             ]

@@ -78,6 +78,7 @@ class CertificateWorkflowTest extends TestCase
         $this->assertSame($centerUser->distribution_center_id, $certificateRequest->distribution_center_id);
         $this->assertSame($customer->id, $certificateRequest->customer_id);
         $this->assertCount(1, $certificateRequest->details);
+        $this->assertMatchesRegularExpression('/^YC-\d{8}-0001\/NP$/', $certificateRequest->request_no);
 
         $this->actingAs($dvkh)
             ->getJson(route('work-queue.feed'))
@@ -116,6 +117,7 @@ class CertificateWorkflowTest extends TestCase
 
         $this->assertSame('PTN_PROCESSING', $certificateRequest->status);
         $this->assertSame('WAIT_PTN_MANAGER_APPROVAL', $certificate->status);
+        $this->assertSame('CNCL-' . substr($certificateRequest->request_no, 3), $certificate->certificate_no);
         $this->assertNull($certificate->signed_at);
         $this->assertCount(1, $certificate->details);
         $this->assertSame('DN110', $certificate->details->first()->nominal_size);
@@ -154,6 +156,38 @@ class CertificateWorkflowTest extends TestCase
             ->get(route('quality-certificates.ready-to-sign'))
             ->assertOk()
             ->assertSee($certificate->certificate_no);
+    }
+
+    public function test_request_number_sequence_is_scoped_by_distribution_center(): void
+    {
+        $npUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $tpUser = User::where('username', 'trungtam_tp')->firstOrFail();
+
+        $numberService = app(\App\Services\DocumentNumberService::class);
+
+        $npFirst = $numberService->generateRequestNo((int) $npUser->distribution_center_id);
+        CertificateRequest::create([
+            'request_no' => $npFirst,
+            'distribution_center_id' => $npUser->distribution_center_id,
+            'status' => 'DRAFT',
+            'created_by' => $npUser->id,
+        ]);
+
+        $tpFirst = $numberService->generateRequestNo((int) $tpUser->distribution_center_id);
+        CertificateRequest::create([
+            'request_no' => $tpFirst,
+            'distribution_center_id' => $tpUser->distribution_center_id,
+            'status' => 'DRAFT',
+            'created_by' => $tpUser->id,
+        ]);
+
+        $npSecond = $numberService->generateRequestNo((int) $npUser->distribution_center_id);
+
+        $this->assertMatchesRegularExpression('/^YC-\d{8}-0001\/NP$/', $npFirst);
+        $this->assertMatchesRegularExpression('/^YC-\d{8}-0001\/TP$/', $tpFirst);
+        $this->assertMatchesRegularExpression('/^YC-\d{8}-0002\/NP$/', $npSecond);
+        $this->assertSame('CNCL-' . substr($npFirst, 3), $numberService->certificateNoFromRequestNo($npFirst));
+        $this->assertSame('CNCL-' . substr($tpFirst, 3), $numberService->certificateNoFromRequestNo($tpFirst));
     }
 
     public function test_dvkh_can_return_waiting_request_to_distribution_center_from_all_request_screens(): void

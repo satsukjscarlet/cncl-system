@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\DistributionCenter;
 use App\Models\Product;
 use App\Models\UrgentReason;
+use App\Services\DocumentNumberService;
 use App\Services\NotificationService;
 use App\Services\WorkflowHistoryService;
 use App\Services\WorkflowStepService;
@@ -533,7 +534,7 @@ class CertificateRequestController extends Controller
             $requestStatus = $this->requestStatusFromAction($request);
 
             $certificateRequest = CertificateRequest::create([
-                'request_no' => $this->generateRequestNo(),
+                'request_no' => app(DocumentNumberService::class)->generateRequestNo((int) $distributionCenterId),
                 'distribution_center_id' => $distributionCenterId,
                 'customer_id' => $customerId,
                 'delivery_date' => $data['delivery_date'] ?? null,
@@ -861,23 +862,6 @@ class CertificateRequestController extends Controller
         return redirect()
             ->route('certificate-requests.show', $certificateRequest)
             ->with('success', 'Đã gửi yêu cầu sang DVKH.');
-    }
-
-    private function generateRequestNo(): string
-    {
-        $prefix = 'YC-' . date('Ymd') . '-';
-
-        $lastRequestNo = CertificateRequest::withTrashed()
-            ->where('request_no', 'like', $prefix . '%')
-            ->lockForUpdate()
-            ->orderByDesc('request_no')
-            ->value('request_no');
-
-        $nextNumber = $lastRequestNo
-            ? ((int) substr($lastRequestNo, strlen($prefix))) + 1
-            : 1;
-
-        return $prefix . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     private function resolveCustomerId(array $data): int

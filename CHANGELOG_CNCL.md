@@ -1994,3 +1994,28 @@ Kiểm tra:
 - `php artisan view:cache`: pass.
 - `php artisan test --filter=CertificateWorkflowTest`: pass.
 - `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
+## 2026-10-03 - Doi quy cach sinh so yeu cau va so phieu theo trung tam
+
+File da sua:
+- `DocumentNumberService.php` (`app/Services/DocumentNumberService.php`): service sinh so yeu cau, so phieu va ten file an toan.
+- `CertificateRequestController.php` (`app/Http/Controllers/CertificateRequestController.php`): tao yeu cau trung tam theo so moi.
+- `PtnRequestController.php` (`app/Http/Controllers/PtnRequestController.php`): PTN lap truc tiep va tao phieu CNCL theo so moi.
+- `QualityCertificateController.php` (`app/Http/Controllers/QualityCertificateController.php`): yeu cau cap lai va ten file PDF tra ve trinh duyet theo so moi.
+- `SmartCaService.php` (`app/Services/SmartCaService.php`): ten file gui SmartCA dung dang an toan.
+- `QualityCertificateIssuedMail.php` (`app/Mail/QualityCertificateIssuedMail.php`): ten file PDF dinh kem email dung dang an toan.
+- `CertificateWorkflowTest.php` (`tests/Feature/CertificateWorkflowTest.php`): bo sung test quy cach so moi va sequence theo trung tam.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Them service sinh so dung chung cho yeu cau va phieu CNCL.
+- So yeu cau moi co dang `YC-YYYYMMDD-0001/TH`, sequence tach rieng theo tung trung tam trong ngay.
+- So phieu CNCL moi duoc sinh tu so yeu cau tuong ung, dang `CNCL-YYYYMMDD-0001/TH`.
+- Luong tao yeu cau thuong, PTN lap truc tiep va yeu cau cap lai deu dung quy cach so moi.
+- Ten file PDF/email/SmartCA duoc chuyen sang dang an toan de khong loi khi so phieu co ky tu `/`.
+
+Kiem tra:
+- `php -l` cac file PHP lien quan.
+- `php artisan view:cache`.
+- `php artisan test --filter=standard_certificate_request_workflow_reaches_signing_queue`.
+- `php artisan test --filter=request_number_sequence_is_scoped_by_distribution_center`.

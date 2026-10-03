@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
 use App\Models\UrgentReason;
+use App\Services\DocumentNumberService;
 use App\Services\NotificationService;
 use App\Services\SlaClockService;
 use App\Services\WorkflowHistoryService;
@@ -183,9 +184,10 @@ class PtnRequestController extends Controller
 
         try {
             $customerId = $this->resolveCustomerId($data);
+            $numberService = app(DocumentNumberService::class);
 
             $certificateRequest = CertificateRequest::create([
-                'request_no' => $this->generateDirectRequestNo(),
+                'request_no' => $numberService->generateRequestNo((int) $data['distribution_center_id']),
                 'request_type' => 'DIRECT_PTN',
                 'distribution_center_id' => $data['distribution_center_id'],
                 'customer_id' => $customerId,
@@ -475,23 +477,6 @@ class PtnRequestController extends Controller
         }
     }
 
-    private function generateCertificateNo(): string
-    {
-        $prefix = 'CNCL-' . date('Ymd') . '-';
-
-        $lastCertificateNo = QualityCertificate::withTrashed()
-            ->where('certificate_no', 'like', $prefix . '%')
-            ->lockForUpdate()
-            ->orderByDesc('certificate_no')
-            ->value('certificate_no');
-
-        $count = $lastCertificateNo
-            ? ((int) substr($lastCertificateNo, strlen($prefix))) + 1
-            : 1;
-
-        return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
-    }
-
     private function createQualityCertificateFromRequest(CertificateRequest $certificateRequest): QualityCertificate
     {
         $certificateRequest->loadMissing([
@@ -501,7 +486,7 @@ class PtnRequestController extends Controller
         ]);
 
         $certificate = QualityCertificate::create([
-            'certificate_no' => $this->generateCertificateNo(),
+            'certificate_no' => app(DocumentNumberService::class)->uniqueCertificateNoFromRequestNo($certificateRequest->request_no),
             'certificate_request_id' => $certificateRequest->id,
             'status' => 'WAIT_PTN_MANAGER_APPROVAL',
             'replaces_certificate_id' => $certificateRequest->request_type === 'REISSUE'
@@ -571,23 +556,6 @@ class PtnRequestController extends Controller
             ->latest('rejected_at')
             ->exists()
             && !$this->hasActiveQualityCertificate($certificateRequest);
-    }
-
-    private function generateDirectRequestNo(): string
-    {
-        $prefix = 'PTN-' . date('Ymd') . '-';
-
-        $lastRequestNo = CertificateRequest::withTrashed()
-            ->where('request_no', 'like', $prefix . '%')
-            ->lockForUpdate()
-            ->orderByDesc('request_no')
-            ->value('request_no');
-
-        $count = $lastRequestNo
-            ? ((int) substr($lastRequestNo, strlen($prefix))) + 1
-            : 1;
-
-        return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
     }
 
     private function resolveCustomerId(array $data): int

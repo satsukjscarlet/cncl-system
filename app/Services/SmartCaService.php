@@ -111,7 +111,7 @@ class SmartCaService
         $this->ensureConfigured();
 
         $transactionId = 'HASH-' . $certificate->id . '-' . Str::upper((string) Str::uuid());
-        $fileName = $certificate->certificate_no . '.pdf';
+        $fileName = app(DocumentNumberService::class)->safeFileName($certificate->certificate_no);
         $pageCount = $this->countPdfPages($pdfContent);
         $signatureOptions = $this->signatureOptions($certificate, $pageCount);
 
@@ -503,4 +503,3 @@ class SmartCaService
         return 'CNCL-' . $certificate->id . '-' . Str::slug($certificate->certificate_no);
     }
 }
-
