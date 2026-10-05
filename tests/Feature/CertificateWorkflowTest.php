@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductGroup;
 use App\Models\QualityCertificate;
 use App\Models\QualityStandard;
+use App\Models\SalesUnit;
 use App\Models\SlaConfig;
 use App\Models\User;
 use App\Models\UserNotification;
@@ -52,11 +53,13 @@ class CertificateWorkflowTest extends TestCase
         $ptn = User::where('username', 'ptn')->firstOrFail();
         $truongPtn = User::where('username', 'truongptn')->firstOrFail();
         $customer = $this->createCustomerForCenter($centerUser);
+        $salesUnit = $this->createSalesUnitForCenter($centerUser);
 
         $this->actingAs($centerUser)
             ->post(route('certificate-requests.store'), [
                 'customer_mode' => 'existing',
                 'customer_id' => $customer->id,
+                'sales_unit_id' => $salesUnit->id,
                 'delivery_date' => '2026-08-08',
                 'invoice_no' => 'INV-E2E-001',
                 'require_hard_copy' => '0',
@@ -195,11 +198,13 @@ class CertificateWorkflowTest extends TestCase
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
         $dvkh = User::where('username', 'dvkh')->firstOrFail();
         $customer = $this->createCustomerForCenter($centerUser, 'KH-DVKH-RETURN');
+        $salesUnit = $this->createSalesUnitForCenter($centerUser);
 
         $this->actingAs($centerUser)
             ->post(route('certificate-requests.store'), [
                 'customer_mode' => 'existing',
                 'customer_id' => $customer->id,
+                'sales_unit_id' => $salesUnit->id,
                 'delivery_date' => '2026-08-08',
                 'invoice_no' => 'INV-DVKH-RETURN-001',
                 'require_hard_copy' => '0',
@@ -363,12 +368,14 @@ class CertificateWorkflowTest extends TestCase
     {
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
         $customer = $this->createCustomerForCenter($centerUser, 'KH-HARD-COPY-QTY');
+        $salesUnit = $this->createSalesUnitForCenter($centerUser);
 
         $this->actingAs($centerUser)
             ->from(route('certificate-requests.create'))
             ->post(route('certificate-requests.store'), [
                 'customer_mode' => 'existing',
                 'customer_id' => $customer->id,
+                'sales_unit_id' => $salesUnit->id,
                 'delivery_date' => '2026-08-08',
                 'invoice_no' => 'INV-HARD-COPY-QTY',
                 'require_hard_copy' => '1',
@@ -434,10 +441,12 @@ class CertificateWorkflowTest extends TestCase
         $ptn = User::where('username', 'ptn')->firstOrFail();
         $truongPtn = User::where('username', 'truongptn')->firstOrFail();
         $customer = $this->createCustomerForCenter($centerUser, 'KH-PTN-RETURN-AFTER-HEAD');
+        $salesUnit = $this->createSalesUnitForCenter($centerUser);
 
         $this->actingAs($centerUser)->post(route('certificate-requests.store'), [
             'customer_mode' => 'existing',
             'customer_id' => $customer->id,
+            'sales_unit_id' => $salesUnit->id,
             'delivery_date' => '2026-08-08',
             'invoice_no' => 'INV-PTN-RETURN-AFTER-HEAD',
             'require_hard_copy' => '0',
@@ -539,10 +548,12 @@ class CertificateWorkflowTest extends TestCase
         $ptn = User::where('username', 'ptn')->firstOrFail();
         $truongPtn = User::where('username', 'truongptn')->firstOrFail();
         $customer = $this->createCustomerForCenter($centerUser, 'KH-E2E-RETURN');
+        $salesUnit = $this->createSalesUnitForCenter($centerUser);
 
         $this->actingAs($centerUser)->post(route('certificate-requests.store'), [
             'customer_mode' => 'existing',
             'customer_id' => $customer->id,
+            'sales_unit_id' => $salesUnit->id,
             'delivery_date' => '2026-08-08',
             'invoice_no' => 'INV-E2E-RETURN',
             'require_hard_copy' => '0',
@@ -746,11 +757,13 @@ class CertificateWorkflowTest extends TestCase
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
         $dvkh = User::where('username', 'dvkh')->firstOrFail();
         $customer = $this->createCustomerForCenter($centerUser, 'KH-DRAFT-SUBMIT');
+        $salesUnit = $this->createSalesUnitForCenter($centerUser);
 
         $this->actingAs($centerUser)
             ->post(route('certificate-requests.store'), [
                 'customer_mode' => 'existing',
                 'customer_id' => $customer->id,
+                'sales_unit_id' => $salesUnit->id,
                 'delivery_date' => '2026-08-08',
                 'invoice_no' => 'INV-DRAFT-SUBMIT',
                 'require_hard_copy' => '0',
@@ -774,6 +787,7 @@ class CertificateWorkflowTest extends TestCase
             ->put(route('certificate-requests.update', $certificateRequest), [
                 'customer_mode' => 'existing',
                 'customer_id' => $customer->id,
+                'sales_unit_id' => $salesUnit->id,
                 'delivery_date' => '2026-08-09',
                 'invoice_no' => 'INV-DRAFT-SUBMIT',
                 'require_hard_copy' => '0',
@@ -824,6 +838,7 @@ class CertificateWorkflowTest extends TestCase
             ->post(route('certificate-requests.store'), [
                 'customer_mode' => 'existing',
                 'customer_id' => $customer->id,
+                'sales_unit_id' => $this->createSalesUnitForCenter($centerUser)->id,
                 'delivery_date' => '2026-08-08',
                 'invoice_no' => 'INV-SLA-DRAFT-SUBMIT',
                 'require_hard_copy' => '0',
@@ -847,6 +862,7 @@ class CertificateWorkflowTest extends TestCase
             ->put(route('certificate-requests.update', $certificateRequest), [
                 'customer_mode' => 'existing',
                 'customer_id' => $customer->id,
+                'sales_unit_id' => $this->createSalesUnitForCenter($centerUser)->id,
                 'delivery_date' => '2026-08-09',
                 'invoice_no' => 'INV-SLA-DRAFT-SUBMIT',
                 'require_hard_copy' => '0',
@@ -928,10 +944,12 @@ class CertificateWorkflowTest extends TestCase
     public function test_request_can_create_new_customer_with_manual_customer_code(): void
     {
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $salesUnit = $this->createSalesUnitForCenter($centerUser);
 
         $this->actingAs($centerUser)
             ->post(route('certificate-requests.store'), [
                 'customer_mode' => 'new',
+                'sales_unit_id' => $salesUnit->id,
                 'new_customer_code' => 'KH-MANUAL-001',
                 'new_customer_name' => 'Khach hang nhap moi',
                 'new_customer_address' => 'Dia chi khach hang nhap moi',
@@ -1072,6 +1090,77 @@ class CertificateWorkflowTest extends TestCase
         }
     }
 
+    public function test_sales_unit_import_accepts_real_world_sales_unit_row(): void
+    {
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $fileName = 'tests/sales-units-real-world.xlsx';
+
+        Excel::store(new class implements FromArray, WithHeadings {
+            public function headings(): array
+            {
+                return [
+                    'ma_trung_tam',
+                    'ma_bravo',
+                    'ten_dvbh',
+                    'dia_chi_cua_hang',
+                    'so_dt_lien_lac',
+                    'ma_so_thue',
+                    'so_tai_khoan',
+                    'dai_dien_chuc_vu',
+                ];
+            }
+
+            public function array(): array
+            {
+                return [[
+                    'TP',
+                    'HNHHTM',
+                    'Công ty TNHH TM Thanh Mơ',
+                    "Số 263 đường Trường Chinh, Phường Khương Mai, Quận Thanh Xuân,\u{00A0} Thành phố Hà Nội",
+                    '0976215533',
+                    '0101436674',
+                    "0591100796005 ngân hàng TMCP Quân đội - CN Quận Đống đa\u{00A0}",
+                    "GĐ.Bà Nghiêm thị Mơ\u{00A0}",
+                ]];
+            }
+        }, $fileName);
+
+        try {
+            $uploadedFile = new UploadedFile(
+                Storage::path($fileName),
+                'sales-units-real-world.xlsx',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                null,
+                true
+            );
+
+            $this->actingAs($dvkh)
+                ->post(route('sales-units.import'), [
+                    'file' => $uploadedFile,
+                ])
+                ->assertRedirect(route('sales-units.index'))
+                ->assertSessionHas('success');
+
+            $this->assertDatabaseHas('sales_units', [
+                'code' => 'HNHHTM',
+                'name' => 'Công ty TNHH TM Thanh Mơ',
+                'phone' => '0976215533',
+                'tax_code' => '0101436674',
+                'representative' => 'GĐ.Bà Nghiêm thị Mơ',
+            ]);
+
+            $salesUnit = SalesUnit::where('code', 'HNHHTM')->firstOrFail();
+
+            $this->assertSame('TP', $salesUnit->distributionCenter->code);
+            $this->assertSame(
+                '0591100796005 ngân hàng TMCP Quân đội - CN Quận Đống đa',
+                $salesUnit->bank_account
+            );
+        } finally {
+            Storage::delete($fileName);
+        }
+    }
+
     public function test_request_product_excel_import_maps_product_codes_and_merges_quantities(): void
     {
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
@@ -1143,7 +1232,7 @@ class CertificateWorkflowTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonFragment(['Dòng 2: Không tìm thấy mã sản phẩm "UNKNOWN-CODE".'])
-            ->assertJsonFragment(['Dòng 3: Số lượng phải là số lớn hơn 0.'])
+            ->assertJsonFragment(['Dòng 3: Số lượng phải từ 1 trở lên.'])
             ->assertJsonFragment(['Dòng 4: Chưa nhập mã sản phẩm.']);
     }
 
@@ -1218,6 +1307,7 @@ class CertificateWorkflowTest extends TestCase
             ->put(route('certificate-requests.update', $reissueRequest), [
                 'customer_mode' => 'existing',
                 'customer_id' => $customer->id,
+                'sales_unit_id' => $this->createSalesUnitForCenter($centerUser)->id,
                 'delivery_date' => '2026-08-10',
                 'invoice_no' => 'INV-E2E-REISSUE-NEW',
                 'require_hard_copy' => '0',
@@ -1308,6 +1398,7 @@ class CertificateWorkflowTest extends TestCase
             ->put(route('certificate-requests.update', $reissueRequest), [
                 'customer_mode' => 'existing',
                 'customer_id' => $customer->id,
+                'sales_unit_id' => $reissueRequest->sales_unit_id ?: $this->createSalesUnitForCenter($centerUser)->id,
                 'delivery_date' => optional($reissueRequest->delivery_date)->format('Y-m-d'),
                 'invoice_no' => $reissueRequest->invoice_no,
                 'require_hard_copy' => $reissueRequest->require_hard_copy ? '1' : '0',
@@ -1508,5 +1599,27 @@ class CertificateWorkflowTest extends TestCase
             'project_address' => 'Dia diem cong trinh NP',
             'is_active' => true,
         ]);
+    }
+
+    private function createSalesUnitForCenter(User $user, string $code = 'DVBH-TEST'): SalesUnit
+    {
+        return SalesUnit::firstOrCreate(
+            [
+                'distribution_center_id' => $user->distribution_center_id,
+                'code' => $code,
+            ],
+            [
+                'name' => 'Don vi ban hang test',
+                'address' => 'Dia chi don vi ban hang test',
+                'phone' => '0900000000',
+                'tax_code' => '0100000000',
+                'bank_account' => '0000000000',
+                'representative' => 'Nguoi dai dien',
+                'note' => 'Du lieu test',
+                'is_active' => true,
+                'created_by' => $user->id,
+                'updated_by' => $user->id,
+            ]
+        );
     }
 }

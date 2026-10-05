@@ -67,6 +67,7 @@
                     @include('certificate_requests.partials.return_badge', ['certificateRequest' => $certificateRequest])
                 </p>
                 <p><strong>Trung tâm:</strong> {{ $certificateRequest->distributionCenter->name ?? '-' }}</p>
+                <p><strong>Đơn vị bán hàng:</strong> {{ $certificateRequest->salesUnit ? $certificateRequest->salesUnit->code . ' - ' . $certificateRequest->salesUnit->name : '-' }}</p>
                 <p><strong>Ngày xuất hàng:</strong> {{ $certificateRequest->delivery_date ? $certificateRequest->delivery_date->format('d/m/Y') : '-' }}</p>
                 <p><strong>Số hóa đơn:</strong> {{ $certificateRequest->invoice_no ?: '-' }}</p>
                 <p>

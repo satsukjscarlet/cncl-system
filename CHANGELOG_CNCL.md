@@ -1,3 +1,151 @@
+## 2026-10-05 - Sửa import Đơn vị bán hàng với dữ liệu Excel thực tế
+
+File chính:
+- `app/Http/Controllers/SalesUnitController.php`
+- `database/migrations/2026_10_05_000001_expand_sales_unit_bank_account_column.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Làm sạch dữ liệu import Đơn vị bán hàng: xử lý khoảng trắng đặc biệt/NBSP từ Excel và gom khoảng trắng nhiều dòng trong một ô.
+- Mở rộng cột `sales_units.bank_account` sang `text` vì file thực tế có thể nhập cả số tài khoản, ngân hàng và chi nhánh trong cột `so_tai_khoan`.
+- Tăng validate nhập tay `so_tai_khoan` lên tối đa 1000 ký tự.
+- Thêm test import đúng dòng dữ liệu thực tế gồm `TP/HNHHTM/Công ty TNHH TM Thanh Mơ`.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/SalesUnitController.php`
+- `php -l database/migrations/2026_10_05_000001_expand_sales_unit_bank_account_column.php`
+- `php -l tests/Feature/CertificateWorkflowTest.php`
+- `php artisan migrate`
+- `php artisan test --filter=sales_unit_import_accepts_real_world_sales_unit_row`
+
+## 2026-10-05 - Reset cache phân quyền sau khi cập nhật role
+
+File chính:
+- `app/Http/Controllers/RolePermissionController.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Sau khi lưu phân quyền bằng màn `Phân quyền`, hệ thống gọi `PermissionRegistrar::forgetCachedPermissions()`.
+- Tránh trường hợp đã cấp `report.view/report.export` cho Trưởng PTN nhưng middleware/controller vẫn đọc cache quyền cũ và trả 403.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/RolePermissionController.php`
+- `php artisan test --filter=report_permission_allows_truong_ptn_to_open_summary_report`
+
+## 2026-10-05 - Sửa quyền xem báo cáo theo permission
+
+File chính:
+- `app/Http/Controllers/ReportController.php`
+- `tests/Feature/RoleWorkspaceAccessTest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Sửa controller báo cáo không còn hard-code chỉ `Admin/LanhDao/TrungTam` được vào báo cáo.
+- Tài khoản nội bộ như `Trưởng PTN` nếu được cấp `report.view` hoặc `report.export` sẽ truy cập được báo cáo theo quyền đã phân.
+- Tài khoản `TrungTam` vẫn chỉ xem dữ liệu theo trung tâm của mình.
+- Việt hóa thông báo 403 của báo cáo tổng hợp.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/ReportController.php`
+- `php -l tests/Feature/RoleWorkspaceAccessTest.php`
+- `php artisan test --filter=report_permission_allows_truong_ptn_to_open_summary_report`
+
+## 2026-10-05 - Ràng buộc số lượng sản phẩm từ 1 trở lên
+
+File chính:
+- `app/Http/Controllers/CertificateRequestController.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `resources/views/certificate_requests/_form.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Đổi validate số lượng sản phẩm trên yêu cầu cấp phiếu từ `min:0.01` sang `min:1`.
+- Áp dụng cho tạo mới, cập nhật yêu cầu, PTN lập trực tiếp, import Excel và dán Excel.
+- Input số lượng trên giao diện đặt `min="1"` để chặn nhập rỗng/số âm/số nhỏ hơn 1 từ phía trình duyệt.
+- Cập nhật thông báo lỗi thành `Số lượng sản phẩm phải từ 1 trở lên.`
+
+Kiểm tra:
+- `php -l app/Http/Controllers/CertificateRequestController.php`
+- `php -l app/Http/Controllers/PtnRequestController.php`
+- `php artisan view:cache`
+- `php artisan test --filter=request_product_excel_import_maps_product_codes_and_merges_quantities`
+
+## 2026-10-03 - Việt hóa phần Đơn vị bán hàng trên form tạo yêu cầu
+
+File chính:
+- `resources/views/certificate_requests/_form.blade.php`
+- `app/Http/Controllers/CertificateRequestController.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Việt hóa nhãn, placeholder và mô tả của trường `Đơn vị bán hàng` trên màn tạo/sửa yêu cầu cấp phiếu.
+- Việt hóa các thông báo backend liên quan đến khách hàng/đơn vị bán hàng không thuộc trung tâm đã chọn.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/CertificateRequestController.php`
+- `php -l app/Http/Controllers/PtnRequestController.php`
+- `php artisan view:cache`
+
+## 2026-10-03 - Việt hóa giao diện danh mục Đơn vị bán hàng
+
+File chính:
+- `resources/views/sales_units/index.blade.php`
+- `resources/views/sales_units/_form.blade.php`
+- `resources/views/sales_units/create.blade.php`
+- `resources/views/sales_units/edit.blade.php`
+- `app/Http/Controllers/SalesUnitController.php`
+- `app/Exports/SalesUnitsExport.php`
+- `app/Exports/SalesUnitsTemplateExport.php`
+- `resources/views/partials/sidebar.blade.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Chuyển các nhãn, nút, tiêu đề, modal, cảnh báo import và thông báo thao tác của danh mục `Đơn vị bán hàng` sang tiếng Việt có dấu.
+- Cập nhật trạng thái trong file Excel xuất ra và dữ liệu mẫu Excel có dấu.
+- Giữ nguyên các mã cột kỹ thuật như `ma_bravo`, `ten_dvbh`, `ma_trung_tam` để không làm hỏng parser import.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/SalesUnitController.php`
+- `php -l app/Exports/SalesUnitsExport.php`
+- `php -l app/Exports/SalesUnitsTemplateExport.php`
+- `php artisan view:cache`
+
+## 2026-10-03 - Bảo toàn phân quyền khi chạy PermissionSeeder trên server chính
+
+File chính:
+- `database/seeders/PermissionSeeder.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Đổi seeder phân quyền từ `syncPermissions()` sang cơ chế chỉ cấp bổ sung quyền còn thiếu.
+- Không xóa các quyền legacy/custom đang có trong database để tránh làm hỏng phân quyền đã chỉnh trên server chính.
+- Admin vẫn được bổ sung toàn bộ quyền hiện có; các role khác chỉ được thêm quyền mặc định mới nếu còn thiếu.
+
+Kiểm tra:
+- `php -l database/seeders/PermissionSeeder.php`
+- `php artisan db:seed --class=PermissionSeeder`
+
+## 2026-10-03 - Hiển thị danh mục Đơn vị bán hàng trên menu
+
+File chính:
+- `config/adminlte.php`
+- `app/Http/Controllers/RolePermissionController.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Thêm mục `Đơn vị bán hàng` vào menu chính AdminLTE trong nhóm `Danh mục`.
+- Bổ sung nhãn nhóm và nhãn quyền `sales_unit.*` để màn phân quyền hiển thị tiếng Việt dễ hiểu.
+
+Kiểm tra:
+- `php -l config/adminlte.php`
+- `php -l app/Http/Controllers/RolePermissionController.php`
+- `php artisan optimize:clear`
+- `php artisan view:cache`
+- `php artisan route:list --name=sales-units`
+
 ## 2026-10-02 - Hiển thị người tạo yêu cầu trên danh sách
 
 File chính:
@@ -1994,6 +2142,74 @@ Kiểm tra:
 - `php artisan view:cache`: pass.
 - `php artisan test --filter=CertificateWorkflowTest`: pass.
 - `php artisan test --filter=RoleWorkspaceAccessTest`: pass.
+
+## 2026-10-03 - Import/Export danh muc Don vi ban hang
+
+File da sua/them:
+- `SalesUnitsTemplateExport.php` (`app/Exports/SalesUnitsTemplateExport.php`): file mau import don vi ban hang.
+- `SalesUnitsExport.php` (`app/Exports/SalesUnitsExport.php`): xuat danh muc don vi ban hang ra Excel.
+- `SalesUnitController.php` (`app/Http/Controllers/SalesUnitController.php`): them import/export/template, canh bao trung `ma_bravo + trung tam` truoc khi cap nhat.
+- `web.php` (`routes/web.php`): them route `sales-units-template`, `sales-units-import`, `sales-units-export`.
+- `PermissionSeeder.php` (`database/seeders/PermissionSeeder.php`): them quyen `sales_unit.import`, `sales_unit.export`.
+- `index.blade.php` (`resources/views/sales_units/index.blade.php`): them nut File mau, Import, Xuat Excel va modal xac nhan cap nhat du lieu trung.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Ho tro import file Excel co cot `ma_trung_tam` hoac cot trung tam dang ten nhu `Tam Phuoc`.
+- Ho tro file co dong tieu de lon phia tren, he thong tu tim dong header co cot `ma_bravo`/`ma_dvbh`.
+- Neu trung `ma_bravo + trung tam`, he thong hien danh sach trung de nguoi quan ly xac nhan truoc khi cap nhat.
+- Trung tam khong duoc import/export theo dung yeu cau khong cho Trung tam tao don vi ban hang.
+
+Kiem tra:
+- `php -l` controller/export lien quan.
+- `php artisan view:cache`.
+- `php artisan db:seed --class=PermissionSeeder`.
+
+## 2026-10-03 - Them danh muc Don vi ban hang theo Trung tam
+
+File da sua/them:
+- `2026_10_03_000001_create_sales_units_table.php` (`database/migrations/2026_10_03_000001_create_sales_units_table.php`): tao bang `sales_units`.
+- `2026_10_03_000002_add_sales_unit_id_to_certificate_requests_table.php` (`database/migrations/2026_10_03_000002_add_sales_unit_id_to_certificate_requests_table.php`): them `sales_unit_id` vao yeu cau cap phieu.
+- `SalesUnit.php` (`app/Models/SalesUnit.php`): model danh muc don vi ban hang.
+- `CertificateRequest.php` (`app/Models/CertificateRequest.php`): them fillable va quan he `salesUnit`.
+- `DistributionCenter.php` (`app/Models/DistributionCenter.php`): them quan he `salesUnits`.
+- `SalesUnitController.php` (`app/Http/Controllers/SalesUnitController.php`): quan ly danh muc don vi ban hang, dinh chi va xoa han khi chua duoc dung.
+- `CertificateRequestController.php` (`app/Http/Controllers/CertificateRequestController.php`): them validate/luu/chinh sua `sales_unit_id`.
+- `PtnRequestController.php` (`app/Http/Controllers/PtnRequestController.php`): them `sales_unit_id` cho luong PTN lap truc tiep.
+- `DvkhRequestController.php` (`app/Http/Controllers/DvkhRequestController.php`): load va hien thi don vi ban hang khi DVKH kiem tra.
+- `QualityCertificateController.php` (`app/Http/Controllers/QualityCertificateController.php`): load don vi ban hang trong chi tiet phieu va giu lai khi cap lai.
+- `web.php` (`routes/web.php`): them route `sales-units`.
+- `PermissionSeeder.php` (`database/seeders/PermissionSeeder.php`): them quyen `sales_unit.*`; Trung tam chi xem/chon, DVKH/Admin quan ly.
+- `sidebar.blade.php` (`resources/views/partials/sidebar.blade.php`): them menu Don vi ban hang theo quyen.
+- `index.blade.php` (`resources/views/sales_units/index.blade.php`): man danh sach/bo loc don vi ban hang.
+- `_form.blade.php` (`resources/views/sales_units/_form.blade.php`): form nhap Ma Bravo, Ten DVBH, dia chi, SDT, MST, so tai khoan, dai dien, ghi chu.
+- `create.blade.php` (`resources/views/sales_units/create.blade.php`): man them moi.
+- `edit.blade.php` (`resources/views/sales_units/edit.blade.php`): man cap nhat.
+- `_form.blade.php` (`resources/views/certificate_requests/_form.blade.php`): them select Don vi ban hang, loc theo Trung tam.
+- `show.blade.php` (`resources/views/certificate_requests/show.blade.php`): hien thi don vi ban hang.
+- `show.blade.php` (`resources/views/dvkh_requests/show.blade.php`): hien thi don vi ban hang.
+- `show.blade.php` (`resources/views/ptn_requests/show.blade.php`): hien thi don vi ban hang.
+- `show.blade.php` (`resources/views/quality_certificates/show.blade.php`): hien thi don vi ban hang trong chi tiet phieu.
+- `index.blade.php` (`resources/views/certificate_requests/index.blade.php`): hien thi nhanh don vi ban hang tren danh sach yeu cau.
+- `index.blade.php` (`resources/views/dvkh_requests/index.blade.php`): hien thi nhanh don vi ban hang tren man DVKH.
+- `index.blade.php` (`resources/views/ptn_requests/index.blade.php`): hien thi nhanh don vi ban hang tren man PTN.
+- `index.blade.php` (`resources/views/quality_certificates/index.blade.php`): hien thi nhanh don vi ban hang tren danh sach phieu.
+- `CertificateWorkflowTest.php` (`tests/Feature/CertificateWorkflowTest.php`): cap nhat test tao yeu cau voi don vi ban hang.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Them danh muc Don vi ban hang gan rieng tung Trung tam phan phoi.
+- Trung tam duoc xem/chon don vi ban hang co san, khong duoc tao/sua/xoa.
+- Admin va DVKH co quyen quan ly danh muc; Admin co the xoa han khi chua phat sinh lien ket.
+- Khi tao/sua yeu cau cap phieu va PTN lap truc tiep, nguoi dung chon don vi ban hang tu danh sach theo Trung tam.
+- Yeu cau cap lai giu lai `sales_unit_id` tu yeu cau goc.
+
+Kiem tra:
+- `php -l` cac model/controller/migration/test lien quan.
+- `php artisan view:cache`.
+- `php artisan test tests\Feature\CertificateWorkflowTest.php`.
+- `php artisan migrate`.
+- `php artisan db:seed --class=PermissionSeeder`.
 
 ## 2026-10-03 - Doi quy cach sinh so yeu cau va so phieu theo trung tam
 

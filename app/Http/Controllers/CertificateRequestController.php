@@ -9,6 +9,7 @@ use App\Models\CertificateRequest;
 use App\Models\Customer;
 use App\Models\DistributionCenter;
 use App\Models\Product;
+use App\Models\SalesUnit;
 use App\Models\UrgentReason;
 use App\Services\DocumentNumberService;
 use App\Services\NotificationService;
@@ -42,6 +43,7 @@ class CertificateRequestController extends Controller
         $query = (clone $baseQuery)->with([
             'distributionCenter',
             'customer',
+            'salesUnit',
             'creator',
             'urgentReason',
             'reissueOfCertificate',
@@ -132,12 +134,13 @@ class CertificateRequestController extends Controller
 
         $selectedCustomers = $this->selectedCustomersForForm();
         $selectedProducts = $this->selectedProductsForForm();
+        $salesUnits = $this->salesUnitsForForm();
 
         $urgentReasons = UrgentReason::where('is_active', true)
             ->orderBy('name')
             ->get();
 
-        return view('certificate_requests.create', compact('centers', 'selectedCustomers', 'selectedProducts', 'urgentReasons'));
+        return view('certificate_requests.create', compact('centers', 'selectedCustomers', 'selectedProducts', 'salesUnits', 'urgentReasons'));
     }
 
     public function checkInvoice(Request $request)
@@ -343,11 +346,11 @@ class CertificateRequestController extends Controller
                 $errors[] = 'Dòng ' . $lineNo . ': Chưa nhập ' . $lookupLabel . '.';
             }
 
-            if (!is_numeric($quantityRaw) || (float) $quantityRaw <= 0) {
-                $errors[] = 'Dòng ' . $lineNo . ': Số lượng phải là số lớn hơn 0.';
+            if (!is_numeric($quantityRaw) || (float) $quantityRaw < 1) {
+                $errors[] = 'Dòng ' . $lineNo . ': Số lượng phải từ 1 trở lên.';
             }
 
-            if ($productLookup !== '' && is_numeric($quantityRaw) && (float) $quantityRaw > 0) {
+            if ($productLookup !== '' && is_numeric($quantityRaw) && (float) $quantityRaw >= 1) {
                 $parsedRows->push([
                     'line' => $lineNo,
                     'product_lookup' => $productLookup,
@@ -486,6 +489,7 @@ class CertificateRequestController extends Controller
         $rules = [
             'customer_mode' => ['required', 'in:existing,new'],
             'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
+            'sales_unit_id' => ['required', 'exists:sales_units,id'],
             'new_customer_code' => $this->newCustomerCodeRules($request),
             'new_customer_name' => ['required_if:customer_mode,new', 'nullable', 'string', 'max:500'],
             'new_customer_address' => ['nullable', 'string'],
@@ -507,7 +511,7 @@ class CertificateRequestController extends Controller
             'product_id' => ['required', 'array', 'min:1'],
             'product_id.*' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'array', 'min:1'],
-            'quantity.*' => ['required', 'numeric', 'min:0.01'],
+            'quantity.*' => ['required', 'numeric', 'min:1'],
             'request_action' => ['nullable', 'in:draft,submit'],
         ];
 
@@ -531,12 +535,14 @@ class CertificateRequestController extends Controller
 
         try {
             $customerId = $this->resolveCustomerId($data);
+            $salesUnitId = $this->resolveSalesUnitId($data['sales_unit_id'], (int) $distributionCenterId);
             $requestStatus = $this->requestStatusFromAction($request);
 
             $certificateRequest = CertificateRequest::create([
                 'request_no' => app(DocumentNumberService::class)->generateRequestNo((int) $distributionCenterId),
                 'distribution_center_id' => $distributionCenterId,
                 'customer_id' => $customerId,
+                'sales_unit_id' => $salesUnitId,
                 'delivery_date' => $data['delivery_date'] ?? null,
                 'invoice_no' => $data['invoice_no'] ?? null,
                 'require_hard_copy' => $request->boolean('require_hard_copy'),
@@ -603,6 +609,7 @@ class CertificateRequestController extends Controller
         $certificateRequest->load([
             'distributionCenter',
             'customer',
+            'salesUnit',
             'details.product.group',
             'details.product.qualityStandard',
             'creator',
@@ -637,6 +644,7 @@ class CertificateRequestController extends Controller
         $centers = DistributionCenter::where('is_active', true)->orderBy('name')->get();
         $selectedCustomers = $this->selectedCustomersForForm($certificateRequest);
         $selectedProducts = $this->selectedProductsForForm($certificateRequest);
+        $salesUnits = $this->salesUnitsForForm($certificateRequest);
         $urgentReasons = UrgentReason::where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -646,6 +654,7 @@ class CertificateRequestController extends Controller
             'centers',
             'selectedCustomers',
             'selectedProducts',
+            'salesUnits',
             'urgentReasons'
         ));
     }
@@ -664,6 +673,7 @@ class CertificateRequestController extends Controller
         $rules = [
             'customer_mode' => ['required', 'in:existing,new'],
             'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
+            'sales_unit_id' => ['required', 'exists:sales_units,id'],
             'new_customer_code' => $this->newCustomerCodeRules($request, $certificateRequest),
             'new_customer_name' => ['required_if:customer_mode,new', 'nullable', 'string', 'max:500'],
             'new_customer_address' => ['nullable', 'string'],
@@ -685,7 +695,7 @@ class CertificateRequestController extends Controller
             'product_id' => ['required', 'array', 'min:1'],
             'product_id.*' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'array', 'min:1'],
-            'quantity.*' => ['required', 'numeric', 'min:0.01'],
+            'quantity.*' => ['required', 'numeric', 'min:1'],
             'request_action' => ['nullable', 'in:draft,submit'],
         ];
 
@@ -704,11 +714,13 @@ class CertificateRequestController extends Controller
         try {
             $oldData = $certificateRequest->load('details')->toArray();
             $customerId = $this->resolveCustomerId($data);
+            $salesUnitId = $this->resolveSalesUnitId($data['sales_unit_id'], (int) $distributionCenterId);
             $requestStatus = $this->requestStatusFromAction($request);
 
             $certificateRequest->update([
                 'distribution_center_id' => $distributionCenterId,
                 'customer_id' => $customerId,
+                'sales_unit_id' => $salesUnitId,
                 'delivery_date' => $data['delivery_date'] ?? null,
                 'invoice_no' => $data['invoice_no'] ?? null,
                 'require_hard_copy' => $request->boolean('require_hard_copy'),
@@ -881,7 +893,7 @@ class CertificateRequestController extends Controller
                 && isset($data['distribution_center_id'])
                 && (int) $customer->distribution_center_id !== (int) $data['distribution_center_id']
             ) {
-                abort(422, 'Khach hang khong thuoc trung tam phan phoi da chon.');
+                abort(422, 'Khách hàng không thuộc trung tâm phân phối đã chọn.');
             }
 
             return (int) $customer->id;
@@ -1025,6 +1037,33 @@ class CertificateRequestController extends Controller
             })
             ->get()
             ->keyBy('id');
+    }
+
+    private function salesUnitsForForm(?CertificateRequest $certificateRequest = null)
+    {
+        $centerId = Auth::user()->hasRole('TrungTam')
+            ? Auth::user()->distribution_center_id
+            : old('distribution_center_id', $certificateRequest->distribution_center_id ?? null);
+
+        return SalesUnit::with('distributionCenter')
+            ->where('is_active', true)
+            ->when($centerId, fn ($query) => $query->where('distribution_center_id', $centerId))
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function resolveSalesUnitId($salesUnitId, int $distributionCenterId): int
+    {
+        $salesUnit = SalesUnit::whereKey($salesUnitId)
+            ->where('distribution_center_id', $distributionCenterId)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$salesUnit) {
+            abort(422, 'Đơn vị bán hàng không thuộc trung tâm đã chọn hoặc đã ngừng sử dụng.');
+        }
+
+        return (int) $salesUnit->id;
     }
 
     private function customerOptionText(Customer $customer): string
@@ -1264,6 +1303,10 @@ class CertificateRequestController extends Controller
             'hard_copy_quantity.required' => 'Vui lòng nhập số bản ký tươi khi đã chọn yêu cầu ký tươi.',
             'hard_copy_quantity.integer' => 'Số bản ký tươi phải là số nguyên.',
             'hard_copy_quantity.min' => 'Số bản ký tươi phải từ 1 trở lên.',
+            'quantity.required' => 'Vui lòng nhập số lượng sản phẩm.',
+            'quantity.*.required' => 'Vui lòng nhập số lượng sản phẩm.',
+            'quantity.*.numeric' => 'Số lượng sản phẩm phải là số.',
+            'quantity.*.min' => 'Số lượng sản phẩm phải từ 1 trở lên.',
         ];
     }
 }

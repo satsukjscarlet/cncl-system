@@ -457,6 +457,7 @@
                             <div class="certificate-project">
                                 {{ $certificate->request->customer->project_name ?? '' }}
                             </div>
+                            <div class="text-muted small">DVBH: {{ $certificate->request?->salesUnit ? $certificate->request->salesUnit->code . ' - ' . $certificate->request->salesUnit->name : '-' }}</div>
                         </td>
 
                         <td>{{ $certificate->request->distributionCenter->name ?? '-' }}</td>

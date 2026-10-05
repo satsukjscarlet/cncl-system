@@ -5,11 +5,13 @@
     $selectedCustomerId = old('customer_id', $certificateRequest->customer_id ?? '');
     $isUrgent = old('is_urgent', $certificateRequest->is_urgent ?? false);
     $selectedUrgentReasonId = old('urgent_reason_id', $certificateRequest->urgent_reason_id ?? '');
+    $selectedSalesUnitId = old('sales_unit_id', $certificateRequest->sales_unit_id ?? '');
     $formBackUrl = $formBackUrl ?? route('certificate-requests.index');
     $formSubmitText = $formSubmitText ?? 'Lưu và gửi DVKH';
     $formSubmitIcon = $formSubmitIcon ?? 'fas fa-save';
     $selectedCustomers = $selectedCustomers ?? collect();
     $selectedProducts = $selectedProducts ?? collect();
+    $salesUnits = $salesUnits ?? collect();
 @endphp
 
 <div class="row">
@@ -53,6 +55,39 @@
                        {{ $customerMode === 'new' ? 'checked' : '' }}>
                 Nhập khách hàng mới
             </label>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="form-group">
+            <label>Đơn vị bán hàng <span class="text-danger">*</span></label>
+            <select name="sales_unit_id"
+                    id="sales_unit_id"
+                    class="form-control select2 @error('sales_unit_id') is-invalid @enderror"
+                    required>
+                <option value="">-- Chọn đơn vị bán hàng --</option>
+                @foreach($salesUnits as $salesUnit)
+                    <option value="{{ $salesUnit->id }}"
+                            data-center-id="{{ $salesUnit->distribution_center_id }}"
+                            {{ (string) $selectedSalesUnitId === (string) $salesUnit->id ? 'selected' : '' }}>
+                        {{ $salesUnit->code }} - {{ $salesUnit->name }}
+                        @if($salesUnit->phone)
+                            | SĐT: {{ $salesUnit->phone }}
+                        @endif
+                        @if($salesUnit->tax_code)
+                            | MST: {{ $salesUnit->tax_code }}
+                        @endif
+                    </option>
+                @endforeach
+            </select>
+            @error('sales_unit_id')
+                <span class="invalid-feedback">{{ $message }}</span>
+            @enderror
+            <small class="form-text text-muted">
+                Đơn vị bán hàng được quản lý theo từng Trung tâm. Tài khoản Trung tâm chỉ được chọn từ danh sách có sẵn.
+            </small>
         </div>
     </div>
 </div>
@@ -400,7 +435,7 @@
                     </td>
 
                     <td>
-                        <input type="number" name="quantity[]" min="0.01" step="0.01" class="form-control"
+                        <input type="number" name="quantity[]" min="1" step="0.01" class="form-control"
                                value="{{ $oldQuantities[$index] ?? '' }}" required>
                     </td>
 
@@ -569,6 +604,7 @@
             const newCustomerRequiredInputs = newBox.querySelectorAll('[name="new_customer_name"], [name="new_project_name"], [name="new_project_address"]');
             const distributionCenterSelect = document.querySelector('[name="distribution_center_id"]');
             const customerSelect = document.querySelector('select[name="customer_id"]');
+            const salesUnitSelect = document.getElementById('sales_unit_id');
             const customerModeInputs = document.querySelectorAll('input[name="customer_mode"]');
             const urgentSwitch = document.getElementById('is_urgent');
             const urgentReasonBox = document.getElementById('urgent-reason-box');
@@ -653,6 +689,45 @@
                 syncHardCopyQuantity();
             }
 
+            function currentCenterId() {
+                return distributionCenterSelect ? String(distributionCenterSelect.value || '') : '';
+            }
+
+            function syncSalesUnitOptions(resetInvalid) {
+                if (!salesUnitSelect) {
+                    return;
+                }
+
+                const centerId = currentCenterId();
+                const currentValue = String(salesUnitSelect.value || '');
+                let currentStillValid = !currentValue;
+
+                Array.prototype.forEach.call(salesUnitSelect.options, function(option) {
+                    if (!option.value) {
+                        option.hidden = false;
+                        option.disabled = false;
+                        return;
+                    }
+
+                    const match = !centerId || String(option.dataset.centerId || '') === centerId;
+                    option.hidden = !match;
+                    option.disabled = !match;
+
+                    if (match && String(option.value) === currentValue) {
+                        currentStillValid = true;
+                    }
+                });
+
+                if (resetInvalid && !currentStillValid) {
+                    salesUnitSelect.value = '';
+                    if (window.jQuery && jQuery.fn.select2 && jQuery(salesUnitSelect).hasClass('select2-hidden-accessible')) {
+                        jQuery(salesUnitSelect).val('').trigger('change');
+                    }
+                }
+            }
+
+            syncSalesUnitOptions(false);
+
             if (distributionCenterSelect && customerSelect) {
                 distributionCenterSelect.addEventListener('change', function() {
                     if (window.jQuery && jQuery.fn.select2) {
@@ -660,6 +735,8 @@
                     } else {
                         customerSelect.value = '';
                     }
+
+                    syncSalesUnitOptions(true);
                 });
             }
 

@@ -25,7 +25,7 @@ class ReportController extends Controller
         $canViewAllCenters = $this->canViewAllCenters($user);
 
         if (!$canViewAllCenters && !$user->hasRole('TrungTam')) {
-            abort(403, 'Tai khoan nay khong duoc xem bao cao tong hop.');
+            abort(403, 'Tài khoản này không được xem báo cáo tổng hợp.');
         }
 
         $query = CertificateRequest::with([
@@ -131,7 +131,7 @@ class ReportController extends Controller
         $canViewAllCenters = $this->canViewAllCenters($user);
 
         if (!$canViewAllCenters && !$user->hasRole('TrungTam')) {
-            abort(403, 'Tai khoan nay khong duoc xuat bao cao tong hop.');
+            abort(403, 'Tài khoản này không được xuất báo cáo tổng hợp.');
         }
 
         $distributionCenterId = !$canViewAllCenters
@@ -153,7 +153,11 @@ class ReportController extends Controller
 
     private function canViewAllCenters($user): bool
     {
-        return $user->hasAnyRole(['Admin', 'LanhDao']);
+        if ($user->hasRole('TrungTam')) {
+            return false;
+        }
+
+        return $user->can('report.view') || $user->can('report.export');
     }
 
     private function requestStatusOptions(): array

@@ -6,6 +6,7 @@ use App\Helpers\ActivityLogger;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolePermissionController extends Controller
 {
@@ -35,6 +36,7 @@ class RolePermissionController extends Controller
         $oldPermissions = $role->permissions()->pluck('name')->sort()->values()->all();
 
         $role->syncPermissions($permissions->unique()->values()->all());
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         ActivityLogger::log(
             'Phân quyền',
@@ -78,6 +80,7 @@ class RolePermissionController extends Controller
             'quality_standard' => 'Tiêu chuẩn chất lượng',
             'urgent_reason' => 'Lý do yêu cầu gấp',
             'customer' => 'Khách hàng - Công trình',
+            'sales_unit' => 'Đơn vị bán hàng',
             'request' => 'Yêu cầu cấp phiếu',
             'dvkh' => 'DVKH',
             'ptn' => 'PTN',
@@ -133,6 +136,13 @@ class RolePermissionController extends Controller
             'customer.delete' => 'Xóa khách hàng - công trình',
             'customer.import' => 'Import khách hàng - công trình',
             'customer.export' => 'Export khách hàng - công trình',
+
+            'sales_unit.view' => 'Xem đơn vị bán hàng',
+            'sales_unit.create' => 'Thêm đơn vị bán hàng',
+            'sales_unit.update' => 'Sửa đơn vị bán hàng',
+            'sales_unit.delete' => 'Ngừng sử dụng đơn vị bán hàng',
+            'sales_unit.import' => 'Import đơn vị bán hàng',
+            'sales_unit.export' => 'Export đơn vị bán hàng',
 
             'request.view' => 'Xem yêu cầu cấp phiếu',
             'request.create' => 'Tạo yêu cầu cấp phiếu',

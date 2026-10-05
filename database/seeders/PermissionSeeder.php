@@ -13,19 +13,6 @@ class PermissionSeeder extends Seeder
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $legacyPermissions = [
-            'distribution_center.manage',
-            'product_group.manage',
-            'product.manage',
-            'quality_standard.manage',
-            'customer.manage',
-            'sla.manage',
-            'setting.manage',
-            'user.manage',
-        ];
-
-        Permission::whereIn('name', $legacyPermissions)->delete();
-
         $permissions = [
             'dashboard.view',
 
@@ -66,6 +53,13 @@ class PermissionSeeder extends Seeder
             'customer.delete',
             'customer.import',
             'customer.export',
+
+            'sales_unit.view',
+            'sales_unit.create',
+            'sales_unit.update',
+            'sales_unit.delete',
+            'sales_unit.import',
+            'sales_unit.export',
 
             'request.view',
             'request.create',
@@ -118,9 +112,12 @@ class PermissionSeeder extends Seeder
         $truongPtn = Role::firstOrCreate(['name' => 'TruongPTN']);
         $viewer = Role::firstOrCreate(['name' => 'Viewer']);
 
-        $admin->syncPermissions($permissions);
+        // Do not use syncPermissions() here.
+        // Production roles may be adjusted manually, so this seeder only adds missing permissions
+        // and never removes permissions that already exist on a role.
+        $admin->givePermissionTo(Permission::pluck('name')->all());
 
-        $leader->syncPermissions([
+        $this->giveMissingPermissions($leader, [
             'dashboard.view',
             'request.view',
             'certificate.view',
@@ -129,13 +126,14 @@ class PermissionSeeder extends Seeder
             'log.view',
         ]);
 
-        $center->syncPermissions([
+        $this->giveMissingPermissions($center, [
             'dashboard.view',
             'customer.view',
             'customer.create',
             'customer.update',
             'customer.delete',
             'customer.import',
+            'sales_unit.view',
             'request.view',
             'request.create',
             'request.update',
@@ -143,18 +141,24 @@ class PermissionSeeder extends Seeder
             'certificate.view',
         ]);
 
-        $dvkh->syncPermissions([
+        $this->giveMissingPermissions($dvkh, [
             'dashboard.view',
             'product.view',
             'product.create',
             'product.update',
             'product.delete',
+            'sales_unit.view',
+            'sales_unit.create',
+            'sales_unit.update',
+            'sales_unit.delete',
+            'sales_unit.import',
+            'sales_unit.export',
             'request.view',
             'dvkh.process',
             'certificate.view',
         ]);
 
-        $ptn->syncPermissions([
+        $this->giveMissingPermissions($ptn, [
             'dashboard.view',
             'product.view',
             'product.create',
@@ -164,13 +168,14 @@ class PermissionSeeder extends Seeder
             'quality_standard.create',
             'quality_standard.update',
             'quality_standard.delete',
+            'sales_unit.view',
             'request.view',
             'ptn.process',
             'certificate.view',
             'certificate.create',
         ]);
 
-        $truongPtn->syncPermissions([
+        $this->giveMissingPermissions($truongPtn, [
             'dashboard.view',
             'product.view',
             'product.create',
@@ -180,6 +185,7 @@ class PermissionSeeder extends Seeder
             'quality_standard.create',
             'quality_standard.update',
             'quality_standard.delete',
+            'sales_unit.view',
             'request.view',
             'certificate.view',
             'certificate.sign',
@@ -188,12 +194,22 @@ class PermissionSeeder extends Seeder
             'certificate.email',
         ]);
 
-        $viewer->syncPermissions([
+        $this->giveMissingPermissions($viewer, [
             'dashboard.view',
             'request.view',
             'certificate.view',
         ]);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    private function giveMissingPermissions(Role $role, array $permissions): void
+    {
+        $currentPermissions = $role->permissions()->pluck('name')->all();
+        $missingPermissions = array_values(array_diff($permissions, $currentPermissions));
+
+        if ($missingPermissions !== []) {
+            $role->givePermissionTo($missingPermissions);
+        }
     }
 }

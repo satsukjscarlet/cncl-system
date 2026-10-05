@@ -318,6 +318,7 @@
                         <td>
                             <strong>{{ $item->customer->customer_name ?? '-' }}</strong>
                             <div class="text-muted small">{{ $item->customer->project_name ?? '' }}</div>
+                            <div class="text-muted small">DVBH: {{ $item->salesUnit ? $item->salesUnit->code . ' - ' . $item->salesUnit->name : '-' }}</div>
                         </td>
                         <td>{{ $item->requester_name ?: '-' }}</td>
                         <td>{{ $item->delivery_date ? $item->delivery_date->format('d/m/Y') : '-' }}</td>

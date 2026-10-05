@@ -319,6 +319,11 @@
                         <div class="dvkh-info-label">Ngày xuất hàng</div>
                         <div class="dvkh-info-value">{{ $certificateRequest->delivery_date ? $certificateRequest->delivery_date->format('d/m/Y') : '-' }}</div>
 
+                        <div class="dvkh-info-label">Đơn vị bán hàng</div>
+                        <div class="dvkh-info-value">
+                            {{ $certificateRequest->salesUnit ? $certificateRequest->salesUnit->code . ' - ' . $certificateRequest->salesUnit->name : '-' }}
+                        </div>
+
                         <div class="dvkh-info-label">Số hóa đơn</div>
                         <div class="dvkh-info-value">{{ $certificateRequest->invoice_no ?: '-' }}</div>
 

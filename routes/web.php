@@ -10,6 +10,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\QualityStandardController;
 use App\Http\Controllers\UrgentReasonController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\SalesUnitController;
 use App\Http\Controllers\CertificateRequestController;
 use App\Http\Controllers\DvkhRequestController;
 use App\Http\Controllers\PtnRequestController;
@@ -221,6 +222,38 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('customers/{customer}/force-delete', [CustomerController::class, 'forceDestroy'])
         ->middleware('permission:customer.delete')
         ->name('customers.force-destroy');
+
+    Route::get('sales-units-export', [SalesUnitController::class, 'export'])
+        ->middleware('permission:sales_unit.export')
+        ->name('sales-units.export');
+
+    Route::post('sales-units-import', [SalesUnitController::class, 'import'])
+        ->middleware('permission:sales_unit.import')
+        ->name('sales-units.import');
+
+    Route::get('sales-units-template', [SalesUnitController::class, 'template'])
+        ->middleware('permission:sales_unit.import')
+        ->name('sales-units.template');
+
+    Route::resource('sales-units', SalesUnitController::class)
+        ->only(['index'])
+        ->middleware('permission:sales_unit.view');
+
+    Route::resource('sales-units', SalesUnitController::class)
+        ->only(['create', 'store'])
+        ->middleware('permission:sales_unit.create');
+
+    Route::resource('sales-units', SalesUnitController::class)
+        ->only(['edit', 'update'])
+        ->middleware('permission:sales_unit.update');
+
+    Route::resource('sales-units', SalesUnitController::class)
+        ->only(['destroy'])
+        ->middleware('permission:sales_unit.delete');
+
+    Route::delete('sales-units/{sales_unit}/force-delete', [SalesUnitController::class, 'forceDestroy'])
+        ->middleware('permission:sales_unit.delete')
+        ->name('sales-units.force-destroy');
 
     Route::resource('certificate-requests', CertificateRequestController::class)
         ->only(['index'])

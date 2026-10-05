@@ -86,6 +86,7 @@
                     @endif
                 </p>
                 <p><strong>Người lập:</strong> {{ $qualityCertificate->creator->name ?? '-' }}</p>
+                <p><strong>Đơn vị bán hàng:</strong> {{ $qualityCertificate->request?->salesUnit ? $qualityCertificate->request->salesUnit->code . ' - ' . $qualityCertificate->request->salesUnit->name : '-' }}</p>
                 <p><strong>Ngày lập:</strong> {{ optional($qualityCertificate->created_at)->format('d/m/Y H:i') }}</p>
                 <p>
                     <strong>Trạng thái:</strong>
@@ -404,6 +405,7 @@
                 <p><strong>Công trình:</strong> {{ $qualityCertificate->request->customer->project_name ?? '-' }}</p>
                 <p><strong>Địa điểm công trình:</strong> {{ $qualityCertificate->request->customer->project_address ?? '-' }}</p>
                 <p><strong>Trung tâm:</strong> {{ $qualityCertificate->request->distributionCenter->name ?? '-' }}</p>
+                <p><strong>Đơn vị bán hàng:</strong> {{ $qualityCertificate->request?->salesUnit ? $qualityCertificate->request->salesUnit->code . ' - ' . $qualityCertificate->request->salesUnit->name : '-' }}</p>
                 <p><strong>Ngày xuất hàng:</strong> {{ $qualityCertificate->request->delivery_date ? $qualityCertificate->request->delivery_date->format('d/m/Y') : '-' }}</p>
                 <p><strong>Số hóa đơn:</strong> {{ $qualityCertificate->request->invoice_no ?: '-' }}</p>
             </div>

@@ -9,6 +9,7 @@ use App\Models\DistributionCenter;
 use App\Models\Product;
 use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
+use App\Models\SalesUnit;
 use App\Models\UrgentReason;
 use App\Services\DocumentNumberService;
 use App\Services\NotificationService;
@@ -31,6 +32,7 @@ class PtnRequestController extends Controller
         $query = CertificateRequest::with([
             'distributionCenter',
             'customer',
+            'salesUnit',
             'creator',
             'urgentReason',
             'reissueOfCertificate',
@@ -138,11 +140,12 @@ class PtnRequestController extends Controller
 
         $selectedCustomers = $this->selectedCustomersForForm();
         $selectedProducts = $this->selectedProductsForForm();
+        $salesUnits = $this->salesUnitsForForm();
         $urgentReasons = UrgentReason::where('is_active', true)
             ->orderBy('name')
             ->get();
 
-        return view('ptn_requests.direct_create', compact('centers', 'selectedCustomers', 'selectedProducts', 'urgentReasons'));
+        return view('ptn_requests.direct_create', compact('centers', 'selectedCustomers', 'selectedProducts', 'salesUnits', 'urgentReasons'));
     }
 
     public function directStore(Request $request)
@@ -151,6 +154,7 @@ class PtnRequestController extends Controller
             'distribution_center_id' => ['required', 'exists:distribution_centers,id'],
             'customer_mode' => ['required', 'in:existing,new'],
             'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
+            'sales_unit_id' => ['required', 'exists:sales_units,id'],
             'new_customer_name' => ['required_if:customer_mode,new', 'nullable', 'string', 'max:500'],
             'new_customer_address' => ['nullable', 'string'],
             'new_tax_code' => ['nullable', 'string', 'max:100'],
@@ -170,7 +174,7 @@ class PtnRequestController extends Controller
             'product_id' => ['required', 'array', 'min:1'],
             'product_id.*' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'array', 'min:1'],
-            'quantity.*' => ['required', 'numeric', 'min:0.01'],
+            'quantity.*' => ['required', 'numeric', 'min:1'],
         ], [
             'new_project_name.required_if' => 'Vui lòng nhập tên công trình khi tạo khách hàng mới.',
             'new_project_address.required_if' => 'Vui lòng nhập địa điểm công trình khi tạo khách hàng mới.',
@@ -178,12 +182,17 @@ class PtnRequestController extends Controller
             'hard_copy_quantity.required' => 'Vui lòng nhập số bản ký tươi khi đã chọn yêu cầu ký tươi.',
             'hard_copy_quantity.integer' => 'Số bản ký tươi phải là số nguyên.',
             'hard_copy_quantity.min' => 'Số bản ký tươi phải từ 1 trở lên.',
+            'quantity.required' => 'Vui lòng nhập số lượng sản phẩm.',
+            'quantity.*.required' => 'Vui lòng nhập số lượng sản phẩm.',
+            'quantity.*.numeric' => 'Số lượng sản phẩm phải là số.',
+            'quantity.*.min' => 'Số lượng sản phẩm phải từ 1 trở lên.',
         ]);
 
         DB::beginTransaction();
 
         try {
             $customerId = $this->resolveCustomerId($data);
+            $salesUnitId = $this->resolveSalesUnitId($data['sales_unit_id'], (int) $data['distribution_center_id']);
             $numberService = app(DocumentNumberService::class);
 
             $certificateRequest = CertificateRequest::create([
@@ -191,6 +200,7 @@ class PtnRequestController extends Controller
                 'request_type' => 'DIRECT_PTN',
                 'distribution_center_id' => $data['distribution_center_id'],
                 'customer_id' => $customerId,
+                'sales_unit_id' => $salesUnitId,
                 'delivery_date' => $data['delivery_date'] ?? null,
                 'invoice_no' => $data['invoice_no'] ?? null,
                 'require_hard_copy' => $request->boolean('require_hard_copy'),
@@ -256,6 +266,7 @@ class PtnRequestController extends Controller
         $certificateRequest->load([
             'distributionCenter',
             'customer',
+            'salesUnit',
             'details.product.group',
             'details.product.qualityStandard',
             'creator',
@@ -612,7 +623,7 @@ class PtnRequestController extends Controller
     private function authorizePtnRequest(CertificateRequest $certificateRequest): void
     {
         if (!in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING'])) {
-            abort(403, 'Yeu cau nay khong thuoc man xu ly cua PTN.');
+            abort(403, 'Yêu cầu này không thuộc màn xử lý của PTN.');
         }
     }
 
@@ -752,5 +763,30 @@ class PtnRequestController extends Controller
             })
             ->get()
             ->keyBy('id');
+    }
+
+    private function salesUnitsForForm()
+    {
+        $centerId = old('distribution_center_id');
+
+        return SalesUnit::with('distributionCenter')
+            ->where('is_active', true)
+            ->when($centerId, fn ($query) => $query->where('distribution_center_id', $centerId))
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function resolveSalesUnitId($salesUnitId, int $distributionCenterId): int
+    {
+        $salesUnit = SalesUnit::whereKey($salesUnitId)
+            ->where('distribution_center_id', $distributionCenterId)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$salesUnit) {
+            abort(422, 'Đơn vị bán hàng không thuộc trung tâm đã chọn hoặc đã ngừng sử dụng.');
+        }
+
+        return (int) $salesUnit->id;
     }
 }

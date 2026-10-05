@@ -371,6 +371,12 @@ return [
             'can'  => 'customer.view',
         ],
         [
+            'text' => 'Đơn vị bán hàng',
+            'url'  => 'sales-units',
+            'icon' => 'fas fa-store',
+            'can'  => 'sales_unit.view',
+        ],
+        [
             'text' => 'Tiêu chuẩn chất lượng',
             'url'  => 'quality-standards',
             'icon' => 'fas fa-certificate',

@@ -26,6 +26,7 @@ class DvkhRequestController extends Controller
         $query = CertificateRequest::with([
             'distributionCenter',
             'customer',
+            'salesUnit',
             'creator',
             'urgentReason',
             'reissueOfCertificate',
@@ -133,6 +134,7 @@ class DvkhRequestController extends Controller
         $certificateRequest->load([
             'distributionCenter',
             'customer',
+            'salesUnit',
             'details.product.group',
             'details.product.qualityStandard',
             'creator',

@@ -35,6 +35,7 @@ class QualityCertificateController extends Controller
         $query = QualityCertificate::with([
             'request.distributionCenter',
             'request.customer',
+            'request.salesUnit',
             'creator',
             'replacesCertificate',
             'replacedByCertificate',
@@ -381,6 +382,7 @@ class QualityCertificateController extends Controller
         $qualityCertificate->load([
             'request.distributionCenter',
             'request.customer',
+            'request.salesUnit',
             'request.creator',
             'request.reissueOfCertificate',
             'request.reissueCertificates',
@@ -971,6 +973,7 @@ class QualityCertificateController extends Controller
                 'reissue_reason' => $data['reissue_reason'],
                 'distribution_center_id' => $oldRequest->distribution_center_id,
                 'customer_id' => $oldRequest->customer_id,
+                'sales_unit_id' => $oldRequest->sales_unit_id,
                 'delivery_date' => $oldRequest->delivery_date,
                 'invoice_no' => $oldRequest->invoice_no,
                 'require_hard_copy' => $oldRequest->require_hard_copy,
@@ -1812,6 +1815,7 @@ class QualityCertificateController extends Controller
             'reissue_reason' => $reason,
             'distribution_center_id' => $oldRequest->distribution_center_id,
             'customer_id' => $oldRequest->customer_id,
+            'sales_unit_id' => $oldRequest->sales_unit_id,
             'delivery_date' => $oldRequest->delivery_date,
             'invoice_no' => $oldRequest->invoice_no,
             'require_hard_copy' => $oldRequest->require_hard_copy,

@@ -221,6 +221,17 @@ class RoleWorkspaceAccessTest extends TestCase
             ->assertDontSee('CNCL-REPORT-READY');
     }
 
+    public function test_report_permission_allows_truong_ptn_to_open_summary_report(): void
+    {
+        $truongPtn = User::where('username', 'truongptn')->firstOrFail();
+        $truongPtn->givePermissionTo(['report.view', 'report.export']);
+
+        $this->actingAs($truongPtn)
+            ->get(route('reports.summary', ['report_year' => 2026]))
+            ->assertOk()
+            ->assertSee('Báo cáo tổng hợp');
+    }
+
     private function createRequestForCenter(
         DistributionCenter $center,
         User $creator,

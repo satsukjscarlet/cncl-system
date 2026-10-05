@@ -17,6 +17,7 @@ class CertificateRequest extends Model
         'reissue_reason',
         'distribution_center_id',
         'customer_id',
+        'sales_unit_id',
         'delivery_date',
         'invoice_no',
         'invoice_no_normalized',
@@ -57,6 +58,11 @@ class CertificateRequest extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class)->withTrashed();
+    }
+
+    public function salesUnit()
+    {
+        return $this->belongsTo(SalesUnit::class)->withTrashed();
     }
 
     public function details()

@@ -24,6 +24,10 @@
         <a href="{{ route('certificate-requests.index') }}" class="{{ request()->routeIs('certificate-requests.*') ? 'active' : '' }}">Yeu cau cap phieu</a>
     @endhasanyrole
 
+    @can('sales_unit.view')
+        <a href="{{ route('sales-units.index') }}" class="{{ request()->routeIs('sales-units.*') ? 'active' : '' }}">Đơn vị bán hàng</a>
+    @endcan
+
     @hasanyrole('Admin|DVKH')
         <a href="{{ route('dvkh.requests.index') }}" class="{{ request()->routeIs('dvkh.requests.*') ? 'active' : '' }}">DVKH kiem tra</a>
     @endhasanyrole
@@ -39,6 +43,6 @@
 
     @role('Admin')
         <a href="{{ route('activity-logs.index') }}" class="{{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">Lich su thao tac</a>
-        <a href="#">Lich su dang nhap</a>
+        <a href="#">Lịch sử đăng nhập</a>
     @endrole
 </div>

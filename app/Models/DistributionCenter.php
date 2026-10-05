@@ -25,6 +25,11 @@ class DistributionCenter extends Model
         return $this->hasMany(CertificateRequest::class);
     }
 
+    public function salesUnits()
+    {
+        return $this->hasMany(SalesUnit::class);
+    }
+
     public function users()
     {
         return $this->hasMany(User::class);
