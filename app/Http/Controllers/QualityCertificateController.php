@@ -8,6 +8,7 @@ use App\Models\CertificateRequest;
 use App\Models\DistributionCenter;
 use App\Models\PrintLog;
 use App\Models\QualityCertificate;
+use App\Models\SalesUnit;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\HardCopyCertificatePdfService;
@@ -60,6 +61,10 @@ class QualityCertificateController extends Controller
                         $r->where('request_no', 'like', '%' . $request->keyword . '%')
                             ->orWhere('invoice_no', 'like', '%' . $request->keyword . '%')
                             ->orWhere('requester_name', 'like', '%' . $request->keyword . '%');
+                    })
+                    ->orWhereHas('request.salesUnit', function ($salesUnit) use ($request) {
+                        $salesUnit->where('code', 'like', '%' . $request->keyword . '%')
+                            ->orWhere('name', 'like', '%' . $request->keyword . '%');
                     })
                     ->orWhereHas('request.customer', function ($c) use ($request) {
                         $c->where('customer_name', 'like', '%' . $request->keyword . '%')
@@ -131,6 +136,12 @@ class QualityCertificateController extends Controller
             $query->whereDate('quality_certificates.created_at', '<=', $request->date_to);
         }
 
+        if ($request->filled('sales_unit_id')) {
+            $query->whereHas('request', function ($q) use ($request) {
+                $q->where('sales_unit_id', $request->sales_unit_id);
+            });
+        }
+
         [$sort, $direction] = $this->sortInput($request, [
             'certificate_no',
             'signed_at',
@@ -148,8 +159,13 @@ class QualityCertificateController extends Controller
             ->orderBy('name')
             ->get();
         $isCenterUser = $user->hasRole('TrungTam');
+        $salesUnits = SalesUnit::with('distributionCenter')
+            ->when($isCenterUser, fn ($q) => $q->where('distribution_center_id', $user->distribution_center_id))
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
-        return view('quality_certificates.index', compact('certificates', 'centers', 'isCenterUser'));
+        return view('quality_certificates.index', compact('certificates', 'centers', 'salesUnits', 'isCenterUser'));
     }
 
     public function signingQueue(Request $request)

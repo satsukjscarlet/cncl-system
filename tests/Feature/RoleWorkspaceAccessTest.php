@@ -6,6 +6,7 @@ use App\Models\CertificateRequest;
 use App\Models\Customer;
 use App\Models\DistributionCenter;
 use App\Models\QualityCertificate;
+use App\Models\SalesUnit;
 use App\Models\User;
 use Database\Seeders\DistributionCenterSeeder;
 use Database\Seeders\PermissionSeeder;
@@ -219,6 +220,55 @@ class RoleWorkspaceAccessTest extends TestCase
             ->assertSee('CNCL-REPORT-REVOKED')
             ->assertSee('Đã hủy / thu hồi')
             ->assertDontSee('CNCL-REPORT-READY');
+    }
+
+    public function test_request_and_certificate_lists_can_filter_and_search_by_sales_unit(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $npUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $tpUser = User::where('username', 'trungtam_tp')->firstOrFail();
+        $npCenter = DistributionCenter::where('code', 'NP')->firstOrFail();
+        $tpCenter = DistributionCenter::where('code', 'TP')->firstOrFail();
+
+        $npSalesUnit = SalesUnit::create([
+            'distribution_center_id' => $npCenter->id,
+            'code' => 'NP-DVBH-SEARCH',
+            'name' => 'Đơn vị bán hàng Nam Phương Search',
+            'is_active' => true,
+        ]);
+        $tpSalesUnit = SalesUnit::create([
+            'distribution_center_id' => $tpCenter->id,
+            'code' => 'TP-DVBH-HIDE',
+            'name' => 'Đơn vị bán hàng Tam Phước Hide',
+            'is_active' => true,
+        ]);
+
+        $npRequest = $this->createRequestForCenter($npCenter, $npUser, 'YC-SALES-UNIT-NP', 'WAIT_DVKH');
+        $tpRequest = $this->createRequestForCenter($tpCenter, $tpUser, 'YC-SALES-UNIT-TP', 'WAIT_DVKH');
+        $npRequest->update(['sales_unit_id' => $npSalesUnit->id]);
+        $tpRequest->update(['sales_unit_id' => $tpSalesUnit->id]);
+
+        $this->createCertificateForRequest($npRequest, 'CNCL-SALES-UNIT-NP', 'READY_TO_SIGN');
+        $this->createCertificateForRequest($tpRequest, 'CNCL-SALES-UNIT-TP', 'READY_TO_SIGN');
+
+        $this->actingAs($admin)
+            ->get(route('certificate-requests.index', [
+                'status_group' => 'all',
+                'sales_unit_id' => $npSalesUnit->id,
+            ]))
+            ->assertOk()
+            ->assertSee('NP-DVBH-SEARCH')
+            ->assertSee('Đơn vị bán hàng Nam Phương Search')
+            ->assertDontSee('YC-SALES-UNIT-TP');
+
+        $this->actingAs($admin)
+            ->get(route('quality-certificates.index', [
+                'keyword' => 'Nam Phương Search',
+            ]))
+            ->assertOk()
+            ->assertSee('CNCL-SALES-UNIT-NP')
+            ->assertSee('NP-DVBH-SEARCH')
+            ->assertDontSee('CNCL-SALES-UNIT-TP');
     }
 
     public function test_report_permission_allows_truong_ptn_to_open_summary_report(): void

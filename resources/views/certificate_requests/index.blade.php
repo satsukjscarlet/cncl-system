@@ -123,7 +123,7 @@
         'all' => ['label' => 'Tất cả', 'icon' => 'fas fa-layer-group', 'count' => $tabCounts['all'] ?? 0],
     ];
 
-    $hasActiveFilter = request()->hasAny(['keyword', 'distribution_center_id', 'status', 'status_group', 'sort', 'direction', 'per_page']);
+    $hasActiveFilter = request()->hasAny(['keyword', 'distribution_center_id', 'sales_unit_id', 'status', 'status_group', 'sort', 'direction', 'per_page']);
 @endphp
 
 @if(session('success'))
@@ -175,7 +175,7 @@
                             </div>
                             <input id="keyword" type="text" name="keyword" class="form-control"
                                    value="{{ request('keyword') }}"
-                                   placeholder="Số yêu cầu, hóa đơn, người tạo, khách hàng, công trình">
+                                   placeholder="Số yêu cầu, hóa đơn, người tạo, khách hàng, công trình, đơn vị bán hàng">
                         </div>
                     </div>
                 </div>
@@ -195,6 +195,23 @@
                         </div>
                     </div>
                 @endunless
+
+                <div class="filter-field">
+                    <label for="sales_unit_id">Đơn vị bán hàng</label>
+                    <div class="form-group mb-0">
+                        <select id="sales_unit_id" name="sales_unit_id" class="form-control select2">
+                            <option value="">Tất cả đơn vị bán hàng</option>
+                            @foreach($salesUnits as $salesUnit)
+                                <option value="{{ $salesUnit->id }}" {{ request('sales_unit_id') == $salesUnit->id ? 'selected' : '' }}>
+                                    {{ $salesUnit->code }} - {{ $salesUnit->name }}
+                                    @unless($isCenterUser)
+                                        ({{ $salesUnit->distributionCenter?->code }})
+                                    @endunless
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
 
                 <div class="filter-field">
                     <label for="status">Trạng thái chi tiết</label>
@@ -279,6 +296,7 @@
                             Khách hàng / Công trình {!! $sortIcon('customer') !!}
                         </a>
                     </th>
+                    <th>Đơn vị bán hàng</th>
                     <th>Người tạo yêu cầu</th>
                     <th>
                         <a class="sort-link" href="{{ $sortUrl('delivery_date') }}">
@@ -318,7 +336,14 @@
                         <td>
                             <strong>{{ $item->customer->customer_name ?? '-' }}</strong>
                             <div class="text-muted small">{{ $item->customer->project_name ?? '' }}</div>
-                            <div class="text-muted small">DVBH: {{ $item->salesUnit ? $item->salesUnit->code . ' - ' . $item->salesUnit->name : '-' }}</div>
+                        </td>
+                        <td>
+                            @if($item->salesUnit)
+                                <strong>{{ $item->salesUnit->code }}</strong>
+                                <div class="text-muted small">{{ $item->salesUnit->name }}</div>
+                            @else
+                                -
+                            @endif
                         </td>
                         <td>{{ $item->requester_name ?: '-' }}</td>
                         <td>{{ $item->delivery_date ? $item->delivery_date->format('d/m/Y') : '-' }}</td>
@@ -359,7 +384,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center text-muted py-4">
+                        <td colspan="11" class="text-center text-muted py-4">
                             <i class="fas fa-database fa-2x mb-2"></i><br>
                             Chưa có yêu cầu cấp phiếu phù hợp.
                         </td>

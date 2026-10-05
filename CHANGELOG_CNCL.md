@@ -1,3 +1,25 @@
+## 2026-10-05 - Lọc và tìm kiếm Đơn vị bán hàng trên danh sách yêu cầu/phiếu
+
+File chính:
+- `app/Http/Controllers/CertificateRequestController.php`
+- `app/Http/Controllers/QualityCertificateController.php`
+- `resources/views/certificate_requests/index.blade.php`
+- `resources/views/quality_certificates/index.blade.php`
+- `tests/Feature/RoleWorkspaceAccessTest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Danh sách yêu cầu cấp phiếu có bộ lọc `Đơn vị bán hàng` và cột riêng hiển thị mã/tên đơn vị bán hàng.
+- Danh sách phiếu CNCL có bộ lọc `Đơn vị bán hàng` và cột riêng hiển thị mã/tên đơn vị bán hàng.
+- Ô từ khóa trên hai màn hình tìm được theo mã/tên đơn vị bán hàng.
+- Tài khoản Trung tâm chỉ thấy danh sách đơn vị bán hàng thuộc trung tâm của mình trong bộ lọc.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/CertificateRequestController.php`
+- `php -l app/Http/Controllers/QualityCertificateController.php`
+- `php artisan view:cache`
+- `php artisan test --filter=request_and_certificate_lists_can_filter_and_search_by_sales_unit`
+
 ## 2026-10-05 - Sửa import Đơn vị bán hàng với dữ liệu Excel thực tế
 
 File chính:

@@ -19,11 +19,11 @@
             align-items: end;
             display: grid;
             gap: 14px;
-            grid-template-columns: minmax(280px, 1.45fr) repeat(3, minmax(170px, .85fr)) minmax(210px, 1fr) auto;
+            grid-template-columns: minmax(260px, 1.35fr) repeat(4, minmax(160px, .85fr)) minmax(200px, 1fr) auto;
         }
 
         .certificate-filter-grid.is-center-user {
-            grid-template-columns: minmax(300px, 1.6fr) repeat(2, minmax(180px, .85fr)) minmax(220px, 1fr) auto;
+            grid-template-columns: minmax(280px, 1.4fr) repeat(3, minmax(170px, .85fr)) minmax(210px, 1fr) auto;
         }
 
         .certificate-filter-field label {
@@ -210,8 +210,12 @@
     $selectedCenter = !$isCenterUser && request('distribution_center_id')
         ? $centers->firstWhere('id', (int) request('distribution_center_id'))
         : null;
+    $selectedSalesUnit = request('sales_unit_id')
+        ? $salesUnits->firstWhere('id', (int) request('sales_unit_id'))
+        : null;
     $hasActiveFilters = filled(request('keyword'))
         || filled(request('distribution_center_id'))
+        || filled(request('sales_unit_id'))
         || filled(request('date_from'))
         || filled(request('date_to'))
         || $selectedStatus !== 'ALL';
@@ -246,7 +250,7 @@
                        name="keyword"
                        class="form-control"
                        value="{{ request('keyword') }}"
-                       placeholder="Số phiếu, số yêu cầu, người tạo, khách hàng, công trình, hóa đơn">
+                       placeholder="Số phiếu, số yêu cầu, người tạo, khách hàng, công trình, hóa đơn, đơn vị bán hàng">
             </div>
 
             @unless($isCenterUser)
@@ -262,6 +266,21 @@
                     </select>
                 </div>
             @endunless
+
+            <div class="certificate-filter-field">
+                <label>Đơn vị bán hàng</label>
+                <select name="sales_unit_id" class="form-control select2">
+                    <option value="">Tất cả đơn vị bán hàng</option>
+                    @foreach($salesUnits as $salesUnit)
+                        <option value="{{ $salesUnit->id }}" {{ request('sales_unit_id') == $salesUnit->id ? 'selected' : '' }}>
+                            {{ $salesUnit->code }} - {{ $salesUnit->name }}
+                            @unless($isCenterUser)
+                                ({{ $salesUnit->distributionCenter?->code }})
+                            @endunless
+                        </option>
+                    @endforeach
+                </select>
+            </div>
 
             <div class="certificate-filter-field">
                 <label>Từ ngày lập phiếu</label>
@@ -311,6 +330,12 @@
                 @if($selectedCenter)
                     <span class="certificate-filter-chip">
                         <i class="fas fa-building"></i> {{ $selectedCenter->code }} - {{ $selectedCenter->name }}
+                    </span>
+                @endif
+
+                @if($selectedSalesUnit)
+                    <span class="certificate-filter-chip">
+                        <i class="fas fa-store"></i> {{ $selectedSalesUnit->code }} - {{ $selectedSalesUnit->name }}
                     </span>
                 @endif
 
@@ -373,6 +398,7 @@
                     <th>Số yêu cầu</th>
                     <th>Người tạo yêu cầu</th>
                     <th>Khách hàng / Công trình</th>
+                    <th>Đơn vị bán hàng</th>
                     <th>Trung tâm</th>
                     <th>Người lập</th>
                     <th>@include('partials.sort_link', ['column' => 'signed_at', 'label' => 'Ngày ký'])</th>
@@ -457,7 +483,15 @@
                             <div class="certificate-project">
                                 {{ $certificate->request->customer->project_name ?? '' }}
                             </div>
-                            <div class="text-muted small">DVBH: {{ $certificate->request?->salesUnit ? $certificate->request->salesUnit->code . ' - ' . $certificate->request->salesUnit->name : '-' }}</div>
+                        </td>
+
+                        <td>
+                            @if($certificate->request?->salesUnit)
+                                <strong>{{ $certificate->request->salesUnit->code }}</strong>
+                                <div class="text-muted small">{{ $certificate->request->salesUnit->name }}</div>
+                            @else
+                                -
+                            @endif
                         </td>
 
                         <td>{{ $certificate->request->distributionCenter->name ?? '-' }}</td>
@@ -537,7 +571,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="@can('request.create') 11 @else 10 @endcan">
+                        <td colspan="@can('request.create') 12 @else 11 @endcan">
                             <div class="certificate-empty-state">
                                 <i class="fas fa-database fa-2x mb-2"></i>
                                 <div>Chưa có phiếu CNCL phù hợp với bộ lọc.</div>

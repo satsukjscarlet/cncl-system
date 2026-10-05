@@ -57,6 +57,10 @@ class CertificateRequestController extends Controller
                 $q->where('request_no', 'like', '%' . $request->keyword . '%')
                     ->orWhere('invoice_no', 'like', '%' . $request->keyword . '%')
                     ->orWhere('requester_name', 'like', '%' . $request->keyword . '%')
+                    ->orWhereHas('salesUnit', function ($salesUnit) use ($request) {
+                        $salesUnit->where('code', 'like', '%' . $request->keyword . '%')
+                            ->orWhere('name', 'like', '%' . $request->keyword . '%');
+                    })
                     ->orWhereHas('customer', function ($c) use ($request) {
                         $c->where('customer_name', 'like', '%' . $request->keyword . '%')
                             ->orWhere('project_name', 'like', '%' . $request->keyword . '%');
@@ -72,6 +76,10 @@ class CertificateRequestController extends Controller
 
         if ($request->filled('distribution_center_id') && !Auth::user()->hasRole('TrungTam')) {
             $query->where('certificate_requests.distribution_center_id', $request->distribution_center_id);
+        }
+
+        if ($request->filled('sales_unit_id')) {
+            $query->where('certificate_requests.sales_unit_id', $request->sales_unit_id);
         }
 
         $allowedSorts = [
@@ -114,10 +122,16 @@ class CertificateRequestController extends Controller
         $centers = DistributionCenter::where('is_active', true)
             ->orderBy('name')
             ->get();
+        $salesUnits = SalesUnit::with('distributionCenter')
+            ->when(Auth::user()->hasRole('TrungTam'), fn ($q) => $q->where('distribution_center_id', Auth::user()->distribution_center_id))
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
         return view('certificate_requests.index', compact(
             'requests',
             'centers',
+            'salesUnits',
             'sort',
             'direction',
             'perPage',
