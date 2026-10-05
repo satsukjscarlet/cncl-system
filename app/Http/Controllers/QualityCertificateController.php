@@ -142,16 +142,29 @@ class QualityCertificateController extends Controller
             });
         }
 
+        if ($request->filled('hard_copy')) {
+            $query->whereHas('request', function ($q) use ($request) {
+                $q->where('require_hard_copy', $request->hard_copy === '1');
+            });
+        }
+
         [$sort, $direction] = $this->sortInput($request, [
             'certificate_no',
+            'request_no',
+            'requester_name',
+            'customer_name',
+            'sales_unit_name',
+            'hard_copy',
+            'center_name',
+            'creator_name',
             'signed_at',
             'status',
             'created_at',
         ]);
 
+        $this->applyIndexSort($query, $sort, $direction);
+
         $certificates = $query
-            ->orderBy('quality_certificates.' . $sort, $direction)
-            ->orderBy('quality_certificates.id', 'desc')
             ->paginate(15)
             ->withQueryString();
 
@@ -166,6 +179,42 @@ class QualityCertificateController extends Controller
             ->get();
 
         return view('quality_certificates.index', compact('certificates', 'centers', 'salesUnits', 'isCenterUser'));
+    }
+
+    private function applyIndexSort($query, string $sort, string $direction): void
+    {
+        $query->select('quality_certificates.*');
+
+        if (in_array($sort, ['request_no', 'requester_name', 'hard_copy'], true)) {
+            $query->leftJoin('certificate_requests as sort_requests', 'sort_requests.id', '=', 'quality_certificates.certificate_request_id')
+                ->orderBy(match ($sort) {
+                    'request_no' => 'sort_requests.request_no',
+                    'requester_name' => 'sort_requests.requester_name',
+                    default => 'sort_requests.require_hard_copy',
+                }, $direction);
+        } elseif ($sort === 'customer_name') {
+            $query->leftJoin('certificate_requests as sort_requests', 'sort_requests.id', '=', 'quality_certificates.certificate_request_id')
+                ->leftJoin('customers as sort_customers', 'sort_customers.id', '=', 'sort_requests.customer_id')
+                ->orderBy('sort_customers.customer_name', $direction)
+                ->orderBy('sort_customers.project_name', $direction);
+        } elseif ($sort === 'sales_unit_name') {
+            $query->leftJoin('certificate_requests as sort_requests', 'sort_requests.id', '=', 'quality_certificates.certificate_request_id')
+                ->leftJoin('sales_units as sort_sales_units', 'sort_sales_units.id', '=', 'sort_requests.sales_unit_id')
+                ->orderBy('sort_sales_units.name', $direction)
+                ->orderBy('sort_sales_units.code', $direction);
+        } elseif ($sort === 'center_name') {
+            $query->leftJoin('certificate_requests as sort_requests', 'sort_requests.id', '=', 'quality_certificates.certificate_request_id')
+                ->leftJoin('distribution_centers as sort_centers', 'sort_centers.id', '=', 'sort_requests.distribution_center_id')
+                ->orderBy('sort_centers.name', $direction)
+                ->orderBy('sort_centers.code', $direction);
+        } elseif ($sort === 'creator_name') {
+            $query->leftJoin('users as sort_creators', 'sort_creators.id', '=', 'quality_certificates.created_by')
+                ->orderBy('sort_creators.name', $direction);
+        } else {
+            $query->orderBy('quality_certificates.' . $sort, $direction);
+        }
+
+        $query->orderBy('quality_certificates.id', 'desc');
     }
 
     public function signingQueue(Request $request)

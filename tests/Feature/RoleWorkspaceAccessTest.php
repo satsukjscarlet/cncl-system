@@ -245,7 +245,11 @@ class RoleWorkspaceAccessTest extends TestCase
 
         $npRequest = $this->createRequestForCenter($npCenter, $npUser, 'YC-SALES-UNIT-NP', 'WAIT_DVKH');
         $tpRequest = $this->createRequestForCenter($tpCenter, $tpUser, 'YC-SALES-UNIT-TP', 'WAIT_DVKH');
-        $npRequest->update(['sales_unit_id' => $npSalesUnit->id]);
+        $npRequest->update([
+            'sales_unit_id' => $npSalesUnit->id,
+            'require_hard_copy' => true,
+            'hard_copy_quantity' => 2,
+        ]);
         $tpRequest->update(['sales_unit_id' => $tpSalesUnit->id]);
 
         $this->createCertificateForRequest($npRequest, 'CNCL-SALES-UNIT-NP', 'READY_TO_SIGN');
@@ -269,6 +273,23 @@ class RoleWorkspaceAccessTest extends TestCase
             ->assertSee('CNCL-SALES-UNIT-NP')
             ->assertSee('NP-DVBH-SEARCH')
             ->assertDontSee('CNCL-SALES-UNIT-TP');
+
+        $this->actingAs($admin)
+            ->get(route('quality-certificates.index', [
+                'hard_copy' => '1',
+            ]))
+            ->assertOk()
+            ->assertSee('CNCL-SALES-UNIT-NP')
+            ->assertSee('2 bản')
+            ->assertDontSee('CNCL-SALES-UNIT-TP');
+
+        $this->actingAs($admin)
+            ->get(route('quality-certificates.index', [
+                'sort' => 'hard_copy',
+                'direction' => 'desc',
+            ]))
+            ->assertOk()
+            ->assertSeeInOrder(['CNCL-SALES-UNIT-NP', 'CNCL-SALES-UNIT-TP']);
     }
 
     public function test_report_permission_allows_truong_ptn_to_open_summary_report(): void

@@ -15,15 +15,33 @@
             padding: 16px 18px 14px;
         }
 
+        .certificate-filter-card {
+            border-top: 3px solid #0d6efd;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+        }
+
+        .certificate-filter-card .card-header {
+            align-items: center;
+            background: linear-gradient(180deg, #fff, #f8fbff);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .certificate-filter-hint {
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
         .certificate-filter-grid {
             align-items: end;
             display: grid;
             gap: 14px;
-            grid-template-columns: minmax(260px, 1.35fr) repeat(4, minmax(160px, .85fr)) minmax(200px, 1fr) auto;
+            grid-template-columns: minmax(260px, 1.35fr) repeat(5, minmax(150px, .78fr)) minmax(190px, 1fr) auto;
         }
 
         .certificate-filter-grid.is-center-user {
-            grid-template-columns: minmax(280px, 1.4fr) repeat(3, minmax(170px, .85fr)) minmax(210px, 1fr) auto;
+            grid-template-columns: minmax(280px, 1.4fr) repeat(4, minmax(160px, .8fr)) minmax(200px, 1fr) auto;
         }
 
         .certificate-filter-field label {
@@ -83,9 +101,15 @@
 
         .certificate-list-card .card-header {
             align-items: center;
+            background: linear-gradient(180deg, #fff, #f8fbff);
             display: flex;
             gap: 14px;
             justify-content: space-between;
+        }
+
+        .certificate-list-card {
+            border: 1px solid #dce5f2;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, .08);
         }
 
         .certificate-list-card .card-tools {
@@ -107,10 +131,27 @@
             font-size: 12px;
             text-transform: uppercase;
             vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .certificate-table th .sort-link {
+            color: #334155;
+            display: inline-flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .certificate-table th .sort-link:hover {
+            color: #0d6efd;
+            text-decoration: none;
         }
 
         .certificate-table tbody td {
             vertical-align: top;
+        }
+
+        .certificate-table tbody tr:hover {
+            background: #f8fbff;
         }
 
         .certificate-no {
@@ -213,9 +254,16 @@
     $selectedSalesUnit = request('sales_unit_id')
         ? $salesUnits->firstWhere('id', (int) request('sales_unit_id'))
         : null;
+    $selectedHardCopy = request('hard_copy', '');
+    $hardCopyOptions = [
+        '' => 'Tất cả',
+        '1' => 'Có yêu cầu ký tươi',
+        '0' => 'Không yêu cầu ký tươi',
+    ];
     $hasActiveFilters = filled(request('keyword'))
         || filled(request('distribution_center_id'))
         || filled(request('sales_unit_id'))
+        || filled(request('hard_copy'))
         || filled(request('date_from'))
         || filled(request('date_to'))
         || $selectedStatus !== 'ALL';
@@ -240,6 +288,9 @@
         <h3 class="card-title">
             <i class="fas fa-filter"></i> Bộ lọc dữ liệu
         </h3>
+        <span class="certificate-filter-hint">
+            Bấm tiêu đề cột để sắp xếp tăng/giảm
+        </span>
     </div>
 
     <div class="card-body">
@@ -299,6 +350,17 @@
             </div>
 
             <div class="certificate-filter-field">
+                <label>Yêu cầu ký tươi</label>
+                <select name="hard_copy" class="form-control select2">
+                    @foreach($hardCopyOptions as $value => $label)
+                        <option value="{{ $value }}" {{ (string) $selectedHardCopy === (string) $value ? 'selected' : '' }}>
+                            {{ $label }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="certificate-filter-field">
                 <label>Trạng thái ký</label>
                 <select name="status" class="form-control select2">
                     @foreach($statusOptions as $value => $label)
@@ -336,6 +398,12 @@
                 @if($selectedSalesUnit)
                     <span class="certificate-filter-chip">
                         <i class="fas fa-store"></i> {{ $selectedSalesUnit->code }} - {{ $selectedSalesUnit->name }}
+                    </span>
+                @endif
+
+                @if(filled($selectedHardCopy))
+                    <span class="certificate-filter-chip">
+                        <i class="fas fa-print"></i> {{ $hardCopyOptions[$selectedHardCopy] ?? $selectedHardCopy }}
                     </span>
                 @endif
 
@@ -395,12 +463,13 @@
                     @endcan
                     <th style="width:60px">STT</th>
                     <th>@include('partials.sort_link', ['column' => 'certificate_no', 'label' => 'Số phiếu'])</th>
-                    <th>Số yêu cầu</th>
-                    <th>Người tạo yêu cầu</th>
-                    <th>Khách hàng / Công trình</th>
-                    <th>Đơn vị bán hàng</th>
-                    <th>Trung tâm</th>
-                    <th>Người lập</th>
+                    <th>@include('partials.sort_link', ['column' => 'request_no', 'label' => 'Số yêu cầu'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'requester_name', 'label' => 'Người tạo yêu cầu'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'customer_name', 'label' => 'Khách hàng / Công trình'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'sales_unit_name', 'label' => 'Đơn vị bán hàng'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'hard_copy', 'label' => 'Yêu cầu ký tươi'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'center_name', 'label' => 'Trung tâm'])</th>
+                    <th>@include('partials.sort_link', ['column' => 'creator_name', 'label' => 'Người lập'])</th>
                     <th>@include('partials.sort_link', ['column' => 'signed_at', 'label' => 'Ngày ký'])</th>
                     <th>@include('partials.sort_link', ['column' => 'status', 'label' => 'Trạng thái'])</th>
                     <th style="width:170px" class="text-center">Thao tác</th>
@@ -462,13 +531,6 @@
                                 <a href="{{ route('certificate-requests.show', $certificate->request) }}" class="font-weight-bold">
                                     {{ $certificate->request->request_no }}
                                 </a>
-                                @if($certificate->request->require_hard_copy)
-                                    <div class="mt-1">
-                                        <span class="badge badge-warning">
-                                            <i class="fas fa-print"></i> Yêu cầu ký tươi: {{ $certificate->request->hard_copy_quantity }} bản
-                                        </span>
-                                    </div>
-                                @endif
                             @else
                                 -
                             @endif
@@ -491,6 +553,16 @@
                                 <div class="text-muted small">{{ $certificate->request->salesUnit->name }}</div>
                             @else
                                 -
+                            @endif
+                        </td>
+
+                        <td>
+                            @if($certificate->request?->require_hard_copy)
+                                <span class="badge badge-warning">
+                                    <i class="fas fa-print"></i> {{ $certificate->request->hard_copy_quantity }} bản
+                                </span>
+                            @else
+                                <span class="badge badge-light">Không</span>
                             @endif
                         </td>
 
@@ -571,7 +643,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="@can('request.create') 12 @else 11 @endcan">
+                        <td colspan="@can('request.create') 13 @else 12 @endcan">
                             <div class="certificate-empty-state">
                                 <i class="fas fa-database fa-2x mb-2"></i>
                                 <div>Chưa có phiếu CNCL phù hợp với bộ lọc.</div>

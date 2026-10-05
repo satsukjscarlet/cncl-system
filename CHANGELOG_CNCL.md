@@ -1,3 +1,24 @@
+## 2026-10-05 - Lọc/sắp xếp phiếu yêu cầu ký tươi và làm gọn danh sách phiếu
+
+File chính:
+- `app/Http/Controllers/QualityCertificateController.php`
+- `resources/views/quality_certificates/index.blade.php`
+- `tests/Feature/RoleWorkspaceAccessTest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Bổ sung bộ lọc `Yêu cầu ký tươi` trên màn danh sách phiếu CNCL.
+- Tách thông tin ký tươi thành cột riêng để dễ quét danh sách, hiển thị số bản ký tươi nếu có.
+- Làm lại khối lọc và bảng danh sách phiếu gọn hơn, có viền/đổ bóng nhẹ, trạng thái lọc đang áp dụng và gợi ý bấm tiêu đề cột để sắp xếp.
+- Bổ sung sắp xếp tăng/giảm cho các cột chính: số phiếu, số yêu cầu, người tạo yêu cầu, khách hàng/công trình, đơn vị bán hàng, yêu cầu ký tươi, trung tâm, người lập, ngày ký và trạng thái.
+- Bổ sung test lọc và sắp xếp phiếu có yêu cầu ký tươi kết hợp với dữ liệu đơn vị bán hàng.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/QualityCertificateController.php`
+- `php -l tests/Feature/RoleWorkspaceAccessTest.php`
+- `php artisan view:cache`
+- `php artisan test --filter=request_and_certificate_lists_can_filter_and_search_by_sales_unit`
+
 ## 2026-10-05 - Lọc và tìm kiếm Đơn vị bán hàng trên danh sách yêu cầu/phiếu
 
 File chính:
