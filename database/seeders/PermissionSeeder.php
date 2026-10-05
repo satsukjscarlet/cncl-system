@@ -9,6 +9,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 class PermissionSeeder extends Seeder
 {
+    // Role permissions aligned with the live configuration on 2026-10-03.
     public function run(): void
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -101,16 +102,16 @@ class PermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
-        $admin = Role::firstOrCreate(['name' => 'Admin']);
-        $leader = Role::firstOrCreate(['name' => 'LanhDao']);
-        $center = Role::firstOrCreate(['name' => 'TrungTam']);
-        $dvkh = Role::firstOrCreate(['name' => 'DVKH']);
-        $ptn = Role::firstOrCreate(['name' => 'PTN']);
-        $truongPtn = Role::firstOrCreate(['name' => 'TruongPTN']);
-        $viewer = Role::firstOrCreate(['name' => 'Viewer']);
+        $admin = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
+        $leader = Role::firstOrCreate(['name' => 'LanhDao', 'guard_name' => 'web']);
+        $center = Role::firstOrCreate(['name' => 'TrungTam', 'guard_name' => 'web']);
+        $dvkh = Role::firstOrCreate(['name' => 'DVKH', 'guard_name' => 'web']);
+        $ptn = Role::firstOrCreate(['name' => 'PTN', 'guard_name' => 'web']);
+        $truongPtn = Role::firstOrCreate(['name' => 'TruongPTN', 'guard_name' => 'web']);
+        $viewer = Role::firstOrCreate(['name' => 'Viewer', 'guard_name' => 'web']);
 
         // Do not use syncPermissions() here.
         // Production roles may be adjusted manually, so this seeder only adds missing permissions
@@ -156,6 +157,13 @@ class PermissionSeeder extends Seeder
             'request.view',
             'dvkh.process',
             'certificate.view',
+            'product.export',
+            'product.import',
+            'product_group.create',
+            'product_group.export',
+            'product_group.import',
+            'product_group.update',
+            'product_group.view',
         ]);
 
         $this->giveMissingPermissions($ptn, [
@@ -173,6 +181,9 @@ class PermissionSeeder extends Seeder
             'ptn.process',
             'certificate.view',
             'certificate.create',
+            'certificate.print',
+            'report.export',
+            'report.view',
         ]);
 
         $this->giveMissingPermissions($truongPtn, [
@@ -192,6 +203,8 @@ class PermissionSeeder extends Seeder
             'certificate.reject',
             'certificate.print',
             'certificate.email',
+            'report.export',
+            'report.view',
         ]);
 
         $this->giveMissingPermissions($viewer, [
