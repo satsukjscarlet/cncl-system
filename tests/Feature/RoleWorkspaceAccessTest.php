@@ -7,7 +7,9 @@ use App\Models\Customer;
 use App\Models\DistributionCenter;
 use App\Models\QualityCertificate;
 use App\Models\SalesUnit;
+use App\Models\SystemSetting;
 use App\Models\User;
+use App\Models\UserDevice;
 use Database\Seeders\DistributionCenterSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\UserSeeder;
@@ -32,24 +34,82 @@ class RoleWorkspaceAccessTest extends TestCase
     public function test_seeded_test_accounts_can_login_and_open_dashboard(): void
     {
         foreach ($this->testUsernames() as $username) {
-            $response = $this->post('/login', [
-                'username' => $username,
-                'password' => '123123123',
-            ]);
+            $user = User::where('username', $username)->firstOrFail();
+            $deviceUid = 'test-device-' . $username;
+
+            if ($user->hasRole('TrungTam')) {
+                UserDevice::create([
+                    'user_id' => $user->id,
+                    'device_uid' => $deviceUid,
+                    'device_name' => 'Máy test ' . $username,
+                    'status' => UserDevice::STATUS_APPROVED,
+                    'requested_at' => now(),
+                    'approved_at' => now(),
+                ]);
+            }
+
+            $response = $this
+                ->withCookie('cncl_device_uid', $deviceUid)
+                ->post('/login', [
+                    'username' => $username,
+                    'password' => '123123123',
+                ]);
 
             $response->assertRedirect(route('dashboard', absolute: false));
-            $this->assertAuthenticatedAs(User::where('username', $username)->first());
+            $this->assertAuthenticatedAs($user);
 
             $this->get('/dashboard')->assertOk();
             $this->post('/logout')->assertRedirect('/');
         }
     }
 
+    public function test_distribution_center_account_must_wait_for_device_approval(): void
+    {
+        $user = User::where('username', 'trungtam_np')->firstOrFail();
+
+        $this->post('/login', [
+            'username' => 'trungtam_np',
+            'password' => '123123123',
+        ])
+            ->assertSessionHasErrors('username')
+            ->assertRedirect('/');
+
+        $this->assertGuest();
+
+        $this->assertDatabaseHas('user_devices', [
+            'user_id' => $user->id,
+            'status' => UserDevice::STATUS_PENDING,
+        ]);
+    }
+
+    public function test_device_control_can_be_disabled_for_distribution_center_login(): void
+    {
+        SystemSetting::create([
+            'key' => 'login_device_control_enabled',
+            'value' => '0',
+            'type' => 'boolean',
+            'description' => 'Test disable device control',
+        ]);
+
+        $user = User::where('username', 'trungtam_np')->firstOrFail();
+
+        $this->post('/login', [
+            'username' => 'trungtam_np',
+            'password' => '123123123',
+        ])
+            ->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertDatabaseMissing('user_devices', [
+            'user_id' => $user->id,
+        ]);
+    }
+
     public function test_role_route_access_matrix_matches_workspace_permissions(): void
     {
         $matrix = [
             'admin' => [
-                'allow' => ['/dashboard', '/users', '/role-permissions', '/reports/summary', '/activity-logs'],
+                'allow' => ['/dashboard', '/users', '/user-devices', '/role-permissions', '/reports/summary', '/activity-logs'],
                 'deny' => [],
             ],
             'lanhdao' => [
@@ -58,19 +118,19 @@ class RoleWorkspaceAccessTest extends TestCase
             ],
             'trungtam_np' => [
                 'allow' => ['/dashboard', '/customers', '/certificate-requests', '/quality-certificates'],
-                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
+                'deny' => ['/users', '/user-devices', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'dvkh' => [
                 'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/dvkh/requests'],
                 'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'ptn' => [
-                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/ptn/requests', '/ptn/requests/direct-create'],
-                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
+                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/ptn/requests', '/ptn/requests/direct-create', '/reports/summary'],
+                'deny' => ['/users', '/role-permissions', '/activity-logs', '/dvkh/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'truongptn' => [
-                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign', '/print-logs'],
-                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/ptn/requests'],
+                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign', '/print-logs', '/reports/summary'],
+                'deny' => ['/users', '/role-permissions', '/activity-logs', '/dvkh/requests', '/ptn/requests'],
             ],
             'viewer' => [
                 'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates'],

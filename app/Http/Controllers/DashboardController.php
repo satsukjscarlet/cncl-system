@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CertificateRequest;
 use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
+use App\Models\UserDevice;
 use App\Services\SlaClockService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -87,6 +88,9 @@ class DashboardController extends Controller
                         });
                 })
                 ->count(),
+            'pending_login_devices' => $user->can('device.manage')
+                ? UserDevice::where('status', UserDevice::STATUS_PENDING)->count()
+                : 0,
         ];
 
         $cards = $this->cardsForRole($role, $metrics);
@@ -170,6 +174,7 @@ class DashboardController extends Controller
                 $this->card('Đã phát hành', $metrics['issued_certificates'], 'fas fa-check-circle', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
                 $this->card('Đã hủy / thu hồi', $metrics['revoked_certificates'], 'fas fa-ban', 'danger', route('quality-certificates.index', ['status' => 'REVOKED'])),
                 $this->card('Trưởng PTN trả lại', $metrics['rejected_certificates'], 'fas fa-undo', 'secondary', route('quality-certificates.index', ['status' => 'REJECTED'])),
+                $this->card('Thiết bị chờ duyệt', $metrics['pending_login_devices'], 'fas fa-laptop', 'warning', route('user-devices.index', ['status' => 'pending'])),
             ],
             'TrungTam' => [
                 $this->card('Yêu cầu của tôi', $metrics['total_requests'], 'fas fa-file-alt', 'primary', route('certificate-requests.index')),

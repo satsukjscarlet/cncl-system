@@ -43,6 +43,11 @@ class User extends Authenticatable
         return $this->belongsTo(DistributionCenter::class);
     }
 
+    public function devices()
+    {
+        return $this->hasMany(UserDevice::class);
+    }
+
     public function adminlte_profile_url(): string
     {
         return route('profile.edit');

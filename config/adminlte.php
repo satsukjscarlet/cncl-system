@@ -463,6 +463,12 @@ return [
             'can'  => 'user.view',
         ],
         [
+            'text' => 'Thiết bị đăng nhập',
+            'url'  => 'user-devices',
+            'icon' => 'fas fa-laptop',
+            'can'  => 'device.manage',
+        ],
+        [
             'text' => 'Phân quyền',
             'url'  => 'role-permissions',
             'icon' => 'fas fa-user-shield',

@@ -1,3 +1,94 @@
+## 2026-10-05 - Chọn vai trò kiểm soát thiết bị bằng Select2
+
+File chính:
+- `app/Http/Controllers/SystemSettingController.php`
+- `resources/views/system_settings/index.blade.php`
+- `public/js/select2-init.js`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Đổi trường `Vai trò cần kiểm soát thiết bị` trong màn `Cấu hình hệ thống` từ nhập tay sang select2 chọn nhiều vai trò.
+- Controller nhận danh sách vai trò dạng mảng, validate theo bảng `roles`, rồi lưu lại cấu hình theo định dạng cũ.
+- Select2 dùng được `data-placeholder` để hiển thị gợi ý chọn vai trò rõ hơn.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/SystemSettingController.php`
+- `php artisan view:cache`
+- `php artisan test --filter=device_control_can_be_disabled_for_distribution_center_login`
+- `php artisan test --filter=distribution_center_account_must_wait_for_device_approval`
+
+## 2026-10-05 - Cấu hình kiểm soát thiết bị và cảnh báo thiết bị chờ duyệt
+
+File chính:
+- `app/Http/Controllers/Auth/AuthenticatedSessionController.php`
+- `app/Http/Controllers/SystemSettingController.php`
+- `app/Http/Controllers/DashboardController.php`
+- `database/seeders/SystemSettingSeeder.php`
+- `resources/views/system_settings/index.blade.php`
+- `tests/Feature/RoleWorkspaceAccessTest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Thêm cấu hình bật/tắt kiểm soát thiết bị đăng nhập trong màn `Cấu hình hệ thống`.
+- Thêm cấu hình danh sách vai trò cần kiểm soát thiết bị, mặc định `TrungTam`.
+- Thêm cấu hình số thiết bị tối đa được duyệt cho mỗi tài khoản.
+- Luồng đăng nhập đọc cấu hình thay vì hard-code vai trò `TrungTam`.
+- Nếu tài khoản đã đạt giới hạn thiết bị được duyệt, thiết bị mới sẽ bị chặn và yêu cầu admin thu hồi thiết bị cũ.
+- Dashboard admin có card `Thiết bị chờ duyệt`, mở nhanh danh sách thiết bị pending.
+- Bổ sung test trường hợp tắt kiểm soát thiết bị thì tài khoản Trung tâm đăng nhập được ngay.
+
+Kiểm tra:
+- `php -l app/Http/Controllers/Auth/AuthenticatedSessionController.php`
+- `php -l app/Http/Controllers/SystemSettingController.php`
+- `php -l app/Http/Controllers/DashboardController.php`
+- `php -l database/seeders/SystemSettingSeeder.php`
+- `php artisan view:cache`
+- `php artisan db:seed --class=SystemSettingSeeder`
+- `php artisan test --filter=distribution_center_account_must_wait_for_device_approval`
+- `php artisan test --filter=device_control_can_be_disabled_for_distribution_center_login`
+- `php artisan test --filter=seeded_test_accounts_can_login_and_open_dashboard`
+- `php artisan test --filter=role_route_access_matrix_matches_workspace_permissions`
+
+## 2026-10-05 - Kiểm soát thiết bị đăng nhập cho tài khoản Trung tâm
+
+File chính:
+- `database/migrations/2026_10_05_000002_create_user_devices_table.php`
+- `app/Models/UserDevice.php`
+- `app/Models/User.php`
+- `app/Http/Controllers/Auth/AuthenticatedSessionController.php`
+- `app/Http/Controllers/UserDeviceController.php`
+- `app/Http/Controllers/RolePermissionController.php`
+- `routes/web.php`
+- `config/adminlte.php`
+- `database/seeders/PermissionSeeder.php`
+- `resources/views/user_devices/index.blade.php`
+- `tests/Feature/RoleWorkspaceAccessTest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Bổ sung bảng `user_devices` để lưu thiết bị đăng nhập theo tài khoản, trạng thái `pending/approved/blocked`, IP, trình duyệt và thời gian sử dụng.
+- Tài khoản vai trò `TrungTam` khi đăng nhập từ thiết bị mới sẽ bị chặn sau khi nhập đúng mật khẩu, hệ thống tạo yêu cầu thiết bị chờ admin duyệt.
+- Thiết bị đã duyệt mới được đăng nhập; thiết bị bị khóa sẽ bị từ chối đăng nhập.
+- Thêm màn `Thiết bị đăng nhập` trong khu vực Hệ thống để admin lọc, duyệt, khóa hoặc xóa thiết bị.
+- Thêm quyền `device.manage` và nhãn tiếng Việt trên màn phân quyền.
+- Cập nhật test đăng nhập/phân quyền theo nghiệp vụ thiết bị mới.
+
+Kiểm tra:
+- `php artisan migrate`
+- `php artisan db:seed --class=PermissionSeeder`
+- `php -l app/Http/Controllers/Auth/AuthenticatedSessionController.php`
+- `php -l app/Http/Controllers/UserDeviceController.php`
+- `php -l app/Http/Controllers/RolePermissionController.php`
+- `php -l app/Models/UserDevice.php`
+- `php -l database/migrations/2026_10_05_000002_create_user_devices_table.php`
+- `php -l database/seeders/PermissionSeeder.php`
+- `php -l routes/web.php`
+- `php artisan view:cache`
+- `php artisan route:list --name=user-devices`
+- `php artisan test --filter=seeded_test_accounts_can_login_and_open_dashboard`
+- `php artisan test --filter=distribution_center_account_must_wait_for_device_approval`
+- `php artisan test --filter=role_route_access_matrix_matches_workspace_permissions`
+
 ## 2026-10-05 - Lọc/sắp xếp phiếu yêu cầu ký tươi và làm gọn danh sách phiếu
 
 File chính:
