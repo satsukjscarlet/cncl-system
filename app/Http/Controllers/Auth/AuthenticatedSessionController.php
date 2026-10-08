@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Helpers\ActivityLogger;
 use App\Models\LoginLog;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserDevice;
+use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -113,6 +115,19 @@ class AuthenticatedSessionController extends Controller
             ]
         );
 
+        if ($device->wasRecentlyCreated) {
+            ActivityLogger::log(
+                'Thiết bị đăng nhập',
+                'pending',
+                'Thiết bị đăng nhập mới đang chờ duyệt cho tài khoản: ' . ($user->username ?? $user->id),
+                null,
+                $device->only(['device_name', 'status', 'ip_address', 'user_agent', 'requested_at']),
+                $device
+            );
+
+            app(NotificationService::class)->notifyLoginDevicePending($device);
+        }
+
         if (
             $device->status === UserDevice::STATUS_PENDING
             && $user->devices()
@@ -160,6 +175,10 @@ class AuthenticatedSessionController extends Controller
     private function shouldRequireApprovedDevice(User $user): bool
     {
         if (!SystemSetting::getValue('login_device_control_enabled', true)) {
+            return false;
+        }
+
+        if ($user->can('device.manage')) {
             return false;
         }
 

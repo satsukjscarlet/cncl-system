@@ -106,6 +106,7 @@
                     <th style="width:130px">IP</th>
                     <th style="width:120px">Trạng thái</th>
                     <th style="width:170px">Thời gian</th>
+                    <th style="width:260px">Lịch sử gần nhất</th>
                     <th style="width:260px" class="text-center">Thao tác</th>
                 </tr>
             </thead>
@@ -136,6 +137,21 @@
                             <div>Yêu cầu: {{ optional($device->requested_at)->format('d/m/Y H:i') ?: '-' }}</div>
                             <div>Duyệt: {{ optional($device->approved_at)->format('d/m/Y H:i') ?: '-' }}</div>
                             <div>Dùng cuối: {{ optional($device->last_used_at)->format('d/m/Y H:i') ?: '-' }}</div>
+                        </td>
+                        <td class="small">
+                            @forelse(($deviceLogs[$device->id] ?? collect()) as $log)
+                                <div class="mb-2">
+                                    <div class="font-weight-bold">{{ $log->description }}</div>
+                                    <div class="text-muted">
+                                        {{ optional($log->created_at)->format('d/m/Y H:i') }}
+                                        @if($log->causer)
+                                            - {{ $log->causer->name ?? $log->causer->username }}
+                                        @endif
+                                    </div>
+                                </div>
+                            @empty
+                                <span class="text-muted">Chưa có lịch sử thao tác.</span>
+                            @endforelse
                         </td>
                         <td class="text-center">
                             @if($device->status !== \App\Models\UserDevice::STATUS_APPROVED)
@@ -212,7 +228,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
+                        <td colspan="8" class="text-center text-muted py-4">
                             Chưa có thiết bị đăng nhập nào.
                         </td>
                     </tr>

@@ -25,6 +25,9 @@ class HardCopyBatchCertificatePdfService
     //Giới hạn đáy bảng ở trang cuối. Số này thấp hơn để chừa khoảng trắng phía dưới cho ký tươi. Tăng số này thì trang cuối chứa được nhiều sản phẩm hơn nhưng khoảng ký bị ít đi.
     private const LAST_TABLE_BOTTOM = 505.0;
     private const FOOTER_SAFE_TOP = 725.0;
+    // Vị trí tên Trưởng phòng thử nghiệm trên trang cuối, căn theo mẫu in đơn.
+    private const SIGNER_NAME_X = self::LEFT + 75.0;
+    private const SIGNER_NAME_Y = 734.0;
 
     private TCPDF $pdf;
     private string $fontRegular = 'times';
@@ -185,6 +188,7 @@ class HardCopyBatchCertificatePdfService
 
         if ($isLastPage) {
             $this->drawLastPageNote($tableBottom + 7);
+            $this->drawLastPageSignerName();
         } else {
             $this->drawContinueText();
         }
@@ -312,6 +316,14 @@ class HardCopyBatchCertificatePdfService
         $this->pdf->Write(15, 'Phiếu này thay thế cho phiếu chứng nhận xuất xưởng hàng hóa', '', false, '', true);
         $this->pdf->SetX(self::LEFT);
         $this->pdf->Write(15, 'Sản phẩm đạt yêu cầu theo tiêu chuẩn sản phẩm công ty đã công bố', '', false, '', true);
+    }
+
+    private function drawLastPageSignerName(): void
+    {
+        $this->pdf->SetTextColor(0, 0, 0);
+        $this->pdf->SetFont($this->fontBold, '', 13);
+        $this->pdf->SetXY(self::SIGNER_NAME_X, self::SIGNER_NAME_Y);
+        $this->pdf->Cell(160, 16, 'Vũ Thị Diệu Thúy', 0, 0, 'L');
     }
 
     private function drawContinueText(): void

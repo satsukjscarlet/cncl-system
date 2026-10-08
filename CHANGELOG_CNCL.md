@@ -1,3 +1,95 @@
+## 2026-10-07 - Bao mat phien dang nhap khi khoa tai khoan va doi mat khau
+
+File da sua/them:
+- `SessionSecurityService.php` (`app/Services/SessionSecurityService.php`): them service thu hoi session cua mot tai khoan trong bang `sessions`.
+- `EnsureLoginDeviceIsApproved.php` (`app/Http/Middleware/EnsureLoginDeviceIsApproved.php`): bo sung kiem tra tai khoan bi khoa o moi request va tu dong logout.
+- `UserController.php` (`app/Http/Controllers/UserController.php`): khi khoa tai khoan hoac reset mat khau thi thu hoi cac phien dang nhap cu.
+- `PasswordController.php` (`app/Http/Controllers/Auth/PasswordController.php`): khi nguoi dung tu doi mat khau co tuy chon dang xuat cac thiet bi/phien khac.
+- `edit.blade.php` (`resources/views/profile/edit.blade.php`): them checkbox dang xuat khoi cac thiet bi khac sau khi doi mat khau.
+- `edit.blade.php` (`resources/views/users/edit.blade.php`): cap nhat ghi chu reset mat khau se thu hoi phien cu.
+- `RoleWorkspaceAccessTest.php` (`tests/Feature/RoleWorkspaceAccessTest.php`): bo sung test khoa user, reset mat khau va user bi khoa dang con session.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Khoa tai khoan se xoa cac session hien co cua tai khoan do trong bang `sessions`.
+- Neu user bi khoa nhung session cu van con tren trinh duyet, request tiep theo se bi logout va chuyen ve man dang nhap.
+- Reset mat khau tu man quan tri se thu hoi session cu cua user de buoc dang nhap lai bang mat khau moi.
+- Doi mat khau ca nhan co tuy chon mac dinh dang xuat cac phien khac, giu lai phien hien tai.
+
+Kiem tra:
+- `php -l` cac file PHP vua sua/them.
+- `php artisan view:cache`.
+- `php artisan test --filter=deactivating_user_revokes_existing_sessions`.
+- `php artisan test --filter=reset_password_revokes_existing_sessions`.
+- `php artisan test --filter=inactive_authenticated_user_is_logged_out_on_next_request`.
+- `php artisan test --filter=seeded_test_accounts_can_login_and_open_dashboard`.
+- `php artisan test --filter=role_route_access_matrix_matches_workspace_permissions`.
+- `php artisan test --filter=blocked_approved_device_is_logged_out_on_next_request`.
+
+## 2026-10-07 - Toi uu quan ly thiet bi dang nhap
+
+File da sua/them:
+- `AuthenticatedSessionController.php` (`app/Http/Controllers/Auth/AuthenticatedSessionController.php`): tao log va thong bao cho admin khi co thiet bi moi cho duyet; bo qua kiem soat thiet bi cho tai khoan co quyen `device.manage`.
+- `EnsureLoginDeviceIsApproved.php` (`app/Http/Middleware/EnsureLoginDeviceIsApproved.php`): tiep tuc thu hoi phien khi thiet bi bi khoa/chua duyet.
+- `NotificationService.php` (`app/Services/NotificationService.php`): them gui thong bao theo quyen va thong bao `login_device_pending`.
+- `PendingDeviceBadgeFilter.php` (`app/AdminLte/Menu/PendingDeviceBadgeFilter.php`): them badge so thiet bi dang cho duyet tren menu Thiet bi dang nhap.
+- `adminlte.php` (`config/adminlte.php`): dang ky menu filter cho badge thiet bi cho duyet.
+- `UserDeviceController.php` (`app/Http/Controllers/UserDeviceController.php`): load lich su thao tac gan nhat cua tung thiet bi.
+- `index.blade.php` (`resources/views/user_devices/index.blade.php`): hien thi cot lich su gan nhat trong man quan ly thiet bi.
+- `RoleWorkspaceAccessTest.php` (`tests/Feature/RoleWorkspaceAccessTest.php`): bo sung test thiet bi moi tao thong bao cho admin.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Khi tai khoan thuoc dien kiem soat dang nhap tu may/trinh duyet moi, he thong tao thiet bi cho duyet, ghi lich su va gui thong bao cho cac tai khoan co quyen quan ly thiet bi.
+- Menu `Thiet bi dang nhap` hien badge so thiet bi dang cho duyet de admin thay ngay.
+- Man quan ly thiet bi hien them lich su thao tac gan nhat: tao yeu cau, duyet, khoa, xoa.
+- Tai khoan co quyen `device.manage` khong bi dua vao vong duyet thiet bi, tranh khoa nham admin.
+
+Kiem tra:
+- `php -l` cac file PHP vua sua/them.
+- `php artisan test --filter=new_login_device_notifies_device_admins`.
+- `php artisan test --filter=distribution_center_account_must_wait_for_device_approval`.
+- `php artisan test --filter=blocked_approved_device_is_logged_out_on_next_request`.
+
+## 2026-10-06 - Thu hồi phiên khi thiết bị đăng nhập bị khóa
+
+File chính:
+- `app/Http/Middleware/EnsureLoginDeviceIsApproved.php`
+- `bootstrap/app.php`
+- `tests/Feature/RoleWorkspaceAccessTest.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Bổ sung middleware kiểm tra thiết bị đăng nhập ở mỗi request web sau khi người dùng đã đăng nhập.
+- Nếu thiết bị của tài khoản thuộc vai trò bị kiểm soát chưa được duyệt hoặc đã bị khóa, hệ thống tự logout, hủy session và chuyển về màn đăng nhập.
+- Tài khoản có quyền `device.manage` được bỏ qua kiểm tra để tránh khóa nhầm admin khỏi màn duyệt thiết bị.
+- Middleware cập nhật `last_used_at` tối đa mỗi 5 phút để tránh ghi database quá nhiều.
+- Bổ sung test: thiết bị đã duyệt bị khóa sẽ bị đăng xuất ở request kế tiếp.
+
+Kiểm tra:
+- `php -l app/Http/Middleware/EnsureLoginDeviceIsApproved.php`
+- `php -l bootstrap/app.php`
+- `php -l tests/Feature/RoleWorkspaceAccessTest.php`
+- `php artisan test --filter=blocked_approved_device_is_logged_out_on_next_request`
+- `php artisan test --filter=distribution_center_account_must_wait_for_device_approval`
+- `php artisan test --filter=device_control_can_be_disabled_for_distribution_center_login`
+- `php artisan test --filter=seeded_test_accounts_can_login_and_open_dashboard`
+- `php artisan test --filter=role_route_access_matrix_matches_workspace_permissions`
+
+## 2026-10-06 - Bổ sung tên Trưởng phòng thử nghiệm trên mẫu in bộ
+
+File chính:
+- `app/Services/HardCopyBatchCertificatePdfService.php`
+- `CHANGELOG_CNCL.md`
+
+Nội dung:
+- Mẫu PDF ký tươi `In bộ` bổ sung tên `Vũ Thị Diệu Thúy` ở vùng ký Trưởng phòng thử nghiệm trên trang cuối.
+- Vị trí tên được căn theo mẫu `In đơn` để hai mẫu in ký tươi đồng bộ.
+
+Kiểm tra:
+- `php -l app/Services/HardCopyBatchCertificatePdfService.php`
+- Render thử `HardCopyBatchCertificatePdfService` với phiếu có sản phẩm: `311:189799`
+
 ## 2026-10-05 - Chọn vai trò kiểm soát thiết bị bằng Select2
 
 File chính:

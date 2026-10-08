@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\UserDevice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Activitylog\Models\Activity;
 
 class UserDeviceController extends Controller
 {
@@ -43,11 +44,19 @@ class UserDeviceController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $deviceLogs = Activity::with('causer')
+            ->where('subject_type', UserDevice::class)
+            ->whereIn('subject_id', $devices->getCollection()->pluck('id'))
+            ->latest()
+            ->get()
+            ->groupBy('subject_id')
+            ->map(fn ($logs) => $logs->take(4));
+
         $selectedUsers = $request->filled('user_id')
             ? User::where('id', $request->user_id)->get()->keyBy('id')
             : collect();
 
-        return view('user_devices.index', compact('devices', 'selectedUsers'));
+        return view('user_devices.index', compact('devices', 'selectedUsers', 'deviceLogs'));
     }
 
     public function approve(Request $request, UserDevice $userDevice)

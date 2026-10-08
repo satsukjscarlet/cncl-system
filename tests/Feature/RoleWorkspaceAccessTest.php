@@ -10,10 +10,12 @@ use App\Models\SalesUnit;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserDevice;
+use App\Models\UserNotification;
 use Database\Seeders\DistributionCenterSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class RoleWorkspaceAccessTest extends TestCase
@@ -82,6 +84,40 @@ class RoleWorkspaceAccessTest extends TestCase
         ]);
     }
 
+    public function test_new_login_device_notifies_device_admins(): void
+    {
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
+
+        $this->post('/login', [
+            'username' => 'trungtam_np',
+            'password' => '123123123',
+        ])
+            ->assertSessionHasErrors('username')
+            ->assertRedirect('/');
+
+        $device = UserDevice::where('user_id', $centerUser->id)
+            ->where('status', UserDevice::STATUS_PENDING)
+            ->firstOrFail();
+
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $admin->id,
+            'type' => 'login_device_pending',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('user-devices.index', ['status' => 'pending']))
+            ->assertOk()
+            ->assertSee((string) $device->id)
+            ->assertSee('Thiết bị đăng nhập mới đang chờ duyệt');
+
+        $notification = UserNotification::where('user_id', $admin->id)
+            ->where('type', 'login_device_pending')
+            ->firstOrFail();
+
+        $this->assertSame($device->id, $notification->data['device_id']);
+    }
+
     public function test_device_control_can_be_disabled_for_distribution_center_login(): void
     {
         SystemSetting::create([
@@ -105,8 +141,109 @@ class RoleWorkspaceAccessTest extends TestCase
         ]);
     }
 
+    public function test_blocked_approved_device_is_logged_out_on_next_request(): void
+    {
+        $user = User::where('username', 'trungtam_np')->firstOrFail();
+        $deviceUid = 'approved-then-blocked-device';
+
+        $device = UserDevice::create([
+            'user_id' => $user->id,
+            'device_uid' => $deviceUid,
+            'device_name' => 'Máy sẽ bị khóa',
+            'status' => UserDevice::STATUS_APPROVED,
+            'requested_at' => now(),
+            'approved_at' => now(),
+            'last_used_at' => now()->subMinutes(10),
+        ]);
+
+        $this
+            ->withCookie('cncl_device_uid', $deviceUid)
+            ->post('/login', [
+                'username' => 'trungtam_np',
+                'password' => '123123123',
+            ])
+            ->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertAuthenticatedAs($user);
+
+        $device->update([
+            'status' => UserDevice::STATUS_BLOCKED,
+            'blocked_at' => now(),
+        ]);
+
+        $this
+            ->withCookie('cncl_device_uid', $deviceUid)
+            ->get('/dashboard')
+            ->assertRedirect(route('login', absolute: false))
+            ->assertSessionHasErrors('username');
+
+        $this->assertGuest();
+    }
+
+    public function test_deactivating_user_revokes_existing_sessions(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+
+        $this->createSessionRow('session-a', $centerUser);
+        $this->createSessionRow('session-b', $centerUser);
+
+        $this->actingAs($admin)
+            ->post(route('users.toggle-active', $centerUser))
+            ->assertRedirect(route('users.index'));
+
+        $this->assertDatabaseMissing('sessions', [
+            'id' => 'session-a',
+            'user_id' => $centerUser->id,
+        ]);
+        $this->assertDatabaseMissing('sessions', [
+            'id' => 'session-b',
+            'user_id' => $centerUser->id,
+        ]);
+    }
+
+    public function test_reset_password_revokes_existing_sessions(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
+
+        $this->createSessionRow('session-old', $centerUser);
+
+        $this->actingAs($admin)
+            ->post(route('users.reset-password', $centerUser), [
+                'password' => 'new-password-123',
+                'password_confirmation' => 'new-password-123',
+            ])
+            ->assertRedirect(route('users.edit', $centerUser));
+
+        $this->assertDatabaseMissing('sessions', [
+            'id' => 'session-old',
+            'user_id' => $centerUser->id,
+        ]);
+    }
+
+    public function test_inactive_authenticated_user_is_logged_out_on_next_request(): void
+    {
+        $user = User::where('username', 'dvkh')->firstOrFail();
+        $user->update(['is_active' => false]);
+
+        $this->actingAs($user)
+            ->get('/dashboard')
+            ->assertRedirect(route('login', absolute: false))
+            ->assertSessionHasErrors('username');
+
+        $this->assertGuest();
+    }
+
     public function test_role_route_access_matrix_matches_workspace_permissions(): void
     {
+        SystemSetting::create([
+            'key' => 'login_device_control_enabled',
+            'value' => '0',
+            'type' => 'boolean',
+            'description' => 'Test route permissions without device gate',
+        ]);
+
         $matrix = [
             'admin' => [
                 'allow' => ['/dashboard', '/users', '/user-devices', '/role-permissions', '/reports/summary', '/activity-logs'],
@@ -418,6 +555,18 @@ class RoleWorkspaceAccessTest extends TestCase
             'status' => $status,
             'created_by' => $request->created_by,
             'print_count' => 0,
+        ]);
+    }
+
+    private function createSessionRow(string $id, User $user): void
+    {
+        DB::table('sessions')->insert([
+            'id' => $id,
+            'user_id' => $user->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'PHPUnit',
+            'payload' => 'test',
+            'last_activity' => now()->timestamp,
         ]);
     }
 
