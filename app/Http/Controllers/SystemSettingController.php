@@ -8,6 +8,7 @@ use App\Services\TestDataManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Role;
 
 class SystemSettingController extends Controller
 {
@@ -50,8 +51,22 @@ class SystemSettingController extends Controller
             'rectangle' => SystemSetting::getValue('smartca_signature_rectangle', '315,150,565,220'),
             'image_path' => SystemSetting::getValue('smartca_signature_image_path'),
         ];
+        $loginDeviceSettings = [
+            'enabled' => SystemSetting::getValue('login_device_control_enabled', true),
+            'roles' => SystemSetting::getValue('login_device_control_roles', 'TrungTam'),
+            'max_per_user' => SystemSetting::getValue('login_device_max_per_user', 3),
+        ];
+        $loginDeviceRoleOptions = Role::orderBy('name')->pluck('name')->all();
+        $selectedLoginDeviceRoles = $this->roleListToArray($loginDeviceSettings['roles']);
 
-        return view('system_settings.index', compact('autoSendEmail', 'mailSettings', 'signatureSettings'));
+        return view('system_settings.index', compact(
+            'autoSendEmail',
+            'mailSettings',
+            'signatureSettings',
+            'loginDeviceSettings',
+            'loginDeviceRoleOptions',
+            'selectedLoginDeviceRoles'
+        ));
     }
 
     public function update(Request $request)
@@ -62,6 +77,10 @@ class SystemSettingController extends Controller
             'certificate_mail_cc_dvkh' => ['nullable', 'string', 'max:2000'],
             'certificate_mail_cc_ptn' => ['nullable', 'string', 'max:2000'],
             'certificate_mail_cc_extra' => ['nullable', 'string', 'max:4000'],
+            'login_device_control_enabled' => ['nullable', 'boolean'],
+            'login_device_control_roles' => ['nullable', 'array'],
+            'login_device_control_roles.*' => ['string', 'exists:roles,name'],
+            'login_device_max_per_user' => ['required', 'integer', 'min:1', 'max:20'],
             'smartca_signature_visible' => ['nullable', 'boolean'],
             'smartca_signature_show_check' => ['nullable', 'boolean'],
             'smartca_signature_render_mode' => ['required', 'integer', 'between:0,4'],
@@ -132,10 +151,15 @@ class SystemSettingController extends Controller
             'smartca_signature_page' => SystemSetting::getValue('smartca_signature_page', 1),
             'smartca_signature_rectangle' => SystemSetting::getValue('smartca_signature_rectangle', '315,150,565,220'),
             'smartca_signature_image_path' => $currentImagePath,
+            'login_device_control_enabled' => SystemSetting::getValue('login_device_control_enabled', true),
+            'login_device_control_roles' => SystemSetting::getValue('login_device_control_roles', 'TrungTam'),
+            'login_device_max_per_user' => SystemSetting::getValue('login_device_max_per_user', 3),
         ];
 
         $autoSendEmail = $request->boolean('auto_send_email_after_sign');
         $ccCustomerEmail = $request->boolean('certificate_mail_cc_customer_email');
+        $loginDeviceControlEnabled = $request->boolean('login_device_control_enabled');
+        $loginDeviceRoles = $this->normalizeRoleList($data['login_device_control_roles'] ?? ['TrungTam']);
         $imagePath = $currentImagePath;
 
         if ($request->boolean('remove_smartca_signature_image') && $imagePath) {
@@ -168,6 +192,9 @@ class SystemSettingController extends Controller
             ['certificate_mail_cc_dvkh', $this->emailListToText($emailLists['certificate_mail_cc_dvkh']['valid']), 'string', 'Danh sách email DVKH nhận CC khi gửi phiếu CNCL.'],
             ['certificate_mail_cc_ptn', $this->emailListToText($emailLists['certificate_mail_cc_ptn']['valid']), 'string', 'Danh sách email PTN nhận CC khi gửi phiếu CNCL.'],
             ['certificate_mail_cc_extra', $this->emailListToText($emailLists['certificate_mail_cc_extra']['valid']), 'string', 'Danh sách email CC bổ sung khi gửi phiếu CNCL.'],
+            ['login_device_control_enabled', $loginDeviceControlEnabled ? '1' : '0', 'boolean', 'Bật kiểm soát thiết bị đăng nhập.'],
+            ['login_device_control_roles', $loginDeviceRoles, 'string', 'Danh sách vai trò phải duyệt thiết bị trước khi đăng nhập.'],
+            ['login_device_max_per_user', (int) $data['login_device_max_per_user'], 'integer', 'Số thiết bị đăng nhập tối đa được duyệt cho mỗi tài khoản.'],
             ['smartca_signature_visible', $visibleSignature ? '1' : '0', 'boolean', 'Hiển thị vùng chữ ký số trên PDF.'],
             ['smartca_signature_show_check', $showSignatureCheck ? '1' : '0', 'boolean', 'Hiển thị dấu tích xanh trong mẫu chữ ký số.'],
             ['smartca_signature_render_mode', $data['smartca_signature_render_mode'], 'integer', 'Kiểu hiển thị chữ ký số VNPT SmartCA.'],
@@ -195,6 +222,9 @@ class SystemSettingController extends Controller
                 'certificate_mail_cc_dvkh' => $emailLists['certificate_mail_cc_dvkh']['valid'],
                 'certificate_mail_cc_ptn' => $emailLists['certificate_mail_cc_ptn']['valid'],
                 'certificate_mail_cc_extra' => $emailLists['certificate_mail_cc_extra']['valid'],
+                'login_device_control_enabled' => $loginDeviceControlEnabled,
+                'login_device_control_roles' => $loginDeviceRoles,
+                'login_device_max_per_user' => (int) $data['login_device_max_per_user'],
                 'smartca_signature_visible' => $visibleSignature,
                 'smartca_signature_show_check' => $showSignatureCheck,
                 'smartca_signature_render_mode' => $data['smartca_signature_render_mode'],
@@ -311,6 +341,33 @@ class SystemSettingController extends Controller
         }
 
         return implode("\n", array_values(array_unique(array_filter(array_map('trim', $emails ?: [])))));
+    }
+
+    private function normalizeRoleList(array|string|null $roles): string
+    {
+        $items = is_array($roles)
+            ? $roles
+            : preg_split('/[\s,;]+/', (string) $roles, -1, PREG_SPLIT_NO_EMPTY);
+
+        return collect($items)
+            ->map(fn ($role) => trim($role))
+            ->filter()
+            ->unique()
+            ->implode("\n");
+    }
+
+    private function roleListToArray(array|string|null $roles): array
+    {
+        $items = is_array($roles)
+            ? $roles
+            : preg_split('/[\s,;]+/', (string) $roles, -1, PREG_SPLIT_NO_EMPTY);
+
+        return collect($items)
+            ->map(fn ($role) => trim($role))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function authorizeAdminOnly(): void

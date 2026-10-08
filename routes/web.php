@@ -24,6 +24,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\LoginLogController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RolePermissionController;
+use App\Http\Controllers\UserDeviceController;
 use App\Http\Controllers\WorkQueueController;
 
 Route::get('/', function () {
@@ -496,6 +497,22 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('users', UserController::class)
         ->only(['destroy'])
         ->middleware('permission:user.delete');
+
+    Route::get('user-devices', [UserDeviceController::class, 'index'])
+        ->middleware('permission:device.manage')
+        ->name('user-devices.index');
+
+    Route::post('user-devices/{userDevice}/approve', [UserDeviceController::class, 'approve'])
+        ->middleware('permission:device.manage')
+        ->name('user-devices.approve');
+
+    Route::post('user-devices/{userDevice}/block', [UserDeviceController::class, 'block'])
+        ->middleware('permission:device.manage')
+        ->name('user-devices.block');
+
+    Route::delete('user-devices/{userDevice}', [UserDeviceController::class, 'destroy'])
+        ->middleware('permission:device.manage')
+        ->name('user-devices.destroy');
 
     Route::get('role-permissions', [RolePermissionController::class, 'index'])
         ->middleware('permission:role_permission.manage')

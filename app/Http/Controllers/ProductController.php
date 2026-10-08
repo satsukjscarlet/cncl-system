@@ -22,13 +22,28 @@ class ProductController extends Controller
     {
         $query = Product::with(['group', 'qualityStandard'])
             ->withCount(['requestDetails', 'certificateDetails']);
+        $keyword = trim((string) $request->input('keyword', ''));
+        $lowerKeyword = strtolower($keyword);
+        $normalizedKeyword = $this->normalizeProductSearchTerm($keyword);
+        $likeKeyword = '%' . addcslashes($lowerKeyword, '%_\\') . '%';
+        $normalizedLikeKeyword = '%' . addcslashes($normalizedKeyword, '%_\\') . '%';
+        $normalizedCodeSql = $this->normalizedProductCodeSql();
 
-        if ($request->filled('keyword')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('product_code', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('product_name', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('nominal_size', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('technical_requirements', 'like', '%' . $request->keyword . '%');
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($likeKeyword, $normalizedLikeKeyword, $normalizedCodeSql) {
+                $q->whereRaw('LOWER(products.product_code) LIKE ?', [$likeKeyword])
+                    ->orWhereRaw($normalizedCodeSql . ' LIKE ?', [$normalizedLikeKeyword])
+                    ->orWhereRaw('LOWER(products.product_name) LIKE ?', [$likeKeyword])
+                    ->orWhereRaw('LOWER(products.nominal_size) LIKE ?', [$likeKeyword])
+                    ->orWhereRaw('LOWER(products.technical_requirements) LIKE ?', [$likeKeyword])
+                    ->orWhereHas('group', function ($groupQuery) use ($likeKeyword) {
+                        $groupQuery->whereRaw('LOWER(code) LIKE ?', [$likeKeyword])
+                            ->orWhereRaw('LOWER(name) LIKE ?', [$likeKeyword]);
+                    })
+                    ->orWhereHas('qualityStandard', function ($standardQuery) use ($likeKeyword) {
+                        $standardQuery->whereRaw('LOWER(code) LIKE ?', [$likeKeyword])
+                            ->orWhereRaw('LOWER(name) LIKE ?', [$likeKeyword]);
+                    });
             });
         }
 
@@ -54,7 +69,23 @@ class ProductController extends Controller
             'quality_standard',
         ]);
 
-        if ($sort === 'group') {
+        $userSelectedSort = $request->filled('sort');
+
+        if ($keyword !== '' && !$userSelectedSort) {
+            $query->orderByRaw(
+                "CASE
+                    WHEN LOWER(products.product_code) = ? THEN 0
+                    WHEN {$normalizedCodeSql} = ? THEN 1
+                    WHEN LOWER(products.product_code) LIKE ? THEN 2
+                    WHEN {$normalizedCodeSql} LIKE ? THEN 3
+                    WHEN LOWER(products.product_name) LIKE ? THEN 4
+                    ELSE 5
+                END",
+                [$lowerKeyword, $normalizedKeyword, $likeKeyword, $normalizedLikeKeyword, $likeKeyword]
+            )
+                ->orderByRaw('LENGTH(products.product_code)')
+                ->orderBy('products.product_code');
+        } elseif ($sort === 'group') {
             $query->leftJoin('product_groups as sort_groups', 'sort_groups.id', '=', 'products.product_group_id')
                 ->select('products.*')
                 ->orderBy('sort_groups.name', $direction)
@@ -272,5 +303,15 @@ class ProductController extends Controller
     public function template(): BinaryFileResponse
     {
         return response()->download(storage_path('app/templates/template_san_pham.xlsx'));
+    }
+
+    private function normalizeProductSearchTerm(string $term): string
+    {
+        return strtolower(str_replace([' ', '-', '/', '.', '_'], '', trim($term)));
+    }
+
+    private function normalizedProductCodeSql(): string
+    {
+        return "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(products.product_code, ' ', ''), '-', ''), '/', ''), '.', ''), '_', ''))";
     }
 }

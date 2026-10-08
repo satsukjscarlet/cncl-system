@@ -463,6 +463,12 @@ return [
             'can'  => 'user.view',
         ],
         [
+            'text' => 'Thiết bị đăng nhập',
+            'url'  => 'user-devices',
+            'icon' => 'fas fa-laptop',
+            'can'  => 'device.manage',
+        ],
+        [
             'text' => 'Phân quyền',
             'url'  => 'role-permissions',
             'icon' => 'fas fa-user-shield',
@@ -495,6 +501,7 @@ return [
 
     'filters' => [
         JeroenNoten\LaravelAdminLte\Menu\Filters\GateFilter::class,
+        App\AdminLte\Menu\PendingDeviceBadgeFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\HrefFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\SearchFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\ActiveFilter::class,

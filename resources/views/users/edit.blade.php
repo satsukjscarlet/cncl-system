@@ -73,7 +73,7 @@
                     </div>
 
                     <div class="alert alert-warning">
-                        Sau khi reset, người dùng sẽ đăng nhập bằng mật khẩu mới.
+                        Sau khi reset, người dùng sẽ đăng nhập bằng mật khẩu mới và các phiên đăng nhập cũ sẽ bị thu hồi.
                     </div>
                 </div>
 

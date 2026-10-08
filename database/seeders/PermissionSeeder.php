@@ -96,6 +96,7 @@ class PermissionSeeder extends Seeder
             'user.delete',
             'user.reset_password',
             'user.toggle_active',
+            'device.manage',
             'role_permission.manage',
 
             'log.view',

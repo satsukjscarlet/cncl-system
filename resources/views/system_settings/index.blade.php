@@ -190,6 +190,8 @@
     $signatureText = old('smartca_signature_text', $signatureSettings['signature_text']);
     $pageMode = old('smartca_signature_page_mode', $signatureSettings['page_mode'] ?? 'last');
     $rectangle = old('smartca_signature_rectangle', $signatureSettings['rectangle'] ?? '315,150,565,220');
+    $selectedDeviceRoles = old('login_device_control_roles', $selectedLoginDeviceRoles ?? ['TrungTam']);
+    $selectedDeviceRoles = is_array($selectedDeviceRoles) ? $selectedDeviceRoles : preg_split('/[\s,;]+/', (string) $selectedDeviceRoles, -1, PREG_SPLIT_NO_EMPTY);
 @endphp
 
 <form method="POST" action="{{ route('system-settings.update') }}" enctype="multipart/form-data">
@@ -253,6 +255,69 @@
             <div class="field-hint">
                 Có thể nhập mỗi email một dòng hoặc ngăn cách bằng dấu phẩy/chấm phẩy. Email nhận chính vẫn là email tài khoản Trung tâm phân phối tạo yêu cầu.
             </div>
+        </div>
+    </div>
+
+    <div class="card card-secondary card-outline">
+        <div class="card-header bg-white">
+            <h3 class="card-title"><i class="fas fa-laptop"></i> Kiểm soát thiết bị đăng nhập</h3>
+        </div>
+        <div class="card-body">
+            <div class="custom-control custom-switch mb-3">
+                <input type="checkbox"
+                       name="login_device_control_enabled"
+                       value="1"
+                       class="custom-control-input"
+                       id="login_device_control_enabled"
+                       {{ old('login_device_control_enabled', $loginDeviceSettings['enabled'] ?? true) ? 'checked' : '' }}>
+                <label class="custom-control-label" for="login_device_control_enabled">
+                    Bật kiểm soát thiết bị đăng nhập
+                </label>
+                <div class="field-hint mt-1">
+                    Khi bật, các tài khoản thuộc vai trò áp dụng phải được admin duyệt thiết bị trước khi đăng nhập.
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-md-8">
+                    <label for="login_device_control_roles">Vai trò cần kiểm soát thiết bị</label>
+                    <select name="login_device_control_roles[]"
+                            id="login_device_control_roles"
+                            class="form-control select2 @error('login_device_control_roles') is-invalid @enderror @error('login_device_control_roles.*') is-invalid @enderror"
+                            multiple
+                            data-placeholder="Chọn vai trò cần kiểm soát thiết bị">
+                        @foreach($loginDeviceRoleOptions as $roleName)
+                            <option value="{{ $roleName }}" {{ in_array($roleName, $selectedDeviceRoles, true) ? 'selected' : '' }}>
+                                {{ $roleName }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('login_device_control_roles')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    @error('login_device_control_roles.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    <div class="field-hint mt-1">
+                        Mặc định nên chọn <code>TrungTam</code>. Có thể chọn thêm vai trò khác nếu muốn áp dụng kiểm soát thiết bị cho tài khoản nội bộ.
+                    </div>
+                </div>
+
+                <div class="form-group col-md-4">
+                    <label for="login_device_max_per_user">Số thiết bị tối đa/tài khoản</label>
+                    <input type="number"
+                           name="login_device_max_per_user"
+                           id="login_device_max_per_user"
+                           class="form-control @error('login_device_max_per_user') is-invalid @enderror"
+                           min="1"
+                           max="20"
+                           value="{{ old('login_device_max_per_user', $loginDeviceSettings['max_per_user'] ?? 3) }}">
+                    @error('login_device_max_per_user')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="field-hint mt-1">
+                        Nếu tài khoản đã đạt giới hạn, thiết bị mới sẽ bị chặn và cần admin thu hồi thiết bị cũ.
+                    </div>
+                </div>
+            </div>
+
+            <a href="{{ route('user-devices.index', ['status' => 'pending']) }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-user-check"></i> Mở danh sách thiết bị chờ duyệt
+            </a>
         </div>
     </div>
 

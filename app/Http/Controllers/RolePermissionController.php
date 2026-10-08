@@ -89,6 +89,7 @@ class RolePermissionController extends Controller
             'sla' => 'SLA',
             'setting' => 'Cấu hình hệ thống',
             'user' => 'Người dùng',
+            'device' => 'Thiết bị đăng nhập',
             'role_permission' => 'Phân quyền',
             'log' => 'Nhật ký',
         ][$group] ?? $group;
@@ -179,6 +180,7 @@ class RolePermissionController extends Controller
             'user.reset_password' => 'Reset mật khẩu người dùng',
             'user.toggle_active' => 'Khóa/mở khóa người dùng',
 
+            'device.manage' => 'Quản lý thiết bị đăng nhập',
             'role_permission.manage' => 'Quản lý phân quyền',
             'log.view' => 'Xem nhật ký',
         ];

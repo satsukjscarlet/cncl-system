@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\ActivityLogger;
 use App\Models\DistributionCenter;
 use App\Models\User;
+use App\Services\SessionSecurityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -149,6 +150,7 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $oldData = $this->userAuditData($user);
+        $wasActive = (bool) $user->is_active;
         $data = $this->validatedUserData($request, $user);
 
         $user->update([
@@ -161,6 +163,10 @@ class UserController extends Controller
         ]);
 
         $user->syncRoles([$data['role']]);
+
+        if ($wasActive && !$user->is_active) {
+            app(SessionSecurityService::class)->revokeUserSessions($user);
+        }
 
         ActivityLogger::log(
             'Người dùng',
@@ -208,6 +214,11 @@ class UserController extends Controller
             'password' => Hash::make($data['password']),
         ]);
 
+        app(SessionSecurityService::class)->revokeUserSessions(
+            $user,
+            auth()->id() === $user->id ? $request->session()->getId() : null
+        );
+
         ActivityLogger::log(
             'Người dùng',
             'reset_password',
@@ -233,6 +244,10 @@ class UserController extends Controller
         $user->update([
             'is_active' => !$user->is_active,
         ]);
+
+        if (!$user->is_active) {
+            app(SessionSecurityService::class)->revokeUserSessions($user);
+        }
 
         ActivityLogger::log(
             'Người dùng',

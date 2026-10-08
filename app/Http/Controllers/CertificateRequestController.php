@@ -196,20 +196,40 @@ class CertificateRequestController extends Controller
     public function productOptions(Request $request)
     {
         $term = trim((string) $request->input('q', ''));
+        $lowerTerm = strtolower($term);
+        $normalizedTerm = $this->normalizeProductSearchTerm($term);
+        $likeTerm = '%' . addcslashes($lowerTerm, '%_\\') . '%';
+        $normalizedLikeTerm = '%' . addcslashes($normalizedTerm, '%_\\') . '%';
+        $normalizedCodeSql = $this->normalizedProductCodeSql();
 
         $products = Product::with('qualityStandard')
             ->where('is_active', true)
-            ->when($term !== '', function ($query) use ($term) {
-                $query->where(function ($q) use ($term) {
-                    $q->where('product_code', 'like', '%' . $term . '%')
-                        ->orWhere('product_name', 'like', '%' . $term . '%')
-                        ->orWhere('nominal_size', 'like', '%' . $term . '%')
-                        ->orWhereHas('qualityStandard', function ($standardQuery) use ($term) {
-                            $standardQuery->where('code', 'like', '%' . $term . '%')
-                                ->orWhere('name', 'like', '%' . $term . '%');
+            ->when($term !== '', function ($query) use ($likeTerm, $normalizedLikeTerm, $normalizedCodeSql) {
+                $query->where(function ($q) use ($likeTerm, $normalizedLikeTerm, $normalizedCodeSql) {
+                    $q->whereRaw('LOWER(product_code) LIKE ?', [$likeTerm])
+                        ->orWhereRaw($normalizedCodeSql . ' LIKE ?', [$normalizedLikeTerm])
+                        ->orWhereRaw('LOWER(product_name) LIKE ?', [$likeTerm])
+                        ->orWhereRaw('LOWER(nominal_size) LIKE ?', [$likeTerm])
+                        ->orWhereHas('qualityStandard', function ($standardQuery) use ($likeTerm) {
+                            $standardQuery->whereRaw('LOWER(code) LIKE ?', [$likeTerm])
+                                ->orWhereRaw('LOWER(name) LIKE ?', [$likeTerm]);
                         });
                 });
             })
+            ->when($term !== '', function ($query) use ($lowerTerm, $normalizedTerm, $likeTerm, $normalizedLikeTerm, $normalizedCodeSql) {
+                $query->orderByRaw(
+                    "CASE
+                        WHEN LOWER(product_code) = ? THEN 0
+                        WHEN {$normalizedCodeSql} = ? THEN 1
+                        WHEN LOWER(product_code) LIKE ? THEN 2
+                        WHEN {$normalizedCodeSql} LIKE ? THEN 3
+                        WHEN LOWER(product_name) LIKE ? THEN 4
+                        ELSE 5
+                    END",
+                    [$lowerTerm, $normalizedTerm, $likeTerm, $normalizedLikeTerm, $likeTerm]
+                );
+            })
+            ->orderByRaw('LENGTH(product_code)')
             ->orderBy('product_code')
             ->limit(20)
             ->get();
@@ -1112,6 +1132,16 @@ class CertificateRequestController extends Controller
         ])
             ->filter()
             ->implode(' - ');
+    }
+
+    private function normalizeProductSearchTerm(string $term): string
+    {
+        return strtolower(str_replace([' ', '-', '/', '.', '_'], '', trim($term)));
+    }
+
+    private function normalizedProductCodeSql(): string
+    {
+        return "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(product_code, ' ', ''), '-', ''), '/', ''), '.', ''), '_', ''))";
     }
 
     private function authorizeCenter(CertificateRequest $certificateRequest): void

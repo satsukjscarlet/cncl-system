@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CertificateRequest;
 use App\Models\QualityCertificate;
 use App\Models\User;
+use App\Models\UserDevice;
 use App\Models\UserNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +49,33 @@ class NotificationService
             ->pluck('id');
 
         $this->insert($ids, $payload);
+    }
+
+    public function sendToPermission(string $permission, array $payload): void
+    {
+        $ids = User::permission($permission)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        $this->insert($ids, $payload);
+    }
+
+    public function notifyLoginDevicePending(UserDevice $device): void
+    {
+        $device->loadMissing('user');
+
+        $this->sendToPermission('device.manage', [
+            'type' => 'login_device_pending',
+            'title' => 'Có thiết bị đăng nhập chờ duyệt',
+            'message' => 'Tài khoản ' . ($device->user?->username ?? $device->user_id) . ' vừa đăng nhập từ thiết bị mới.',
+            'url' => route('user-devices.index', ['status' => UserDevice::STATUS_PENDING]),
+            'data' => [
+                'device_id' => $device->id,
+                'user_id' => $device->user_id,
+                'username' => $device->user?->username,
+                'status' => $device->status,
+            ],
+        ]);
     }
 
     public function sendToCenter(?int $distributionCenterId, array $payload): void

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Helpers\ActivityLogger;
 use App\Http\Controllers\Controller;
+use App\Services\SessionSecurityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -25,12 +26,21 @@ class PasswordController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
+        $logoutOtherDevices = $request->boolean('logout_other_devices', true);
+        $revokedSessions = $logoutOtherDevices
+            ? app(SessionSecurityService::class)->revokeUserSessions($request->user(), $request->session()->getId())
+            : 0;
+
         ActivityLogger::log(
             'Tài khoản cá nhân',
             'change_password',
             'Người dùng tự đổi mật khẩu',
             null,
-            ['username' => $request->user()->username],
+            [
+                'username' => $request->user()->username,
+                'logout_other_devices' => $logoutOtherDevices,
+                'revoked_sessions' => $revokedSessions,
+            ],
             $request->user()
         );
 

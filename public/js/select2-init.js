@@ -13,7 +13,7 @@
                 return;
             }
 
-            var placeholder = $select.find('option:first').text() || '';
+            var placeholder = $select.data('placeholder') || $select.find('option:first').text() || '';
             var options = {
                 width: '100%',
                 allowClear: false,
