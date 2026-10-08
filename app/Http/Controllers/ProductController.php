@@ -28,22 +28,26 @@ class ProductController extends Controller
         $likeKeyword = '%' . addcslashes($lowerKeyword, '%_\\') . '%';
         $normalizedLikeKeyword = '%' . addcslashes($normalizedKeyword, '%_\\') . '%';
         $normalizedCodeSql = $this->normalizedProductCodeSql();
+        $restrictToProductCode = $this->shouldRestrictProductSearchToCode($keyword, $likeKeyword, $normalizedLikeKeyword, $normalizedCodeSql);
 
         if ($keyword !== '') {
-            $query->where(function ($q) use ($likeKeyword, $normalizedLikeKeyword, $normalizedCodeSql) {
+            $query->where(function ($q) use ($likeKeyword, $normalizedLikeKeyword, $normalizedCodeSql, $restrictToProductCode) {
                 $q->whereRaw('LOWER(products.product_code) LIKE ?', [$likeKeyword])
-                    ->orWhereRaw($normalizedCodeSql . ' LIKE ?', [$normalizedLikeKeyword])
-                    ->orWhereRaw('LOWER(products.product_name) LIKE ?', [$likeKeyword])
-                    ->orWhereRaw('LOWER(products.nominal_size) LIKE ?', [$likeKeyword])
-                    ->orWhereRaw('LOWER(products.technical_requirements) LIKE ?', [$likeKeyword])
-                    ->orWhereHas('group', function ($groupQuery) use ($likeKeyword) {
-                        $groupQuery->whereRaw('LOWER(code) LIKE ?', [$likeKeyword])
-                            ->orWhereRaw('LOWER(name) LIKE ?', [$likeKeyword]);
-                    })
-                    ->orWhereHas('qualityStandard', function ($standardQuery) use ($likeKeyword) {
-                        $standardQuery->whereRaw('LOWER(code) LIKE ?', [$likeKeyword])
-                            ->orWhereRaw('LOWER(name) LIKE ?', [$likeKeyword]);
-                    });
+                    ->orWhereRaw($normalizedCodeSql . ' LIKE ?', [$normalizedLikeKeyword]);
+
+                if (!$restrictToProductCode) {
+                    $q->orWhereRaw('LOWER(products.product_name) LIKE ?', [$likeKeyword])
+                        ->orWhereRaw('LOWER(products.nominal_size) LIKE ?', [$likeKeyword])
+                        ->orWhereRaw('LOWER(products.technical_requirements) LIKE ?', [$likeKeyword])
+                        ->orWhereHas('group', function ($groupQuery) use ($likeKeyword) {
+                            $groupQuery->whereRaw('LOWER(code) LIKE ?', [$likeKeyword])
+                                ->orWhereRaw('LOWER(name) LIKE ?', [$likeKeyword]);
+                        })
+                        ->orWhereHas('qualityStandard', function ($standardQuery) use ($likeKeyword) {
+                            $standardQuery->whereRaw('LOWER(code) LIKE ?', [$likeKeyword])
+                                ->orWhereRaw('LOWER(name) LIKE ?', [$likeKeyword]);
+                        });
+                }
             });
         }
 
@@ -313,5 +317,30 @@ class ProductController extends Controller
     private function normalizedProductCodeSql(): string
     {
         return "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(products.product_code, ' ', ''), '-', ''), '/', ''), '.', ''), '_', ''))";
+    }
+
+    private function shouldRestrictProductSearchToCode(
+        string $term,
+        string $likeTerm,
+        string $normalizedLikeTerm,
+        string $normalizedCodeSql
+    ): bool {
+        if (!$this->looksLikeProductCodeSearch($term)) {
+            return false;
+        }
+
+        return Product::where('is_active', true)
+            ->where(function ($query) use ($likeTerm, $normalizedLikeTerm, $normalizedCodeSql) {
+                $query->whereRaw('LOWER(products.product_code) LIKE ?', [$likeTerm])
+                    ->orWhereRaw($normalizedCodeSql . ' LIKE ?', [$normalizedLikeTerm]);
+            })
+            ->exists();
+    }
+
+    private function looksLikeProductCodeSearch(string $term): bool
+    {
+        $normalized = $this->normalizeProductSearchTerm($term);
+
+        return (bool) preg_match('/^[a-z]+[a-z0-9]*\d[a-z0-9]*$/i', $normalized);
     }
 }

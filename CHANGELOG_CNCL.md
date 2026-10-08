@@ -30,12 +30,14 @@ Noi dung:
 - Neu ma san pham co dau cach, dau gach ngang, gach cheo, dau cham hoac gach duoi, he thong chuan hoa de van tim dung khi nguoi dung go lien nhu `T110`.
 - Cac tim kiem theo ten san pham, kich thuoc danh nghia va tieu chuan van duoc giu lam fallback.
 - Danh muc san pham cung tim duoc theo nhom san pham va tieu chuan; khi nguoi dung bam sap xep cot thu cong, he thong van ton trong sap xep cot da chon.
+- Voi tu khoa dang ma san pham nhu `N27`, neu co san pham khop ma, he thong chi tra ket qua theo ma va khong de cac dong chi khop `DN27` trong ten/kich thuoc chen vao.
 
 Kiem tra:
 - `php -l app/Http/Controllers/CertificateRequestController.php`.
 - `php -l app/Http/Controllers/ProductController.php`.
 - `php -l tests/Feature/RoleWorkspaceAccessTest.php`.
 - `php artisan test --filter=product_options_prioritize_exact_and_normalized_product_code_matches`.
+- `php artisan test --filter=product_options_do_not_keep_previous_code_when_new_code_search_matches_dn_text`.
 - `php artisan test --filter=product_index_prioritizes_exact_and_normalized_product_code_matches`.
 - `php artisan view:cache`.
 

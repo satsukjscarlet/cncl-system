@@ -522,6 +522,22 @@ class RoleWorkspaceAccessTest extends TestCase
             ]);
     }
 
+    public function test_product_options_do_not_keep_previous_code_when_new_code_search_matches_dn_text(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        [$n27Product, $t27Product, $l27Product] = $this->createN27ProductSearchFixtures();
+
+        $response = $this->actingAs($admin)
+            ->getJson(route('certificate-requests.product-options', ['q' => 'N27']))
+            ->assertOk();
+
+        $ids = collect($response->json('results'))->pluck('id')->all();
+
+        $this->assertContains($n27Product->id, $ids);
+        $this->assertNotContains($t27Product->id, $ids);
+        $this->assertNotContains($l27Product->id, $ids);
+    }
+
     public function test_report_permission_allows_truong_ptn_to_open_summary_report(): void
     {
         $truongPtn = User::where('username', 'truongptn')->firstOrFail();
@@ -643,6 +659,60 @@ class RoleWorkspaceAccessTest extends TestCase
         );
 
         return [$exactMatch, $normalizedMatch];
+    }
+
+    private function createN27ProductSearchFixtures(): array
+    {
+        $group = ProductGroup::firstOrCreate(
+            ['code' => 'TEST-N27'],
+            [
+                'name' => 'Nhóm test N27',
+                'is_active' => true,
+            ]
+        );
+        $standard = QualityStandard::firstOrCreate(
+            ['code' => 'ISO-N27'],
+            [
+                'name' => 'Tiêu chuẩn test N27',
+                'is_active' => true,
+            ]
+        );
+
+        $n27Product = Product::firstOrCreate(
+            ['product_code' => 'N27'],
+            [
+                'product_group_id' => $group->id,
+                'quality_standard_id' => $standard->id,
+                'product_name' => 'Nối thẳng phun PVC-U DN27 PN10',
+                'unit' => 'cái',
+                'nominal_size' => 'DN27',
+                'is_active' => true,
+            ]
+        );
+        $t27Product = Product::firstOrCreate(
+            ['product_code' => 'T27'],
+            [
+                'product_group_id' => $group->id,
+                'quality_standard_id' => $standard->id,
+                'product_name' => 'Ba chạc 90 độ phun PVC-U DN27 PN10',
+                'unit' => 'cái',
+                'nominal_size' => 'DN27',
+                'is_active' => true,
+            ]
+        );
+        $l27Product = Product::firstOrCreate(
+            ['product_code' => 'L27'],
+            [
+                'product_group_id' => $group->id,
+                'quality_standard_id' => $standard->id,
+                'product_name' => 'Nối góc 90 độ phun PVC-U DN27 PN10',
+                'unit' => 'cái',
+                'nominal_size' => 'DN27',
+                'is_active' => true,
+            ]
+        );
+
+        return [$n27Product, $t27Product, $l27Product];
     }
 
     private function createSessionRow(string $id, User $user): void
