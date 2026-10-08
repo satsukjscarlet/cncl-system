@@ -1,3 +1,21 @@
+## 2026-10-08 - Mo quyen quan ly thiet bi dang nhap cho DVKH
+
+File da sua:
+- `PermissionSeeder.php` (`database/seeders/PermissionSeeder.php`): them quyen `device.manage` mac dinh cho vai tro DVKH.
+- `RoleWorkspaceAccessTest.php` (`tests/Feature/RoleWorkspaceAccessTest.php`): cap nhat ma tran phan quyen, DVKH duoc truy cap `/user-devices`.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Tai khoan DVKH duoc quan ly thiet bi dang nhap: xem danh sach, duyet, khoa, xoa thiet bi theo route co quyen `device.manage`.
+- Da chay `PermissionSeeder` tren moi truong local de cap nhat quyen hien tai.
+
+Kiem tra:
+- `php -l database/seeders/PermissionSeeder.php`.
+- `php -l tests/Feature/RoleWorkspaceAccessTest.php`.
+- `php artisan db:seed --class=PermissionSeeder`.
+- `php artisan test --filter=role_route_access_matrix_matches_workspace_permissions`.
+- `php artisan test --filter=new_login_device_notifies_device_admins`.
+
 ## 2026-10-08 - Toi uu tim kiem san pham trong select2 yeu cau cap phieu
 
 File da sua:

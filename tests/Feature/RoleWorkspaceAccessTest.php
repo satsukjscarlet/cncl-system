@@ -261,7 +261,7 @@ class RoleWorkspaceAccessTest extends TestCase
                 'deny' => ['/users', '/user-devices', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'dvkh' => [
-                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/dvkh/requests'],
+                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/dvkh/requests', '/user-devices'],
                 'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'ptn' => [
