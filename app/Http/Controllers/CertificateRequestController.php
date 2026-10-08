@@ -201,19 +201,23 @@ class CertificateRequestController extends Controller
         $likeTerm = '%' . addcslashes($lowerTerm, '%_\\') . '%';
         $normalizedLikeTerm = '%' . addcslashes($normalizedTerm, '%_\\') . '%';
         $normalizedCodeSql = $this->normalizedProductCodeSql();
+        $restrictToProductCode = $this->shouldRestrictProductSearchToCode($term, $likeTerm, $normalizedLikeTerm, $normalizedCodeSql);
 
         $products = Product::with('qualityStandard')
             ->where('is_active', true)
-            ->when($term !== '', function ($query) use ($likeTerm, $normalizedLikeTerm, $normalizedCodeSql) {
-                $query->where(function ($q) use ($likeTerm, $normalizedLikeTerm, $normalizedCodeSql) {
+            ->when($term !== '', function ($query) use ($likeTerm, $normalizedLikeTerm, $normalizedCodeSql, $restrictToProductCode) {
+                $query->where(function ($q) use ($likeTerm, $normalizedLikeTerm, $normalizedCodeSql, $restrictToProductCode) {
                     $q->whereRaw('LOWER(product_code) LIKE ?', [$likeTerm])
-                        ->orWhereRaw($normalizedCodeSql . ' LIKE ?', [$normalizedLikeTerm])
-                        ->orWhereRaw('LOWER(product_name) LIKE ?', [$likeTerm])
-                        ->orWhereRaw('LOWER(nominal_size) LIKE ?', [$likeTerm])
-                        ->orWhereHas('qualityStandard', function ($standardQuery) use ($likeTerm) {
-                            $standardQuery->whereRaw('LOWER(code) LIKE ?', [$likeTerm])
-                                ->orWhereRaw('LOWER(name) LIKE ?', [$likeTerm]);
-                        });
+                        ->orWhereRaw($normalizedCodeSql . ' LIKE ?', [$normalizedLikeTerm]);
+
+                    if (!$restrictToProductCode) {
+                        $q->orWhereRaw('LOWER(product_name) LIKE ?', [$likeTerm])
+                            ->orWhereRaw('LOWER(nominal_size) LIKE ?', [$likeTerm])
+                            ->orWhereHas('qualityStandard', function ($standardQuery) use ($likeTerm) {
+                                $standardQuery->whereRaw('LOWER(code) LIKE ?', [$likeTerm])
+                                    ->orWhereRaw('LOWER(name) LIKE ?', [$likeTerm]);
+                            });
+                    }
                 });
             })
             ->when($term !== '', function ($query) use ($lowerTerm, $normalizedTerm, $likeTerm, $normalizedLikeTerm, $normalizedCodeSql) {
@@ -1142,6 +1146,31 @@ class CertificateRequestController extends Controller
     private function normalizedProductCodeSql(): string
     {
         return "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(product_code, ' ', ''), '-', ''), '/', ''), '.', ''), '_', ''))";
+    }
+
+    private function shouldRestrictProductSearchToCode(
+        string $term,
+        string $likeTerm,
+        string $normalizedLikeTerm,
+        string $normalizedCodeSql
+    ): bool {
+        if (!$this->looksLikeProductCodeSearch($term)) {
+            return false;
+        }
+
+        return Product::where('is_active', true)
+            ->where(function ($query) use ($likeTerm, $normalizedLikeTerm, $normalizedCodeSql) {
+                $query->whereRaw('LOWER(product_code) LIKE ?', [$likeTerm])
+                    ->orWhereRaw($normalizedCodeSql . ' LIKE ?', [$normalizedLikeTerm]);
+            })
+            ->exists();
+    }
+
+    private function looksLikeProductCodeSearch(string $term): bool
+    {
+        $normalized = $this->normalizeProductSearchTerm($term);
+
+        return (bool) preg_match('/^[a-z]+[a-z0-9]*\d[a-z0-9]*$/i', $normalized);
     }
 
     private function authorizeCenter(CertificateRequest $certificateRequest): void

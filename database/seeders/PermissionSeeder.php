@@ -158,6 +158,7 @@ class PermissionSeeder extends Seeder
             'request.view',
             'dvkh.process',
             'certificate.view',
+            'device.manage',
             'product.export',
             'product.import',
             'product_group.create',
