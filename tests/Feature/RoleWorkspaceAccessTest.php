@@ -495,44 +495,7 @@ class RoleWorkspaceAccessTest extends TestCase
     public function test_product_options_prioritize_exact_and_normalized_product_code_matches(): void
     {
         $admin = User::where('username', 'admin')->firstOrFail();
-        $group = ProductGroup::create([
-            'code' => 'TEST-SEARCH',
-            'name' => 'Nhóm test tìm kiếm',
-            'is_active' => true,
-        ]);
-        $standard = QualityStandard::create([
-            'code' => 'ISO-SEARCH',
-            'name' => 'Tiêu chuẩn test tìm kiếm',
-            'is_active' => true,
-        ]);
-
-        Product::create([
-            'product_group_id' => $group->id,
-            'quality_standard_id' => $standard->id,
-            'product_code' => 'A-T110-LONG',
-            'product_name' => 'Sản phẩm có chứa T110 nhưng không đúng mã',
-            'unit' => 'cái',
-            'nominal_size' => 'DN110',
-            'is_active' => true,
-        ]);
-        $normalizedMatch = Product::create([
-            'product_group_id' => $group->id,
-            'quality_standard_id' => $standard->id,
-            'product_code' => 'T-110',
-            'product_name' => 'Sản phẩm mã có dấu gạch',
-            'unit' => 'cái',
-            'nominal_size' => 'DN110',
-            'is_active' => true,
-        ]);
-        $exactMatch = Product::create([
-            'product_group_id' => $group->id,
-            'quality_standard_id' => $standard->id,
-            'product_code' => 'T110',
-            'product_name' => 'Sản phẩm mã chính xác',
-            'unit' => 'cái',
-            'nominal_size' => 'DN110',
-            'is_active' => true,
-        ]);
+        [$exactMatch, $normalizedMatch] = $this->createProductSearchFixtures();
 
         $response = $this->actingAs($admin)
             ->getJson(route('certificate-requests.product-options', ['q' => 'T110']))
@@ -542,6 +505,21 @@ class RoleWorkspaceAccessTest extends TestCase
 
         $this->assertSame($exactMatch->id, $results[0]['id']);
         $this->assertSame($normalizedMatch->id, $results[1]['id']);
+    }
+
+    public function test_product_index_prioritizes_exact_and_normalized_product_code_matches(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        [$exactMatch, $normalizedMatch] = $this->createProductSearchFixtures();
+
+        $this->actingAs($admin)
+            ->get(route('products.index', ['keyword' => 'T110']))
+            ->assertOk()
+            ->assertSeeInOrder([
+                $exactMatch->product_code,
+                $normalizedMatch->product_code,
+                'A-T110-LONG',
+            ]);
     }
 
     public function test_report_permission_allows_truong_ptn_to_open_summary_report(): void
@@ -611,6 +589,60 @@ class RoleWorkspaceAccessTest extends TestCase
             'created_by' => $request->created_by,
             'print_count' => 0,
         ]);
+    }
+
+    private function createProductSearchFixtures(): array
+    {
+        $group = ProductGroup::firstOrCreate(
+            ['code' => 'TEST-SEARCH'],
+            [
+                'name' => 'Nhóm test tìm kiếm',
+                'is_active' => true,
+            ]
+        );
+        $standard = QualityStandard::firstOrCreate(
+            ['code' => 'ISO-SEARCH'],
+            [
+                'name' => 'Tiêu chuẩn test tìm kiếm',
+                'is_active' => true,
+            ]
+        );
+
+        Product::firstOrCreate(
+            ['product_code' => 'A-T110-LONG'],
+            [
+                'product_group_id' => $group->id,
+                'quality_standard_id' => $standard->id,
+                'product_name' => 'Sản phẩm có chứa T110 nhưng không đúng mã',
+                'unit' => 'cái',
+                'nominal_size' => 'DN110',
+                'is_active' => true,
+            ]
+        );
+        $normalizedMatch = Product::firstOrCreate(
+            ['product_code' => 'T-110'],
+            [
+                'product_group_id' => $group->id,
+                'quality_standard_id' => $standard->id,
+                'product_name' => 'Sản phẩm mã có dấu gạch',
+                'unit' => 'cái',
+                'nominal_size' => 'DN110',
+                'is_active' => true,
+            ]
+        );
+        $exactMatch = Product::firstOrCreate(
+            ['product_code' => 'T110'],
+            [
+                'product_group_id' => $group->id,
+                'quality_standard_id' => $standard->id,
+                'product_name' => 'Sản phẩm mã chính xác',
+                'unit' => 'cái',
+                'nominal_size' => 'DN110',
+                'is_active' => true,
+            ]
+        );
+
+        return [$exactMatch, $normalizedMatch];
     }
 
     private function createSessionRow(string $id, User $user): void

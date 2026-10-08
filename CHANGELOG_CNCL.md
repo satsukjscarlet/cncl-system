@@ -2,6 +2,7 @@
 
 File da sua:
 - `CertificateRequestController.php` (`app/Http/Controllers/CertificateRequestController.php`): toi uu API `certificate-requests/product-options`, uu tien ma san pham trung chinh xac va ma da chuan hoa.
+- `ProductController.php` (`app/Http/Controllers/ProductController.php`): toi uu tim kiem danh muc san pham voi cung logic uu tien ma san pham.
 - `RoleWorkspaceAccessTest.php` (`tests/Feature/RoleWorkspaceAccessTest.php`): bo sung test tim `T110` uu tien `T110`, sau do den `T-110`.
 - `CHANGELOG_CNCL.md`: ghi nhan thay doi.
 
@@ -10,11 +11,15 @@ Noi dung:
 - Neu tu khoa trung ma san pham chinh xac, ket qua do duoc dua len dau.
 - Neu ma san pham co dau cach, dau gach ngang, gach cheo, dau cham hoac gach duoi, he thong chuan hoa de van tim dung khi nguoi dung go lien nhu `T110`.
 - Cac tim kiem theo ten san pham, kich thuoc danh nghia va tieu chuan van duoc giu lam fallback.
+- Danh muc san pham cung tim duoc theo nhom san pham va tieu chuan; khi nguoi dung bam sap xep cot thu cong, he thong van ton trong sap xep cot da chon.
 
 Kiem tra:
 - `php -l app/Http/Controllers/CertificateRequestController.php`.
+- `php -l app/Http/Controllers/ProductController.php`.
 - `php -l tests/Feature/RoleWorkspaceAccessTest.php`.
 - `php artisan test --filter=product_options_prioritize_exact_and_normalized_product_code_matches`.
+- `php artisan test --filter=product_index_prioritizes_exact_and_normalized_product_code_matches`.
+- `php artisan view:cache`.
 
 ## 2026-10-07 - Bao mat phien dang nhap khi khoa tai khoan va doi mat khau
 
