@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Models\CertificateRequest;
 use App\Models\Customer;
 use App\Models\DistributionCenter;
+use App\Models\Product;
+use App\Models\ProductGroup;
 use App\Models\QualityCertificate;
+use App\Models\QualityStandard;
 use App\Models\SalesUnit;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -487,6 +490,58 @@ class RoleWorkspaceAccessTest extends TestCase
             ]))
             ->assertOk()
             ->assertSeeInOrder(['CNCL-SALES-UNIT-NP', 'CNCL-SALES-UNIT-TP']);
+    }
+
+    public function test_product_options_prioritize_exact_and_normalized_product_code_matches(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $group = ProductGroup::create([
+            'code' => 'TEST-SEARCH',
+            'name' => 'Nhóm test tìm kiếm',
+            'is_active' => true,
+        ]);
+        $standard = QualityStandard::create([
+            'code' => 'ISO-SEARCH',
+            'name' => 'Tiêu chuẩn test tìm kiếm',
+            'is_active' => true,
+        ]);
+
+        Product::create([
+            'product_group_id' => $group->id,
+            'quality_standard_id' => $standard->id,
+            'product_code' => 'A-T110-LONG',
+            'product_name' => 'Sản phẩm có chứa T110 nhưng không đúng mã',
+            'unit' => 'cái',
+            'nominal_size' => 'DN110',
+            'is_active' => true,
+        ]);
+        $normalizedMatch = Product::create([
+            'product_group_id' => $group->id,
+            'quality_standard_id' => $standard->id,
+            'product_code' => 'T-110',
+            'product_name' => 'Sản phẩm mã có dấu gạch',
+            'unit' => 'cái',
+            'nominal_size' => 'DN110',
+            'is_active' => true,
+        ]);
+        $exactMatch = Product::create([
+            'product_group_id' => $group->id,
+            'quality_standard_id' => $standard->id,
+            'product_code' => 'T110',
+            'product_name' => 'Sản phẩm mã chính xác',
+            'unit' => 'cái',
+            'nominal_size' => 'DN110',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->getJson(route('certificate-requests.product-options', ['q' => 'T110']))
+            ->assertOk();
+
+        $results = $response->json('results');
+
+        $this->assertSame($exactMatch->id, $results[0]['id']);
+        $this->assertSame($normalizedMatch->id, $results[1]['id']);
     }
 
     public function test_report_permission_allows_truong_ptn_to_open_summary_report(): void
