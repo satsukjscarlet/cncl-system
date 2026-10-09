@@ -1,3 +1,27 @@
+## 2026-10-08 - Doi quy tac sinh so yeu cau va so phieu theo nam
+
+File da sua/them:
+- `DocumentNumberService.php` (`app/Services/DocumentNumberService.php`): doi sinh so yeu cau sang bo dem lien tuc theo nam va trung tam, dinh dang 6 chu so.
+- `DocumentSequence.php` (`app/Models/DocumentSequence.php`): them model quan ly bo dem chung tu.
+- `2026_10_08_000001_create_document_sequences_table.php` (`database/migrations/2026_10_08_000001_create_document_sequences_table.php`): tao bang `document_sequences` va backfill moc dem tu du lieu cu.
+- `CertificateWorkflowTest.php` (`tests/Feature/CertificateWorkflowTest.php`): cap nhat test so yeu cau 6 chu so, reset dau nam va tuong thich so cu dang reset theo ngay.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- So yeu cau moi co dang `YC-YYYYMMDD-000001/HP`, tang lien tuc trong nam theo tung Trung tam va reset ve `000001` khi sang nam moi.
+- So phieu CNCL tiep tuc sinh tu so yeu cau, co dang `CNCL-YYYYMMDD-000001/HP`.
+- Cac so yeu cau/phieu da phat hanh truoc do khong bi thay doi.
+- Migration chi tao bang bo dem va lay moc dem an toan tu du lieu hien co; khi len server that chi can chay `php artisan migrate --force`, khong seed lai neu khong muon anh huong du lieu.
+
+Kiem tra:
+- `php -l app/Services/DocumentNumberService.php`.
+- `php -l app/Models/DocumentSequence.php`.
+- `php -l database/migrations/2026_10_08_000001_create_document_sequences_table.php`.
+- `php -l tests/Feature/CertificateWorkflowTest.php`.
+- `php artisan migrate`.
+- `php artisan test --filter=request_number`.
+- `php artisan test --filter=standard_certificate_request_workflow_reaches_signing_queue` hien bi chan boi middleware duyet thiet bi dang nhap trong moi truong test, chua vao den logic sinh so.
+
 ## 2026-10-08 - Mo quyen quan ly thiet bi dang nhap cho DVKH
 
 File da sua:
