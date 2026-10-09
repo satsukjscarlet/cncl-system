@@ -1,3 +1,238 @@
+## 2026-10-09 - Chot bao cao ky tuoi theo so lieu du kien
+
+File da sua:
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): doi cac nhan lien quan in thanh `Luot bam in ghi nhan`, them ghi chu khong xac nhan so ban thuc te tu may in.
+- `HardCopyReportExport.php` (`app/Exports/HardCopyReportExport.php`): doi tieu de cot va trang thai trong Excel sang `Ghi nhan bam in`.
+- `ReportController.php` (`app/Http/Controllers/ReportController.php`): doi noi dung tom tat bo loc tu `Trang thai in` sang `Ghi nhan bam in`.
+- `RoleWorkspaceAccessTest.php` (`tests/Feature/RoleWorkspaceAccessTest.php`): bo sung kiem tra nhan `Luot bam in ghi nhan`.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bao cao ky tuoi chot theo phuong an an toan: thong ke so ban in yeu cau, so trang va so to du kien.
+- Cac log in chi duoc hien thi la `luot bam in ghi nhan`, khong coi la so ban da in thuc te vi he thong web khong kiem soat duoc so copies nguoi dung chon tren trinh in/may in.
+- Bo loc va Excel van giu logic loc theo co/khong co log bam in, nhung cach hien thi tranh hieu nham voi so luong in thuc te.
+
+Kiem tra:
+- `php -l app/Http/Controllers/ReportController.php`.
+- `php -l app/Exports/HardCopyReportExport.php`.
+- `php -l tests/Feature/RoleWorkspaceAccessTest.php`.
+- `php artisan view:cache`.
+- `php artisan test --filter=hard_copy_report_filters`.
+
+## 2026-10-09 - Bo sung thong ke ky tuoi theo thang
+
+File da sua:
+- `ReportController.php` (`app/Http/Controllers/ReportController.php`): tinh them thong ke ky tuoi theo thang ky so.
+- `HardCopyReportExport.php` (`app/Exports/HardCopyReportExport.php`): them sheet `Theo thang` trong file Excel bao cao ky tuoi.
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): them bang `Thong ke ky tuoi theo thang ky so`.
+- `RoleWorkspaceAccessTest.php` (`tests/Feature/RoleWorkspaceAccessTest.php`): bo sung kiem tra hien thi bang thong ke theo thang.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bao cao ky tuoi co them bang theo thang ky so, gom: yeu cau ky tuoi, phieu da ky so, so ban in yeu cau, trang/to du kien cua In don va In bo.
+- File Excel co them sheet `Theo thang` de doi chieu xu huong theo thoi gian.
+
+Kiem tra:
+- `php -l app/Http/Controllers/ReportController.php`.
+- `php -l app/Exports/HardCopyReportExport.php`.
+- `php -l tests/Feature/RoleWorkspaceAccessTest.php`.
+- `php artisan view:cache`.
+- `php artisan test --filter=hard_copy_report_filters`.
+
+## 2026-10-09 - Toi uu thao tac loc bao cao ky tuoi
+
+File da sua:
+- `ReportController.php` (`app/Http/Controllers/ReportController.php`): them ham tong hop dieu kien loc hien tai cho man hinh va file Excel.
+- `HardCopyReportExport.php` (`app/Exports/HardCopyReportExport.php`): them sheet `Dieu kien loc` vao file Excel bao cao ky tuoi.
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): them cac nut khoang ngay nhanh va khoi `Bo loc dang ap dung`.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Man bao cao co cac nut loc nhanh: Toan bo du lieu, 30 ngay gan nhat co du lieu, Thang gan nhat co du lieu.
+- Man bao cao hien ro cac dieu kien dang loc: ngay ky, Trung tam, Don vi ban hang, Kieu in, Trang thai in va Tu khoa.
+- File Excel co sheet `Dieu kien loc` de khi gui file ra ngoai van biet so lieu duoc xuat theo dieu kien nao.
+
+Kiem tra:
+- `php -l app/Http/Controllers/ReportController.php`.
+- `php -l app/Exports/HardCopyReportExport.php`.
+- `php artisan view:cache`.
+- `php artisan test --filter=hard_copy_report_filters`.
+
+## 2026-10-09 - Rut gon bang Don vi ban hang tren bao cao ky tuoi
+
+File da sua:
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): chi hien thi Top 20 Don vi ban hang theo tong to du kien tren man hinh, van tinh dong tong theo toan bo du lieu.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bang Don vi ban hang tren web duoc sap xep theo tong `To In don du kien + To In bo du kien` va chi hien Top 20 de tranh man hinh qua dai.
+- Neu con Don vi ban hang bi an, man hinh hien ghi chu so luong dang hien thi va goi y xuat Excel de xem day du.
+- File Excel van xuat day du tat ca Don vi ban hang trong sheet `Tong hop DVBH`.
+
+Kiem tra:
+- `php artisan view:cache`.
+- `php artisan test --filter=hard_copy_report_filters`.
+
+## 2026-10-09 - Bo sung thong ke ky tuoi theo Don vi ban hang
+
+File da sua:
+- `ReportController.php` (`app/Http/Controllers/ReportController.php`): tinh them thong ke ky tuoi theo Don vi ban hang va truyen sang man bao cao/export.
+- `HardCopyReportExport.php` (`app/Exports/HardCopyReportExport.php`): them sheet `Tong hop DVBH` trong file Excel bao cao ky tuoi.
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): them khoi `Dinh nghia so lieu` va bang thong ke theo Don vi ban hang.
+- `RoleWorkspaceAccessTest.php` (`tests/Feature/RoleWorkspaceAccessTest.php`): bo sung kiem tra hien thi dinh nghia so lieu va bang Don vi ban hang.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bao cao ky tuoi co them bang tong hop theo Don vi ban hang, gom: Trung tam, Don vi ban hang, yeu cau ky tuoi, phieu da ky so, so ban in yeu cau, trang/to du kien cua In don va In bo.
+- File Excel co them sheet `Tong hop DVBH` de doi chieu so lieu theo Trung tam -> Don vi ban hang.
+- Man hinh co them phan dinh nghia cac chi tieu: yeu cau ky tuoi, phieu da ky so, to du kien, luot in thuong.
+
+Kiem tra:
+- `php -l app/Http/Controllers/ReportController.php`.
+- `php -l app/Exports/HardCopyReportExport.php`.
+- `php -l tests/Feature/RoleWorkspaceAccessTest.php`.
+- `php artisan view:cache`.
+- `php artisan test --filter=hard_copy_report_filters`.
+
+## 2026-10-09 - Bo sung xuat Excel bao cao ky tuoi
+
+File da sua/them:
+- `HardCopyReportExport.php` (`app/Exports/HardCopyReportExport.php`): them export Excel bao cao ky tuoi gom sheet tong hop theo Trung tam va sheet chi tiet phieu.
+- `ReportController.php` (`app/Http/Controllers/ReportController.php`): them ham `exportHardCopy` de xuat Excel theo dung bo loc hien tai.
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): them nut `Xuat Excel` tren man bao cao ky tuoi cho tai khoan co quyen `report.export`.
+- `web.php` (`routes/web.php`): them route `reports.hard-copy.export`.
+- `RoleWorkspaceAccessTest.php` (`tests/Feature/RoleWorkspaceAccessTest.php`): bo sung test route export bao cao ky tuoi.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bao cao ky tuoi co the xuat Excel theo cac bo loc dang chon: ngay ky, Trung tam, Don vi ban hang, Kieu in, Trang thai in va Tu khoa.
+- File Excel gom 2 sheet: `Tong hop trung tam` va `Chi tiet phieu`.
+- Sheet chi tiet co cac chi tieu In don/In bo rieng: so trang, so to du kien, luot in thuong va lan in gan nhat.
+
+Kiem tra:
+- `php -l app/Exports/HardCopyReportExport.php`.
+- `php -l app/Http/Controllers/ReportController.php`.
+- `php -l tests/Feature/RoleWorkspaceAccessTest.php`.
+- `php artisan route:list --name=reports.hard-copy`.
+- `php artisan view:cache`.
+- `php artisan test --filter=hard_copy_report_filters`.
+
+## 2026-10-09 - Hien thi khoang du lieu cho bao cao ky tuoi
+
+File da sua:
+- `ReportController.php` (`app/Http/Controllers/ReportController.php`): tinh them khoang ngay ky so hien co cho bao cao ky tuoi theo cac bo loc ngoai ngay.
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): hien thi canh bao khi khoang ngay dang loc khong co du lieu.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Khi loc theo ngay khong ra du lieu, man bao cao hien khoang ngay ky tuoi dang co trong he thong de nguoi dung biet can mo rong khoang ngay.
+- Khoang ngay goi y van ton trong cac bo loc khac nhu Trung tam, Don vi ban hang, Kieu in, Trang thai in va Tu khoa.
+
+Kiem tra:
+- `php -l app/Http/Controllers/ReportController.php`.
+- `php artisan test --filter=hard_copy_report_filters`.
+- `php artisan view:cache`.
+
+## 2026-10-09 - Kiem tra bo loc bao cao ky tuoi
+
+File da sua:
+- `RoleWorkspaceAccessTest.php` (`tests/Feature/RoleWorkspaceAccessTest.php`): them test tu dong cho bo loc bao cao ky tuoi va bo sung route `reports/hard-copy` vao ma tran phan quyen.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Kiem tra bo loc bao cao ky tuoi theo ngay ky, Trung tam, Don vi ban hang, kieu in, trang thai in va tu khoa.
+- Bo loc `Kieu in` chi tinh luot in thuong, khong lay cac log in khan cap.
+- Bo loc `Trang thai in` phan biet: chua in thuong, da in don, da in bo, da in ca hai.
+- Ma tran phan quyen da bao phu route bao cao ky tuoi cho cac vai tro co quyen bao cao.
+
+Kiem tra:
+- `php -l tests/Feature/RoleWorkspaceAccessTest.php`.
+- `php artisan test --filter=hard_copy_report_filters`.
+- `php artisan test --filter=role_route_access_matrix_matches_workspace_permissions`.
+- `php artisan test --filter=summary_report`.
+- `php artisan view:cache`.
+
+## 2026-10-09 - Tach thong ke In don va In bo trong bao cao ky tuoi
+
+File da sua:
+- `ReportController.php` (`app/Http/Controllers/ReportController.php`): tinh rieng so trang/to du kien cho In don va In bo; them bo loc trang thai in.
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): hien thi cot Trang/To du kien cho In don, In bo; them trang thai in va thong tin lan in thuong gan nhat.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bao cao ky tuoi tach rieng `Trang In don`, `To In don du kien`, `Trang In bo`, `To In bo du kien`.
+- Bang theo Trung tam va bang chi tiet deu hien thi cac chi tieu rieng cho tung mau in.
+- Them bo loc `Trang thai in`: Chua in thuong, Da in don, Da in bo, Da in ca hai.
+- Bang chi tiet hien nguoi in thuong gan nhat, thoi gian in gan nhat va mau in gan nhat.
+- Cac so `To du kien` duoc tinh theo cong thuc `So ban in yeu cau * so trang cua mau in tuong ung`.
+
+Kiem tra:
+- `php -l app/Http/Controllers/ReportController.php`.
+- `php artisan view:cache`.
+
+## 2026-10-09 - Bo sung thong ke ky tuoi theo Trung tam
+
+File da sua:
+- `ReportController.php` (`app/Http/Controllers/ReportController.php`): tinh thong ke ky tuoi theo tung Trung tam va dem luot In don/In bo thuong theo Trung tam.
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): them bang `Thong ke ky tuoi theo Trung tam` vao bao cao ky tuoi.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bao cao ky tuoi co them bang tong hop theo Trung tam, su dung dung bo loc hien tai.
+- Moi dong Trung tam hien: yeu cau ky tuoi, phieu da ky so, so ban in yeu cau, so trang trong phieu, luot In don thuong, luot In bo thuong.
+- Bang co dong tong cong de doi chieu nhanh voi KPI phia tren.
+
+Kiem tra:
+- `php -l app/Http/Controllers/ReportController.php`.
+- `php artisan view:cache`.
+
+## 2026-10-09 - Dieu chinh bao cao ky tuoi
+
+File da sua:
+- `ReportController.php` (`app/Http/Controllers/ReportController.php`): bo cong thuc tong to In don/In bo, them loc Don vi ban hang va ap dung loc Kieu in theo lich su in thuong.
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): doi cot `So ban` thanh `So ban in yeu cau`, doi `Trang In don` thanh `So trang trong phieu`, bo cac cot/to In don/In bo.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bao cao khong con hien thi `To In don`, `To In bo` va tong so to theo cong thuc nhan so ban.
+- Chi tiet bao cao hien `So ban in yeu cau` va `So trang trong phieu`.
+- Them bo loc `Don vi ban hang`; danh sach Don vi ban hang tu dong gioi han theo Trung tam neu tai khoan Trung tam dang xem hoac neu Admin/DVKH/PTN da chon Trung tam.
+- Bo loc `Kieu in` chi lay cac phieu co lich su in thuong dung mau In don/In bo tuong ung, khong tinh in khan cap.
+
+Kiem tra:
+- `php -l app/Http/Controllers/ReportController.php`.
+- `php artisan view:cache`.
+
+## 2026-10-09 - Them bao cao ky tuoi
+
+File da sua/them:
+- `ReportController.php` (`app/Http/Controllers/ReportController.php`): them man bao cao ky tuoi, bo loc va tinh tong so ban/to theo mau In don, In bo.
+- `QualityCertificate.php` (`app/Models/QualityCertificate.php`): them fillable/cast cho so trang ky tuoi In don/In bo.
+- `HardCopyCertificatePdfService.php` (`app/Services/HardCopyCertificatePdfService.php`): them ham tinh so trang mau In don bang dung logic phan trang PDF hien tai.
+- `HardCopyBatchCertificatePdfService.php` (`app/Services/HardCopyBatchCertificatePdfService.php`): them ham tinh so trang mau In bo bang dung logic phan trang PDF hien tai.
+- `2026_10_09_000001_add_hard_copy_page_counts_to_quality_certificates_table.php` (`database/migrations/2026_10_09_000001_add_hard_copy_page_counts_to_quality_certificates_table.php`): them cot cache so trang In don/In bo tren bang phieu.
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): them giao dien Bao cao ky tuoi.
+- `web.php` (`routes/web.php`): them route `reports.hard-copy`.
+- `adminlte.php` (`config/adminlte.php`): them menu Bao cao ky tuoi.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bao cao ky tuoi chi tinh cac phieu da ky so/phat hanh va co yeu cau ky tuoi.
+- Thong ke tong so yeu cau ky tuoi, so phieu can ky tuoi, tong so ban ky tuoi.
+- Tinh tong so to theo cong thuc `so ban ky tuoi * so trang phieu` cho ca mau In don va In bo.
+- Loc theo ngay ky so, trung tam, kieu in va tu khoa.
+- Luot in khan cap khong tinh vao thong ke luot in thuong.
+- So trang In don/In bo duoc tinh bang dung service PDF va cache lai vao phieu de cac lan xem sau nhanh hon.
+
+Kiem tra:
+- `php -l app/Http/Controllers/ReportController.php`.
+- `php -l app/Services/HardCopyCertificatePdfService.php`.
+- `php -l app/Services/HardCopyBatchCertificatePdfService.php`.
+- `php -l database/migrations/2026_10_09_000001_add_hard_copy_page_counts_to_quality_certificates_table.php`.
+- `php artisan migrate`.
+- `php artisan view:cache`.
+- `php artisan route:list --name=reports`.
+
 ## 2026-10-08 - Doi quy tac sinh so yeu cau va so phieu theo nam
 
 File da sua/them:

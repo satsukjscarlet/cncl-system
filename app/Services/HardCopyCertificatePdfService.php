@@ -24,14 +24,7 @@ class HardCopyCertificatePdfService
 
     public function render(QualityCertificate $certificate): string
     {
-        $this->pdf = new TCPDF('P', 'pt', 'A4', true, 'UTF-8', false);
-        $this->pdf->setPrintHeader(false);
-        $this->pdf->setPrintFooter(false);
-        $this->pdf->SetMargins(0, 0, 0);
-        $this->pdf->SetAutoPageBreak(false, 0);
-        $this->pdf->setFontSubsetting(true);
-
-        $this->loadFonts();
+        $this->preparePdf();
 
         $pages = $this->paginate($certificate);
         $totalPages = max(1, count($pages));
@@ -45,6 +38,25 @@ class HardCopyCertificatePdfService
         }
 
         return $this->pdf->Output('', 'S');
+    }
+
+    public function pageCount(QualityCertificate $certificate): int
+    {
+        $this->preparePdf();
+
+        return max(1, count($this->paginate($certificate)));
+    }
+
+    private function preparePdf(): void
+    {
+        $this->pdf = new TCPDF('P', 'pt', 'A4', true, 'UTF-8', false);
+        $this->pdf->setPrintHeader(false);
+        $this->pdf->setPrintFooter(false);
+        $this->pdf->SetMargins(0, 0, 0);
+        $this->pdf->SetAutoPageBreak(false, 0);
+        $this->pdf->setFontSubsetting(true);
+
+        $this->loadFonts();
     }
 
     private function loadFonts(): void

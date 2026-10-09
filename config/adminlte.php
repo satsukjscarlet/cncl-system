@@ -442,6 +442,12 @@ return [
             'icon' => 'fas fa-chart-bar',
             'can'  => 'report.view',
         ],
+        [
+            'text' => 'Báo cáo ký tươi',
+            'url'  => 'reports/hard-copy',
+            'icon' => 'fas fa-print',
+            'can'  => 'report.view',
+        ],
 
         ['header' => 'HỆ THỐNG', 'can' => 'log.view'],
         [

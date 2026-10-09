@@ -450,6 +450,14 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:report.export')
         ->name('reports.summary.export');
 
+    Route::get('reports/hard-copy', [ReportController::class, 'hardCopy'])
+        ->middleware('permission:report.view')
+        ->name('reports.hard-copy');
+
+    Route::get('reports/hard-copy/export', [ReportController::class, 'exportHardCopy'])
+        ->middleware('permission:report.export')
+        ->name('reports.hard-copy.export');
+
     Route::get('system-settings', [SystemSettingController::class, 'index'])
         ->middleware('permission:setting.view')
         ->name('system-settings.index');

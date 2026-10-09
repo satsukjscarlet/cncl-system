@@ -29,6 +29,8 @@ class QualityCertificate extends Model
         'signed_by',
         'pdf_path',
         'print_count',
+        'hard_copy_single_page_count',
+        'hard_copy_batch_page_count',
         'revoked_at',
         'revoked_by',
         'revoked_reason',
@@ -63,6 +65,8 @@ class QualityCertificate extends Model
         'smartca_response' => 'array',
         'smartca_requested_at' => 'datetime',
         'smartca_completed_at' => 'datetime',
+        'hard_copy_single_page_count' => 'integer',
+        'hard_copy_batch_page_count' => 'integer',
     ];
 
     public function request()

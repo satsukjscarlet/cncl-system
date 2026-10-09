@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\DistributionCenter;
 use App\Models\Product;
 use App\Models\ProductGroup;
+use App\Models\PrintLog;
 use App\Models\QualityCertificate;
 use App\Models\QualityStandard;
 use App\Models\SalesUnit;
@@ -249,32 +250,32 @@ class RoleWorkspaceAccessTest extends TestCase
 
         $matrix = [
             'admin' => [
-                'allow' => ['/dashboard', '/users', '/user-devices', '/role-permissions', '/reports/summary', '/activity-logs'],
+                'allow' => ['/dashboard', '/users', '/user-devices', '/role-permissions', '/reports/summary', '/reports/hard-copy', '/activity-logs'],
                 'deny' => [],
             ],
             'lanhdao' => [
-                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/reports/summary', '/activity-logs'],
+                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/reports/summary', '/reports/hard-copy', '/activity-logs'],
                 'deny' => ['/users', '/role-permissions', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'trungtam_np' => [
                 'allow' => ['/dashboard', '/customers', '/certificate-requests', '/quality-certificates'],
-                'deny' => ['/users', '/user-devices', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
+                'deny' => ['/users', '/user-devices', '/role-permissions', '/reports/summary', '/reports/hard-copy', '/activity-logs', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'dvkh' => [
                 'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/dvkh/requests', '/user-devices'],
-                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
+                'deny' => ['/users', '/role-permissions', '/reports/summary', '/reports/hard-copy', '/activity-logs', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'ptn' => [
-                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/ptn/requests', '/ptn/requests/direct-create', '/reports/summary'],
+                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/ptn/requests', '/ptn/requests/direct-create', '/reports/summary', '/reports/hard-copy'],
                 'deny' => ['/users', '/role-permissions', '/activity-logs', '/dvkh/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
             'truongptn' => [
-                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign', '/print-logs', '/reports/summary'],
+                'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign', '/print-logs', '/reports/summary', '/reports/hard-copy'],
                 'deny' => ['/users', '/role-permissions', '/activity-logs', '/dvkh/requests', '/ptn/requests'],
             ],
             'viewer' => [
                 'allow' => ['/dashboard', '/certificate-requests', '/quality-certificates'],
-                'deny' => ['/users', '/role-permissions', '/reports/summary', '/activity-logs', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
+                'deny' => ['/users', '/role-permissions', '/reports/summary', '/reports/hard-copy', '/activity-logs', '/dvkh/requests', '/ptn/requests', '/quality-certificates/signing-queue', '/quality-certificates/ready-to-sign'],
             ],
         ];
 
@@ -549,6 +550,177 @@ class RoleWorkspaceAccessTest extends TestCase
             ->assertSee('Báo cáo tổng hợp');
     }
 
+    public function test_hard_copy_report_filters_by_date_center_sales_unit_print_and_keyword(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $npUser = User::where('username', 'trungtam_np')->firstOrFail();
+        $tpUser = User::where('username', 'trungtam_tp')->firstOrFail();
+        $npCenter = DistributionCenter::where('code', 'NP')->firstOrFail();
+        $tpCenter = DistributionCenter::where('code', 'TP')->firstOrFail();
+
+        $npSalesA = $this->createSalesUnitForCenter($npCenter, 'NP-HC-A', 'Hard Copy Sales NP A');
+        $npSalesB = $this->createSalesUnitForCenter($npCenter, 'NP-HC-B', 'Hard Copy Sales NP B');
+        $tpSales = $this->createSalesUnitForCenter($tpCenter, 'TP-HC-A', 'Hard Copy Sales TP A');
+
+        $singleOnly = $this->createHardCopyReportCertificate(
+            $npCenter,
+            $npUser,
+            'YC-HC-SINGLE',
+            'CNCL-HC-SINGLE',
+            $npSalesA,
+            '2026-10-01 08:00:00',
+            3,
+            4,
+            2
+        );
+        $batchOnly = $this->createHardCopyReportCertificate(
+            $npCenter,
+            $npUser,
+            'YC-HC-BATCH',
+            'CNCL-HC-BATCH',
+            $npSalesB,
+            '2026-10-02 08:00:00',
+            2,
+            5,
+            3
+        );
+        $printedBoth = $this->createHardCopyReportCertificate(
+            $npCenter,
+            $npUser,
+            'YC-HC-BOTH',
+            'CNCL-HC-BOTH',
+            $npSalesA,
+            '2026-10-03 08:00:00',
+            1,
+            6,
+            4
+        );
+        $emergencyOnly = $this->createHardCopyReportCertificate(
+            $npCenter,
+            $npUser,
+            'YC-HC-EMERGENCY',
+            'CNCL-HC-EMERGENCY',
+            $npSalesA,
+            '2026-10-04 08:00:00',
+            1,
+            2,
+            1
+        );
+        $tpCertificate = $this->createHardCopyReportCertificate(
+            $tpCenter,
+            $tpUser,
+            'YC-HC-TP',
+            'CNCL-HC-TP',
+            $tpSales,
+            '2026-10-05 08:00:00',
+            1,
+            2,
+            1
+        );
+
+        $this->createPrintLog($singleOnly, $admin, 'single', 'normal');
+        $this->createPrintLog($batchOnly, $admin, 'batch', 'normal');
+        $this->createPrintLog($printedBoth, $admin, 'single', 'normal');
+        $this->createPrintLog($printedBoth, $admin, 'batch', 'normal');
+        $this->createPrintLog($emergencyOnly, $admin, 'single', 'emergency');
+        $this->createPrintLog($tpCertificate, $admin, 'single', 'normal');
+
+        $this->actingAs($admin)
+            ->get(route('reports.hard-copy', [
+                'date_from' => '2026-10-01',
+                'date_to' => '2026-10-31',
+            ]))
+            ->assertOk()
+            ->assertSee('CNCL-HC-SINGLE')
+            ->assertSee('CNCL-HC-BATCH')
+            ->assertSee('CNCL-HC-BOTH')
+            ->assertSee('CNCL-HC-EMERGENCY')
+            ->assertSee('CNCL-HC-TP')
+            ->assertSee('Định nghĩa số liệu')
+            ->assertSee('Thống kê ký tươi theo Đơn vị bán hàng')
+            ->assertSee('Thống kê ký tươi theo tháng ký số')
+            ->assertSee('Lượt bấm in ghi nhận');
+
+        $this->actingAs($admin)
+            ->get(route('reports.hard-copy', [
+                'date_from' => '2026-10-01',
+                'date_to' => '2026-10-02',
+            ]))
+            ->assertOk()
+            ->assertSee('CNCL-HC-SINGLE')
+            ->assertSee('CNCL-HC-BATCH')
+            ->assertDontSee('CNCL-HC-BOTH');
+
+        $this->actingAs($admin)
+            ->get(route('reports.hard-copy', [
+                'distribution_center_id' => $tpCenter->id,
+            ]))
+            ->assertOk()
+            ->assertSee('CNCL-HC-TP')
+            ->assertDontSee('CNCL-HC-SINGLE');
+
+        $this->actingAs($admin)
+            ->get(route('reports.hard-copy', [
+                'sales_unit_id' => $npSalesB->id,
+            ]))
+            ->assertOk()
+            ->assertSee('CNCL-HC-BATCH')
+            ->assertSee('NP-HC-B')
+            ->assertDontSee('CNCL-HC-SINGLE');
+
+        $this->actingAs($admin)
+            ->get(route('reports.hard-copy', [
+                'print_template' => 'single',
+                'distribution_center_id' => $npCenter->id,
+            ]))
+            ->assertOk()
+            ->assertSee('CNCL-HC-SINGLE')
+            ->assertSee('CNCL-HC-BOTH')
+            ->assertDontSee('CNCL-HC-BATCH')
+            ->assertDontSee('CNCL-HC-EMERGENCY');
+
+        $this->actingAs($admin)
+            ->get(route('reports.hard-copy', [
+                'print_status' => 'not_printed',
+                'distribution_center_id' => $npCenter->id,
+            ]))
+            ->assertOk()
+            ->assertSee('CNCL-HC-EMERGENCY')
+            ->assertDontSee('CNCL-HC-SINGLE');
+
+        $this->actingAs($admin)
+            ->get(route('reports.hard-copy', [
+                'print_status' => 'printed_batch',
+            ]))
+            ->assertOk()
+            ->assertSee('CNCL-HC-BATCH')
+            ->assertDontSee('CNCL-HC-BOTH')
+            ->assertDontSee('CNCL-HC-SINGLE');
+
+        $this->actingAs($admin)
+            ->get(route('reports.hard-copy', [
+                'print_status' => 'printed_both',
+            ]))
+            ->assertOk()
+            ->assertSee('CNCL-HC-BOTH')
+            ->assertDontSee('CNCL-HC-BATCH');
+
+        $this->actingAs($admin)
+            ->get(route('reports.hard-copy', [
+                'keyword' => 'NP-HC-B',
+            ]))
+            ->assertOk()
+            ->assertSee('CNCL-HC-BATCH')
+            ->assertDontSee('CNCL-HC-SINGLE');
+
+        $this->actingAs($admin)
+            ->get(route('reports.hard-copy.export', [
+                'distribution_center_id' => $npCenter->id,
+            ]))
+            ->assertOk()
+            ->assertDownload('bao_cao_ky_tuoi.xlsx');
+    }
+
     private function createRequestForCenter(
         DistributionCenter $center,
         User $creator,
@@ -604,6 +776,64 @@ class RoleWorkspaceAccessTest extends TestCase
             'status' => $status,
             'created_by' => $request->created_by,
             'print_count' => 0,
+        ]);
+    }
+
+    private function createSalesUnitForCenter(
+        DistributionCenter $center,
+        string $code,
+        string $name
+    ): SalesUnit {
+        return SalesUnit::create([
+            'distribution_center_id' => $center->id,
+            'code' => $code,
+            'name' => $name,
+            'is_active' => true,
+        ]);
+    }
+
+    private function createHardCopyReportCertificate(
+        DistributionCenter $center,
+        User $creator,
+        string $requestNo,
+        string $certificateNo,
+        SalesUnit $salesUnit,
+        string $signedAt,
+        int $hardCopyQuantity,
+        int $singlePageCount,
+        int $batchPageCount
+    ): QualityCertificate {
+        $request = $this->createRequestForCenter($center, $creator, $requestNo, 'COMPLETED');
+        $request->update([
+            'sales_unit_id' => $salesUnit->id,
+            'delivery_date' => '2026-10-01',
+            'invoice_no' => 'INV-' . $certificateNo,
+            'require_hard_copy' => true,
+            'hard_copy_quantity' => $hardCopyQuantity,
+        ]);
+
+        $certificate = $this->createIssuedCertificateForRequest($request, $certificateNo, $signedAt);
+        $certificate->update([
+            'hard_copy_single_page_count' => $singlePageCount,
+            'hard_copy_batch_page_count' => $batchPageCount,
+        ]);
+
+        return $certificate;
+    }
+
+    private function createPrintLog(
+        QualityCertificate $certificate,
+        User $user,
+        string $template,
+        string $mode
+    ): PrintLog {
+        return PrintLog::create([
+            'quality_certificate_id' => $certificate->id,
+            'user_id' => $user->id,
+            'reason' => 'Test print log',
+            'print_no' => 1,
+            'print_template' => $template,
+            'print_mode' => $mode,
         ]);
     }
 
