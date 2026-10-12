@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\SystemSetting;
 use App\Models\QualityCertificate;
 use TCPDF;
 use TCPDF_FONTS;
@@ -28,6 +29,7 @@ class HardCopyBatchCertificatePdfService
     // Vị trí tên Trưởng phòng thử nghiệm trên trang cuối, căn theo mẫu in đơn.
     private const SIGNER_NAME_X = self::LEFT + 75.0;
     private const SIGNER_NAME_Y = 734.0;
+    private const DEFAULT_SIGNER_NAME = 'Vũ Thị Diệu Thúy';
 
     private TCPDF $pdf;
     private string $fontRegular = 'times';
@@ -335,7 +337,14 @@ class HardCopyBatchCertificatePdfService
         $this->pdf->SetTextColor(0, 0, 0);
         $this->pdf->SetFont($this->fontBold, '', 13);
         $this->pdf->SetXY(self::SIGNER_NAME_X, self::SIGNER_NAME_Y);
-        $this->pdf->Cell(160, 16, 'Vũ Thị Diệu Thúy', 0, 0, 'L');
+        $this->pdf->Cell(160, 16, $this->hardCopySignerName(), 0, 0, 'L');
+    }
+
+    private function hardCopySignerName(): string
+    {
+        $name = trim((string) SystemSetting::getValue('hard_copy_signer_name', self::DEFAULT_SIGNER_NAME));
+
+        return $name !== '' ? $name : self::DEFAULT_SIGNER_NAME;
     }
 
     private function drawContinueText(): void

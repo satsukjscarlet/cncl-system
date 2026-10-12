@@ -56,6 +56,9 @@ class SystemSettingController extends Controller
             'roles' => SystemSetting::getValue('login_device_control_roles', 'TrungTam'),
             'max_per_user' => SystemSetting::getValue('login_device_max_per_user', 3),
         ];
+        $hardCopySettings = [
+            'signer_name' => SystemSetting::getValue('hard_copy_signer_name', 'Vũ Thị Diệu Thúy'),
+        ];
         $loginDeviceRoleOptions = Role::orderBy('name')->pluck('name')->all();
         $selectedLoginDeviceRoles = $this->roleListToArray($loginDeviceSettings['roles']);
 
@@ -64,6 +67,7 @@ class SystemSettingController extends Controller
             'mailSettings',
             'signatureSettings',
             'loginDeviceSettings',
+            'hardCopySettings',
             'loginDeviceRoleOptions',
             'selectedLoginDeviceRoles'
         ));
@@ -81,6 +85,7 @@ class SystemSettingController extends Controller
             'login_device_control_roles' => ['nullable', 'array'],
             'login_device_control_roles.*' => ['string', 'exists:roles,name'],
             'login_device_max_per_user' => ['required', 'integer', 'min:1', 'max:20'],
+            'hard_copy_signer_name' => ['required', 'string', 'max:100'],
             'smartca_signature_visible' => ['nullable', 'boolean'],
             'smartca_signature_show_check' => ['nullable', 'boolean'],
             'smartca_signature_render_mode' => ['required', 'integer', 'between:0,4'],
@@ -154,12 +159,14 @@ class SystemSettingController extends Controller
             'login_device_control_enabled' => SystemSetting::getValue('login_device_control_enabled', true),
             'login_device_control_roles' => SystemSetting::getValue('login_device_control_roles', 'TrungTam'),
             'login_device_max_per_user' => SystemSetting::getValue('login_device_max_per_user', 3),
+            'hard_copy_signer_name' => SystemSetting::getValue('hard_copy_signer_name', 'Vũ Thị Diệu Thúy'),
         ];
 
         $autoSendEmail = $request->boolean('auto_send_email_after_sign');
         $ccCustomerEmail = $request->boolean('certificate_mail_cc_customer_email');
         $loginDeviceControlEnabled = $request->boolean('login_device_control_enabled');
         $loginDeviceRoles = $this->normalizeRoleList($data['login_device_control_roles'] ?? ['TrungTam']);
+        $hardCopySignerName = trim($data['hard_copy_signer_name']);
         $imagePath = $currentImagePath;
 
         if ($request->boolean('remove_smartca_signature_image') && $imagePath) {
@@ -195,6 +202,7 @@ class SystemSettingController extends Controller
             ['login_device_control_enabled', $loginDeviceControlEnabled ? '1' : '0', 'boolean', 'Bật kiểm soát thiết bị đăng nhập.'],
             ['login_device_control_roles', $loginDeviceRoles, 'string', 'Danh sách vai trò phải duyệt thiết bị trước khi đăng nhập.'],
             ['login_device_max_per_user', (int) $data['login_device_max_per_user'], 'integer', 'Số thiết bị đăng nhập tối đa được duyệt cho mỗi tài khoản.'],
+            ['hard_copy_signer_name', $hardCopySignerName, 'string', 'Tên hiển thị tại vùng ký Trưởng phòng thử nghiệm trên mẫu in đơn/in bộ.'],
             ['smartca_signature_visible', $visibleSignature ? '1' : '0', 'boolean', 'Hiển thị vùng chữ ký số trên PDF.'],
             ['smartca_signature_show_check', $showSignatureCheck ? '1' : '0', 'boolean', 'Hiển thị dấu tích xanh trong mẫu chữ ký số.'],
             ['smartca_signature_render_mode', $data['smartca_signature_render_mode'], 'integer', 'Kiểu hiển thị chữ ký số VNPT SmartCA.'],
@@ -225,6 +233,7 @@ class SystemSettingController extends Controller
                 'login_device_control_enabled' => $loginDeviceControlEnabled,
                 'login_device_control_roles' => $loginDeviceRoles,
                 'login_device_max_per_user' => (int) $data['login_device_max_per_user'],
+                'hard_copy_signer_name' => $hardCopySignerName,
                 'smartca_signature_visible' => $visibleSignature,
                 'smartca_signature_show_check' => $showSignatureCheck,
                 'smartca_signature_render_mode' => $data['smartca_signature_render_mode'],

@@ -321,6 +321,29 @@
         </div>
     </div>
 
+    <div class="card card-success card-outline">
+        <div class="card-header bg-white">
+            <h3 class="card-title"><i class="fas fa-print"></i> Cấu hình phiếu in ký tươi</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="hard_copy_signer_name">Tên hiển thị tại vùng ký Trưởng phòng thử nghiệm</label>
+                    <input type="text"
+                           name="hard_copy_signer_name"
+                           id="hard_copy_signer_name"
+                           class="form-control @error('hard_copy_signer_name') is-invalid @enderror"
+                           maxlength="100"
+                           value="{{ old('hard_copy_signer_name', $hardCopySettings['signer_name'] ?? 'Vũ Thị Diệu Thúy') }}">
+                    @error('hard_copy_signer_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="field-hint mt-1">
+                        Tên này dùng cho cả hai mẫu <strong>In đơn</strong> và <strong>In bộ</strong>. Nếu để theo mặc định, hệ thống dùng “Vũ Thị Diệu Thúy”.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card card-info card-outline">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <h3 class="card-title mb-0"><i class="fas fa-signature"></i> Thiết kế chữ ký số trên PDF</h3>

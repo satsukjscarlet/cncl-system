@@ -18,6 +18,7 @@ class SystemSettingSeeder extends Seeder
             ['login_device_control_enabled', '1', 'boolean', 'Bật kiểm soát thiết bị đăng nhập.'],
             ['login_device_control_roles', 'TrungTam', 'string', 'Danh sách vai trò phải duyệt thiết bị trước khi đăng nhập.'],
             ['login_device_max_per_user', '3', 'integer', 'Số thiết bị đăng nhập tối đa được duyệt cho mỗi tài khoản.'],
+            ['hard_copy_signer_name', 'Vũ Thị Diệu Thúy', 'string', 'Tên hiển thị tại vùng ký Trưởng phòng thử nghiệm trên mẫu in đơn/in bộ.'],
             ['smartca_signature_visible', '1', 'boolean', 'Hiển thị vùng chữ ký số trên PDF.'],
             ['smartca_signature_show_check', '1', 'boolean', 'Hiển thị dấu tích xanh trong mẫu chữ ký số.'],
             ['smartca_signature_render_mode', '0', 'integer', 'Kiểu hiển thị chữ ký số VNPT SmartCA.'],

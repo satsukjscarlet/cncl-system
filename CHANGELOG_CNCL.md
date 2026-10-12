@@ -1,3 +1,26 @@
+## 2026-10-12 - Cau hinh ten ky tuoi tren mau in don/in bo
+
+File da sua:
+- `HardCopyCertificatePdfService.php` (`app/Services/HardCopyCertificatePdfService.php`): mau In don doc ten nguoi ky tuoi tu cau hinh `hard_copy_signer_name`.
+- `HardCopyBatchCertificatePdfService.php` (`app/Services/HardCopyBatchCertificatePdfService.php`): mau In bo doc ten nguoi ky tuoi tu cau hinh `hard_copy_signer_name`.
+- `SystemSettingController.php` (`app/Http/Controllers/SystemSettingController.php`): doc, validate, luu va ghi log thay doi cau hinh ten ky tuoi.
+- `index.blade.php` (`resources/views/system_settings/index.blade.php`): them o cau hinh ten hien thi tai vung ky Truong phong thu nghiem.
+- `SystemSettingSeeder.php` (`database/seeders/SystemSettingSeeder.php`): them gia tri mac dinh `Vu Thi Dieu Thuy` co dau cho moi truong moi.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Them cau hinh `hard_copy_signer_name` de doi ten hien thi tai vung ky Truong phong thu nghiem tren hai mau in ky tuoi.
+- Gia tri mac dinh van la `Vu Thi Dieu Thuy` co dau neu chua cau hinh hoac cau hinh bi trong.
+- Khong can migration vi cau hinh luu trong bang key-value `system_settings`.
+
+Kiem tra:
+- `php -l app\Services\HardCopyCertificatePdfService.php`.
+- `php -l app\Services\HardCopyBatchCertificatePdfService.php`.
+- `php -l app\Http\Controllers\SystemSettingController.php`.
+- `php -l database\seeders\SystemSettingSeeder.php`.
+- `php artisan view:cache`.
+- `php artisan test --filter=role_route_access_matrix_matches_workspace_permissions`.
+
 ## 2026-10-09 - Chot bao cao ky tuoi theo so lieu du kien
 
 File da sua:

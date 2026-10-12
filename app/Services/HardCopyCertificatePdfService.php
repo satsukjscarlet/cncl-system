@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\SystemSetting;
 use App\Models\QualityCertificate;
 use TCPDF;
 use TCPDF_FONTS;
@@ -17,6 +18,7 @@ class HardCopyCertificatePdfService
     private const NOTE_SAFE_GAP = 10.0;
     private const NOTE_AFTER_TABLE_GAP = 7.0;
     private const SIGNER_TOP = 630.0;
+    private const DEFAULT_SIGNER_NAME = 'Vũ Thị Diệu Thúy';
 
     private TCPDF $pdf;
     private string $fontRegular = 'times';
@@ -259,7 +261,14 @@ class HardCopyCertificatePdfService
 
         $this->pdf->SetFont($this->fontBold, '', 13);
         $this->pdf->SetXY(self::LEFT + 75, self::CONTENT_TOP + self::SIGNER_TOP);
-        $this->pdf->Cell(160, 16, 'Vũ Thị Diệu Thúy', 0, 0, 'L');
+        $this->pdf->Cell(160, 16, $this->hardCopySignerName(), 0, 0, 'L');
+    }
+
+    private function hardCopySignerName(): string
+    {
+        $name = trim((string) SystemSetting::getValue('hard_copy_signer_name', self::DEFAULT_SIGNER_NAME));
+
+        return $name !== '' ? $name : self::DEFAULT_SIGNER_NAME;
     }
 
     private function tableStartY(QualityCertificate $certificate): float
