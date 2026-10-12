@@ -531,9 +531,7 @@
                     <th class="text-right">Yêu cầu ký tươi</th>
                     <th class="text-right">Phiếu đã ký số</th>
                     <th class="text-right">Số bản in yêu cầu</th>
-                    <th class="text-right">Trang In đơn</th>
                     <th class="text-right">Tờ In đơn dự kiến</th>
-                    <th class="text-right">Trang In bộ</th>
                     <th class="text-right">Tờ In bộ dự kiến</th>
                     <th class="text-right">Lượt bấm In đơn</th>
                     <th class="text-right">Lượt bấm In bộ</th>
@@ -548,16 +546,14 @@
                         <td class="hard-copy-number">{{ number_format($row['request_count']) }}</td>
                         <td class="hard-copy-number">{{ number_format($row['certificate_count']) }}</td>
                         <td class="hard-copy-number">{{ number_format($row['copy_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['single_page_count']) }}</td>
                         <td class="hard-copy-number">{{ number_format($row['single_sheet_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['batch_page_count']) }}</td>
                         <td class="hard-copy-number">{{ number_format($row['batch_sheet_count']) }}</td>
                         <td class="hard-copy-number">{{ number_format($row['single_print_count']) }}</td>
                         <td class="hard-copy-number">{{ number_format($row['batch_print_count']) }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center text-muted py-4">
+                        <td colspan="8" class="text-center text-muted py-4">
                             <i class="fas fa-database fa-2x mb-2"></i><br>
                             Không có dữ liệu thống kê theo Trung tâm.
                         </td>
@@ -571,9 +567,7 @@
                         <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('request_count')) }}</th>
                         <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('certificate_count')) }}</th>
                         <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('copy_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('single_page_count')) }}</th>
                         <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('single_sheet_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('batch_page_count')) }}</th>
                         <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('batch_sheet_count')) }}</th>
                         <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('single_print_count')) }}</th>
                         <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('batch_print_count')) }}</th>

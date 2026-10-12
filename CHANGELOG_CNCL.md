@@ -1,3 +1,19 @@
+## 2026-10-12 - Rut gon cot trang trong thong ke ky tuoi theo Trung tam
+
+File da sua:
+- `hard_copy.blade.php` (`resources/views/reports/hard_copy.blade.php`): bo hai cot `Trang In don` va `Trang In bo` khoi bang thong ke theo Trung tam, cap nhat lai `colspan` va dong tong.
+- `HardCopyReportExport.php` (`app/Exports/HardCopyReportExport.php`): bo hai cot tong trang khoi sheet Excel `Tong hop trung tam`.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bang tong hop theo Trung tam chi giu cac chi so co y nghia quan tri tong hop: so yeu cau, so phieu, so ban in yeu cau, to In don du kien, to In bo du kien va luot bam in ghi nhan.
+- So trang tung mau van giu o bang chi tiet phieu, vi chi co y nghia chinh xac khi xem tren tung phieu cu the.
+
+Kiem tra:
+- `php -l app\Exports\HardCopyReportExport.php`.
+- `php artisan view:cache`.
+- `php artisan test --filter=hard_copy_report_filters`.
+
 ## 2026-10-12 - Cau hinh ten ky tuoi tren mau in don/in bo
 
 File da sua:
