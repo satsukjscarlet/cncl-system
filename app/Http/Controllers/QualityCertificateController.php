@@ -952,6 +952,17 @@ class QualityCertificateController extends Controller
     {
         $this->authorizeCenter($qualityCertificate);
 
+        if (Auth::user()->hasRole('TrungTam')) {
+            abort_unless(
+                $qualityCertificate->signed_at !== null
+                && in_array($qualityCertificate->status, ['ISSUED', 'REVOKED'], true)
+                && $qualityCertificate->pades_status === 'SIGNED_PDF'
+                && filled($qualityCertificate->pdf_path),
+                403,
+                'Trung tâm chỉ được xem PDF đã ký số và phát hành.'
+            );
+        }
+
         $qualityCertificate->load([
             'request.distributionCenter',
             'request.customer',

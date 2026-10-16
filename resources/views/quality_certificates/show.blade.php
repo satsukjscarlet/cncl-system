@@ -158,9 +158,11 @@
             <div class="card-footer">
                 <div class="d-flex flex-wrap align-items-center" style="gap:8px">
                     @can('certificate.view')
+                        @if(!auth()->user()->hasRole('TrungTam') || ($qualityCertificate->signed_at && in_array($qualityCertificate->status, ['ISSUED', 'REVOKED'], true) && $qualityCertificate->pades_status === 'SIGNED_PDF' && filled($qualityCertificate->pdf_path)))
                         <a href="{{ route('quality-certificates.pdf', $qualityCertificate) }}" target="_blank" class="btn btn-info">
-                            <i class="fas fa-file-pdf"></i> Xem PDF
+                            <i class="fas fa-file-pdf"></i> {{ auth()->user()->hasRole('TrungTam') ? 'Xem PDF đã ký' : 'Xem PDF' }}
                         </a>
+                        @endif
                     @endcan
 
                     @if ($qualityCertificate->signed_at)

@@ -9,41 +9,24 @@
         <small class="text-muted">{{ $certificateRequest->request_no }}</small>
     </div>
 
-    <div class="d-flex flex-wrap align-items-center">
-        @php
-            $relatedCertificate = $certificateRequest->qualityCertificate;
-        @endphp
-
-        @can('certificate.view')
-            @if($relatedCertificate)
-                <a href="{{ route('quality-certificates.show', $relatedCertificate) }}" class="btn btn-outline-primary mr-2">
-                    <i class="fas fa-certificate"></i> Xem phiếu CNCL
-                </a>
-                <a href="{{ route('quality-certificates.pdf', $relatedCertificate) }}" target="_blank" class="btn btn-info mr-2">
-                    <i class="fas fa-file-pdf"></i> Xem PDF
-                </a>
-            @endif
-        @endcan
-
-        @if($certificateRequest->status === 'DRAFT')
-            @can('request.update')
-                <a href="{{ route('certificate-requests.edit', $certificateRequest) }}" class="btn btn-warning mr-2">
-                    <i class="fas fa-edit"></i> Sửa yêu cầu
-                </a>
-                <button type="button" class="btn btn-primary mr-2" data-toggle="modal" data-target="#submitDraftModal">
-                    <i class="fas fa-paper-plane"></i> Gửi DVKH
-                </button>
-            @endcan
-        @endif
-
-        <a href="{{ route('certificate-requests.index') }}" class="btn btn-default">
-            <i class="fas fa-arrow-left"></i> Quay lại
-        </a>
-    </div>
 </div>
 @stop
 
 @section('content')
+
+@php
+    $relatedCertificate = $certificateRequest->qualityCertificate;
+    $isCenterAccount = auth()->user()->hasRole('TrungTam');
+    $canOpenCertificate = auth()->user()->can('certificate.view') && $relatedCertificate
+        && (!$isCenterAccount || ($relatedCertificate->status === 'ISSUED' && $relatedCertificate->signed_at));
+@endphp
+
+@if(session('success'))
+    <div class="alert alert-success">{{ session('success') }}</div>
+@endif
+@if(session('error'))
+    <div class="alert alert-danger">{{ session('error') }}</div>
+@endif
 
 @if($errors->has('customer_commitment_confirmed'))
     <div class="alert alert-danger">
@@ -168,54 +151,18 @@
                 <hr>
                 <p class="mb-2">
                     <strong>Phiếu CNCL:</strong>
-                    @if($certificateRequest->qualityCertificate)
-                        <a href="{{ route('quality-certificates.show', $certificateRequest->qualityCertificate) }}">
-                            {{ $certificateRequest->qualityCertificate->certificate_no }}
+                    @if($canOpenCertificate)
+                        <a href="{{ route('quality-certificates.show', $relatedCertificate) }}">
+                            {{ $relatedCertificate->certificate_no }}
                         </a>
+                    @elseif($relatedCertificate)
+                        <span>{{ $relatedCertificate->certificate_no }}</span>
                     @else
                         <span class="text-muted">Chưa lập phiếu</span>
                     @endif
                 </p>
-                @can('certificate.view')
-                    @if($certificateRequest->qualityCertificate)
-                        <div class="d-flex flex-wrap" style="gap:8px">
-                            <a href="{{ route('quality-certificates.show', $certificateRequest->qualityCertificate) }}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-certificate"></i> Xem phiếu
-                            </a>
-                            <a href="{{ route('quality-certificates.pdf', $certificateRequest->qualityCertificate) }}" target="_blank" class="btn btn-sm btn-info">
-                                <i class="fas fa-file-pdf"></i> Xem PDF
-                            </a>
-                        </div>
-                    @endif
-                @endcan
             </div>
 
-            @can('dvkh.process')
-                @if($certificateRequest->status === 'WAIT_DVKH')
-                    <div class="card-footer">
-                        @php
-                            $approveConfirm = ($invoiceDuplicates ?? collect())->isNotEmpty()
-                                ? 'Số hóa đơn của yêu cầu này đang trùng với yêu cầu khác. Bạn vẫn muốn xác nhận và chuyển sang PTN?'
-                                : 'Xác nhận yêu cầu này và chuyển sang PTN?';
-                        @endphp
-
-                        <form action="{{ route('dvkh.requests.approve', $certificateRequest) }}"
-                              method="POST"
-                              class="d-inline"
-                              data-loading-message="Đang xác nhận yêu cầu và chuyển sang PTN, vui lòng chờ..."
-                              onsubmit="if (!confirm({!! json_encode($approveConfirm, JSON_UNESCAPED_UNICODE) !!})) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
-                            @csrf
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-check"></i> Xác nhận chuyển PTN
-                            </button>
-                        </form>
-
-                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#dvkhRejectModal">
-                            <i class="fas fa-times"></i> Trả lại Trung tâm
-                        </button>
-                    </div>
-                @endif
-            @endcan
         </div>
     </div>
 
@@ -280,46 +227,12 @@
     'title' => 'Lịch sử xử lý yêu cầu',
 ])
 
-@can('dvkh.process')
-    @if($certificateRequest->status === 'WAIT_DVKH')
-        <div class="modal fade" id="dvkhRejectModal" tabindex="-1">
-            <div class="modal-dialog">
-                <form method="POST"
-                      action="{{ route('dvkh.requests.reject', $certificateRequest) }}"
-                      class="modal-content"
-                      data-loading-message="Đang trả lại yêu cầu cho Trung tâm, vui lòng chờ..."
-                      onsubmit="window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
-                    @csrf
-
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-times-circle"></i> Trả lại Trung tâm</h5>
-                        <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    </div>
-
-                    <div class="modal-body">
-                        <p>Yêu cầu: <strong>{{ $certificateRequest->request_no }}</strong></p>
-
-                        <div class="form-group">
-                            <label>Lý do trả lại <span class="text-danger">*</span></label>
-                            <textarea name="reason" class="form-control" rows="4" required></textarea>
-                        </div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Đóng</button>
-                        <button type="submit" class="btn btn-danger"><i class="fas fa-times"></i> Trả lại Trung tâm</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    @endif
-@endcan
-
 @if($certificateRequest->status === 'DRAFT')
     @can('request.update')
         <div class="modal fade" id="submitDraftModal" tabindex="-1" role="dialog" aria-labelledby="submitDraftModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
-                <form action="{{ route('certificate-requests.submit-draft', $certificateRequest) }}" method="POST" class="modal-content cncl-form">
+                <form action="{{ route('certificate-requests.submit-draft', $certificateRequest) }}" method="POST" class="modal-content cncl-form"
+                      data-loading-lock data-loading-message="Đang gửi yêu cầu sang DVKH, vui lòng chờ...">
                     @csrf
                     <div class="modal-header">
                         <h5 class="modal-title" id="submitDraftModalLabel">
@@ -340,6 +253,7 @@
                                        value="1"
                                        class="custom-control-input @error('customer_commitment_confirmed') is-invalid @enderror"
                                        id="submit_customer_commitment_confirmed"
+                                       required
                                        {{ old('customer_commitment_confirmed', $certificateRequest->customer_commitment_confirmed ?? false) ? 'checked' : '' }}>
                                 <label class="custom-control-label font-weight-bold" for="submit_customer_commitment_confirmed">
                                     Chúng tôi cam kết đã nhận và lấy hàng trong yêu cầu cấp phiếu này tại Công ty. Trường hợp thông tin trên không đúng sự thật, chúng tôi xin chịu hoàn toàn trách nhiệm và chấp nhận các hình thức xử phạt theo quy chế của công ty.
@@ -361,6 +275,8 @@
         </div>
     @endcan
 @endif
+
+@include('certificate_requests.partials.detail_actions')
 
 @stop
 

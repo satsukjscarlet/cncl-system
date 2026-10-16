@@ -1,3 +1,18 @@
+## 2026-10-16 - Gom thao tac chi tiet yeu cau va chan PDF chua ky cho Trung tam
+
+File da sua:
+- `resources/views/certificate_requests/show.blade.php`: bo nut PDF va xu ly DVKH truc tiep, giu modal gui nhap va hien thong bao ket qua.
+- `resources/views/certificate_requests/partials/detail_actions.blade.php`: thanh co dinh cuoi vung noi dung, can theo sidebar va chieu cao thuc te; nut sua/gui nhap hoac dieu huong theo quyen va trang thai.
+- `app/Http/Controllers/QualityCertificateController.php`: chan Trung tam truy cap PDF chua ky/phat hanh; ban da thu hoi chi cho doc PDF ky goc de doi chieu.
+- `resources/views/quality_certificates/show.blade.php`: an nut PDF chua ky voi Trung tam, doi nhan thanh Xem PDF da ky.
+- `tests/Feature/CertificateWorkflowTest.php`: kiem tra dieu huong theo vai tro, an PDF xem truoc, chan truy cap truc tiep va gui nhap; bo middleware duyet thiet bi rieng trong cac test nay de tap trung workflow.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Kiem tra:
+- Hai feature test tren SQLite :memory: thanh cong (30 assertions).
+- Bien dich Blade va TOKEN_PARSE cho cac view sua; `git diff --check`.
+- Khong migrate/seed hay thay doi du lieu MySQL.
+
 ## 2026-10-16 - Sua ParseError chi tiet yeu cau cap phieu
 
 File da sua:

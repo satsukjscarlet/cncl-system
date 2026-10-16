@@ -934,6 +934,7 @@ class CertificateWorkflowTest extends TestCase
 
     public function test_draft_request_can_be_submitted_to_dvkh_from_detail_screen(): void
     {
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureLoginDeviceIsApproved::class);
         $centerUser = User::where('username', 'trungtam_np')->firstOrFail();
         $dvkh = User::where('username', 'dvkh')->firstOrFail();
         $customer = $this->createCustomerForCenter($centerUser, 'KH-DRAFT-SHOW-SUBMIT');
@@ -975,6 +976,51 @@ class CertificateWorkflowTest extends TestCase
         $this->assertNotNull($certificateRequest->submitted_at);
         $this->assertSame($centerUser->id, $certificateRequest->submitted_by);
         $this->assertSame(1, UserNotification::where('user_id', $dvkh->id)->where('type', 'request_created')->count());
+    }
+
+    public function test_request_detail_actions_and_center_pdf_access_follow_workflow(): void
+    {
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureLoginDeviceIsApproved::class);
+        Storage::fake('local');
+        $center = User::where('username', 'trungtam_np')->firstOrFail();
+        $customer = $this->createCustomerForCenter($center);
+        $certificate = $this->createIssuedCertificate($center, $customer, 'INV-DETAIL-ACTIONS', [[$this->product, 3]]);
+        $certificate->update(['status' => 'WAIT_PTN_MANAGER_APPROVAL', 'signed_at' => null]);
+        $request = $certificate->request;
+        $request->update(['status' => 'PTN_PROCESSING']);
+        $detailUrl = route('certificate-requests.show', $request);
+        $certificateUrl = route('quality-certificates.show', $certificate);
+        $pdfUrl = route('quality-certificates.pdf', $certificate);
+
+        $this->actingAs($center)->get($detailUrl)->assertOk()
+            ->assertSee('requestDetailActionBar')
+            ->assertDontSee('Xem phiếu đã phát hành')
+            ->assertDontSee($pdfUrl, false);
+        $this->get($pdfUrl)->assertForbidden();
+        $this->get($certificateUrl)->assertOk()->assertDontSee($pdfUrl, false);
+
+        $manager = User::where('username', 'truongptn')->firstOrFail();
+        $this->actingAs($manager)->get($detailUrl)->assertOk()->assertSee('Mở phiếu để duyệt/ký');
+        $ptn = User::where('username', 'ptn')->firstOrFail();
+        $this->actingAs($ptn)->get($detailUrl)->assertOk()
+            ->assertSee(route('ptn.requests.show', $request), false);
+
+        $request->update(['status' => 'WAIT_DVKH']);
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $this->actingAs($dvkh)->get($detailUrl)->assertOk()
+            ->assertSee('Mở màn hình DVKH xử lý')
+            ->assertDontSee('Xác nhận chuyển PTN')
+            ->assertDontSee(route('dvkh.requests.reject', $request), false);
+
+        $request->update(['status' => 'COMPLETED']);
+        $certificate->update(['status' => 'ISSUED', 'signed_at' => now(), 'pades_status' => 'SIGNED_PDF']);
+        Storage::disk('local')->put($certificate->pdf_path, '%PDF-1.4 /ByteRange [0 1 2 3] TEST');
+        $this->actingAs($center)->get($detailUrl)->assertOk()
+            ->assertSee('Xem phiếu đã phát hành')->assertDontSee($pdfUrl, false);
+        $this->get($pdfUrl)->assertOk();
+        $certificate->update(['status' => 'REVOKED']);
+        $this->get($detailUrl)->assertOk()->assertDontSee('Xem phiếu đã phát hành');
+        $this->get($pdfUrl)->assertOk();
     }
 
     public function test_request_can_create_new_customer_with_manual_customer_code(): void
