@@ -56,11 +56,44 @@
         }
 
         .dvkh-action-box {
-            border: 1px solid #d9ecff;
-            border-left: 4px solid #0d6efd;
-            border-radius: 6px;
-            background: #f7fbff;
-            padding: 14px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            border-top: 1px solid #d9e1e9;
+            background: #fff;
+            padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -3px 12px rgba(0, 0, 0, .08);
+        }
+
+        .dvkh-action-layout {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .dvkh-action-summary {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .dvkh-action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .dvkh-action-spacer {
+            height: 160px;
+        }
+
+        @media print {
+            .dvkh-action-box, .dvkh-action-spacer {
+                display: none;
+            }
         }
 
         .dvkh-products th,
@@ -93,6 +126,24 @@
         }
 
         @media (max-width: 767.98px) {
+            .dvkh-action-layout {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .dvkh-action-buttons {
+                flex-shrink: 1;
+            }
+
+            .dvkh-action-buttons > * {
+                flex: 1 1 180px;
+            }
+
+            .dvkh-action-buttons .btn {
+                width: 100%;
+                white-space: normal;
+            }
+
             .dvkh-page .content-header-bar {
                 align-items: flex-start !important;
                 flex-direction: column;
@@ -249,14 +300,22 @@
                     : 'Xác nhận yêu cầu này và chuyển sang PTN?';
             @endphp
 
-            <div class="dvkh-action-box mb-3">
-                <div class="d-flex flex-wrap justify-content-between align-items-center">
-                    <div class="mb-2 mb-md-0">
-                        <div class="font-weight-bold">Yêu cầu đang chờ DVKH xử lý</div>
-                        <div class="text-muted small">Kiểm tra thông tin bên dưới, sau đó xác nhận chuyển PTN hoặc trả lại cho Trung tâm.</div>
+            <div class="dvkh-action-box" id="dvkhActionBar" role="region" aria-label="Xử lý yêu cầu">
+                <div class="dvkh-action-layout">
+                    <div class="dvkh-action-summary">
+                        <div class="font-weight-bold">{{ $certificateRequest->request_no }}</div>
+                        <div class="text-muted small">
+                            Chờ DVKH xử lý
+                            @if($invoiceDuplicates->isNotEmpty())
+                                <span class="badge badge-warning ml-1"><i class="fas fa-exclamation-triangle"></i> Trùng số hóa đơn</span>
+                            @endif
+                        </div>
                     </div>
 
-                    <div>
+                    <div class="dvkh-action-buttons">
+                        <button type="button" class="btn btn-outline-danger" data-toggle="modal" data-target="#dvkhRejectModal">
+                            <i class="fas fa-undo"></i> Trả lại Trung tâm
+                        </button>
                         <form action="{{ route('dvkh.requests.approve', $certificateRequest) }}"
                               method="POST"
                               class="d-inline"
@@ -268,9 +327,6 @@
                             </button>
                         </form>
 
-                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#dvkhRejectModal">
-                            <i class="fas fa-times"></i> Trả lại Trung tâm
-                        </button>
                     </div>
                 </div>
             </div>
@@ -461,6 +517,7 @@
 
     @can('dvkh.process')
         @if($certificateRequest->status === 'WAIT_DVKH')
+            <div class="dvkh-action-spacer" id="dvkhActionSpacer" aria-hidden="true"></div>
             <div class="modal fade" id="dvkhRejectModal" tabindex="-1">
                 <div class="modal-dialog">
                     <form method="POST"
@@ -494,4 +551,31 @@
         @endif
     @endcan
 </div>
+@stop
+
+@section('js')
+<script>
+    $(function () {
+        const bar = document.getElementById('dvkhActionBar');
+        const spacer = document.getElementById('dvkhActionSpacer');
+        const content = document.querySelector('.content-wrapper');
+        if (!bar || !spacer || !content) return;
+
+        function syncActionBar() {
+            const bounds = content.getBoundingClientRect();
+            bar.style.left = Math.max(0, bounds.left) + 'px';
+            bar.style.right = Math.max(0, window.innerWidth - bounds.right) + 'px';
+            spacer.style.height = (bar.getBoundingClientRect().height + 16) + 'px';
+        }
+
+        syncActionBar();
+        window.addEventListener('resize', syncActionBar);
+        if (window.ResizeObserver) {
+            const observer = new ResizeObserver(syncActionBar);
+            observer.observe(content);
+            observer.observe(bar);
+        }
+        $(document).on('shown.lte.pushmenu collapsed.lte.pushmenu', syncActionBar);
+    });
+</script>
 @stop

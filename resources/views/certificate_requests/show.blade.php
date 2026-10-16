@@ -10,7 +10,9 @@
     </div>
 
     <div class="d-flex flex-wrap align-items-center">
-        @php($relatedCertificate = $certificateRequest->qualityCertificate)
+        @php
+            $relatedCertificate = $certificateRequest->qualityCertificate;
+        @endphp
 
         @can('certificate.view')
             @if($relatedCertificate)

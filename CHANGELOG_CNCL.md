@@ -1,3 +1,28 @@
+## 2026-10-16 - Sua ParseError chi tiet yeu cau cap phieu
+
+File da sua:
+- `resources/views/certificate_requests/show.blade.php`: doi khai bao relatedCertificate tu @php mot dong sang khoi @php / @endphp day du, tranh Blade ghep nham voi khoi PHP phia duoi.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Kiem tra:
+- Bien dich va TOKEN_PARSE cho ca certificate_requests/show va dvkh_requests/show.
+- Xoa cache Blade bang `php artisan view:clear`.
+
+## 2026-10-16 - Co dinh thanh thao tac tai chi tiet DVKH
+
+File da sua:
+- `resources/views/dvkh_requests/show.blade.php`: chuyen hai nut tra lai Trung tam va xac nhan chuyen PTN vao thanh co dinh duoi vung noi dung; hien so yeu cau va canh bao trung hoa don.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Can thanh thao tac theo chieu rong content-wrapper khi dong/mo sidebar; tu dong chua khoang trong cuoi trang theo chieu cao thanh nut.
+- Bo cuc nut tu xuong dong tren man hinh hep; thanh nam duoi modal va loading, an khi in trang.
+- Giu dieu kien quyen dvkh.process, trang thai WAIT_DVKH, xac nhan chuyen PTN va modal nhap ly do tra lai.
+
+Kiem tra:
+- Bien dich rieng Blade va kiem tra PHP bang TOKEN_PARSE.
+- `git diff --check`.
+
 ## 2026-10-13 - Them nut xem phieu/PDF tren chi tiet yeu cau cap phieu
 
 File da sua:
