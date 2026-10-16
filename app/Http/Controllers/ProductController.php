@@ -7,6 +7,7 @@ use App\Helpers\ActivityLogger;
 use App\Models\CertificateRequestDetail;
 use App\Models\Product;
 use App\Models\ProductGroup;
+use App\Models\ProductUnit;
 use App\Models\QualityCertificateDetail;
 use App\Models\QualityStandard;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::with(['group', 'qualityStandard'])
+        $query = Product::with(['group', 'qualityStandard', 'productUnit'])
             ->withCount(['requestDetails', 'certificateDetails']);
         $keyword = trim((string) $request->input('keyword', ''));
         $lowerKeyword = strtolower($keyword);
@@ -46,6 +47,10 @@ class ProductController extends Controller
                         ->orWhereHas('qualityStandard', function ($standardQuery) use ($likeKeyword) {
                             $standardQuery->whereRaw('LOWER(code) LIKE ?', [$likeKeyword])
                                 ->orWhereRaw('LOWER(name) LIKE ?', [$likeKeyword]);
+                        })
+                        ->orWhereHas('productUnit', function ($unitQuery) use ($likeKeyword) {
+                            $unitQuery->whereRaw('LOWER(code) LIKE ?', [$likeKeyword])
+                                ->orWhereRaw('LOWER(name) LIKE ?', [$likeKeyword]);
                         });
                 }
             });
@@ -57,6 +62,10 @@ class ProductController extends Controller
 
         if ($request->filled('quality_standard_id')) {
             $query->where('products.quality_standard_id', $request->quality_standard_id);
+        }
+
+        if ($request->filled('unit_id')) {
+            $query->where('products.unit_id', $request->unit_id);
         }
 
         if ($request->filled('status')) {
@@ -71,6 +80,7 @@ class ProductController extends Controller
             'created_at',
             'group',
             'quality_standard',
+            'unit',
         ]);
 
         $userSelectedSort = $request->filled('sort');
@@ -99,6 +109,11 @@ class ProductController extends Controller
                 ->select('products.*')
                 ->orderBy('sort_standards.code', $direction)
                 ->orderBy('products.product_code');
+        } elseif ($sort === 'unit') {
+            $query->leftJoin('product_units as sort_units', 'sort_units.id', '=', 'products.unit_id')
+                ->select('products.*')
+                ->orderByRaw('COALESCE(sort_units.name, products.unit) ' . $direction)
+                ->orderBy('products.product_code');
         } else {
             $query->orderBy('products.' . $sort, $direction)
                 ->orderBy('products.id', 'desc');
@@ -108,16 +123,18 @@ class ProductController extends Controller
 
         $groups = ProductGroup::where('is_active', true)->orderBy('name')->get();
         $standards = QualityStandard::where('is_active', true)->orderBy('name')->get();
+        $units = ProductUnit::where('is_active', true)->orderBy('name')->get();
 
-        return view('products.index', compact('products', 'groups', 'standards'));
+        return view('products.index', compact('products', 'groups', 'standards', 'units'));
     }
 
     public function create()
     {
         $groups = ProductGroup::where('is_active', true)->orderBy('name')->get();
         $standards = QualityStandard::where('is_active', true)->orderBy('name')->get();
+        $units = ProductUnit::where('is_active', true)->orderBy('name')->get();
 
-        return view('products.create', compact('groups', 'standards'));
+        return view('products.create', compact('groups', 'standards', 'units'));
     }
 
     public function store(Request $request)
@@ -125,9 +142,9 @@ class ProductController extends Controller
         $data = $request->validate([
             'product_group_id' => ['required', 'exists:product_groups,id'],
             'quality_standard_id' => ['nullable', 'exists:quality_standards,id'],
+            'unit_id' => ['required', 'exists:product_units,id'],
             'product_code' => ['required', 'string', 'max:255', 'unique:products,product_code'],
             'product_name' => ['required', 'string', 'max:500'],
-            'unit' => ['nullable', 'string', 'max:100'],
             'nominal_size' => ['nullable', 'string', 'max:255'],
             'technical_requirements' => ['nullable', 'string'],
             'certificate_type' => ['nullable', 'string', 'max:100'],
@@ -139,6 +156,7 @@ class ProductController extends Controller
         $data['is_active'] = $request->boolean('is_active');
         $data['certificate_type'] = $data['certificate_type'] ?: 'CNCL';
         $data['certificate_template'] = $data['certificate_template'] ?: 'default';
+        $data['unit'] = ProductUnit::findOrFail($data['unit_id'])->name;
 
         $product = Product::create($data);
 
@@ -160,8 +178,12 @@ class ProductController extends Controller
     {
         $groups = ProductGroup::where('is_active', true)->orderBy('name')->get();
         $standards = QualityStandard::where('is_active', true)->orderBy('name')->get();
+        $units = ProductUnit::where(function ($query) use ($product) {
+            $query->where('is_active', true)
+                ->orWhere('id', $product->unit_id);
+        })->orderBy('name')->get();
 
-        return view('products.edit', compact('product', 'groups', 'standards'));
+        return view('products.edit', compact('product', 'groups', 'standards', 'units'));
     }
 
     public function update(Request $request, Product $product)
@@ -169,9 +191,9 @@ class ProductController extends Controller
         $data = $request->validate([
             'product_group_id' => ['required', 'exists:product_groups,id'],
             'quality_standard_id' => ['nullable', 'exists:quality_standards,id'],
+            'unit_id' => ['required', 'exists:product_units,id'],
             'product_code' => ['required', 'string', 'max:255', 'unique:products,product_code,' . $product->id],
             'product_name' => ['required', 'string', 'max:500'],
-            'unit' => ['nullable', 'string', 'max:100'],
             'nominal_size' => ['nullable', 'string', 'max:255'],
             'technical_requirements' => ['nullable', 'string'],
             'certificate_type' => ['nullable', 'string', 'max:100'],
@@ -184,6 +206,7 @@ class ProductController extends Controller
         $data['is_active'] = $request->boolean('is_active');
         $data['certificate_type'] = $data['certificate_type'] ?: ($product->certificate_type ?: 'CNCL');
         $data['certificate_template'] = $data['certificate_template'] ?: ($product->certificate_template ?: 'default');
+        $data['unit'] = ProductUnit::findOrFail($data['unit_id'])->name;
 
         $product->update($data);
         $product->refresh();

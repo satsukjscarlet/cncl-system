@@ -94,6 +94,19 @@
             </div>
             <div class="col-lg-2 col-md-6">
                 <div class="form-group">
+                    <label>Đơn vị tính</label>
+                    <select name="unit_id" class="form-control select2">
+                        <option value="">Tất cả</option>
+                        @foreach($units as $unit)
+                            <option value="{{ $unit->id }}" {{ request('unit_id') == $unit->id ? 'selected' : '' }}>
+                                {{ $unit->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <div class="form-group">
                     <label>Trạng thái</label>
                     <select name="status" class="form-control select2">
                         <option value="">Tất cả</option>
@@ -129,6 +142,7 @@
                     <th>@include('partials.sort_link', ['column' => 'group', 'label' => 'Nhóm'])</th>
                     <th style="width:130px">@include('partials.sort_link', ['column' => 'product_code', 'label' => 'Mã SP'])</th>
                     <th>@include('partials.sort_link', ['column' => 'product_name', 'label' => 'Tên sản phẩm'])</th>
+                    <th style="width:100px">@include('partials.sort_link', ['column' => 'unit', 'label' => 'ĐVT'])</th>
                     <th style="width:120px">@include('partials.sort_link', ['column' => 'nominal_size', 'label' => 'Kích thước'])</th>
                     <th>@include('partials.sort_link', ['column' => 'quality_standard', 'label' => 'Tiêu chuẩn'])</th>
                     <th style="width:120px">@include('partials.sort_link', ['column' => 'is_active', 'label' => 'Trạng thái'])</th>
@@ -142,6 +156,7 @@
                         <td>{{ $product->group->name ?? '-' }}</td>
                         <td><span class="badge badge-primary">{{ $product->product_code }}</span></td>
                         <td><strong>{{ $product->product_name }}</strong></td>
+                        <td>{{ $product->productUnit?->name ?? $product->unit ?? '-' }}</td>
                         <td>{{ $product->nominal_size ?: '-' }}</td>
                         <td>{{ $product->qualityStandard->name ?? '-' }}</td>
                         <td>
@@ -181,7 +196,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">
+                        <td colspan="9" class="text-center text-muted py-4">
                             <i class="fas fa-database fa-2x mb-2"></i><br>
                             Chưa có dữ liệu sản phẩm.
                         </td>

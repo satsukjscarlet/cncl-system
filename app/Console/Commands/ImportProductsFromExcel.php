@@ -62,6 +62,7 @@ class ImportProductsFromExcel extends Command
         $groupCache = DB::table('product_groups')->pluck('id', 'code')->all();
         $groupNameCache = DB::table('product_groups')->pluck('id', 'name')->all();
         $standardCache = DB::table('quality_standards')->pluck('id', 'code')->all();
+        $unitCache = DB::table('product_units')->pluck('id', 'name')->all();
         $batch = [];
         $batchSize = 1000;
         $now = now();
@@ -118,13 +119,16 @@ class ImportProductsFromExcel extends Command
                     $row['tieu_chuan_san_pham'] ?? null,
                     $standardCache
                 );
+                $unitName = $row['don_vi_tinh'] ?? null;
+                $unitId = $this->resolveProductUnitId($unitName, $unitCache);
 
                 $batch[$productCode] = [
                     'product_group_id' => $groupId,
                     'quality_standard_id' => $standardId,
+                    'unit_id' => $unitId,
                     'product_code' => $productCode,
                     'product_name' => $productName,
-                    'unit' => $row['don_vi_tinh'] ?? null,
+                    'unit' => $unitName,
                     'nominal_size' => $row['kich_thuoc_danh_nghia'] ?? null,
                     'technical_requirements' => $row['yeu_cau_ky_thuat'] ?? null,
                     'certificate_type' => $row['loai_phieu'] ?? 'CNCL',
@@ -253,6 +257,48 @@ class ImportProductsFromExcel extends Command
         return $id ? (int) $id : null;
     }
 
+    private function resolveProductUnitId(?string $name, array &$cache): ?int
+    {
+        $name = $this->nullableString($name);
+
+        if (!$name) {
+            return null;
+        }
+
+        if (isset($cache[$name])) {
+            return (int) $cache[$name];
+        }
+
+        $now = now();
+        $baseCode = strtoupper(Str::slug($name, '_')) ?: 'DVT';
+        $code = substr($baseCode, 0, 40);
+        $index = 2;
+
+        while (DB::table('product_units')->where('code', $code)->exists()) {
+            $code = substr($baseCode, 0, 36) . '_' . $index;
+            $index++;
+        }
+
+        DB::table('product_units')->insertOrIgnore([
+            'code' => $code,
+            'name' => $name,
+            'description' => null,
+            'is_active' => true,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $id = DB::table('product_units')
+            ->where('name', $name)
+            ->value('id');
+
+        if ($id) {
+            $cache[$name] = (int) $id;
+        }
+
+        return $id ? (int) $id : null;
+    }
+
     private function flushProducts(array $products): int
     {
         DB::table('products')->upsert(
@@ -261,6 +307,7 @@ class ImportProductsFromExcel extends Command
             [
                 'product_group_id',
                 'quality_standard_id',
+                'unit_id',
                 'product_name',
                 'unit',
                 'nominal_size',

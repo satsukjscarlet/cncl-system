@@ -12,7 +12,8 @@ class ProductsExport implements FromCollection, WithHeadings
     {
         return Product::with([
             'group',
-            'qualityStandard'
+            'qualityStandard',
+            'productUnit',
         ])
             ->orderBy('product_code')
             ->get()
@@ -25,7 +26,7 @@ class ProductsExport implements FromCollection, WithHeadings
                     'ma_san_pham'           => $product->product_code,
                     'ten_san_pham'          => $product->product_name,
 
-                    'don_vi_tinh'           => $product->unit,
+                    'don_vi_tinh'           => $product->productUnit?->name ?? $product->unit,
 
                     'kich_thuoc_danh_nghia' => $product->nominal_size,
 

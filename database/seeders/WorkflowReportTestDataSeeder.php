@@ -7,11 +7,15 @@ use App\Models\DistributionCenter;
 use App\Models\Product;
 use App\Models\ProductGroup;
 use App\Models\QualityStandard;
+use App\Models\SalesUnit;
 use App\Models\User;
+use App\Models\UserDevice;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class WorkflowReportTestDataSeeder extends Seeder
 {
@@ -39,7 +43,9 @@ class WorkflowReportTestDataSeeder extends Seeder
             DB::transaction(function () {
             $this->clearOldTestData();
 
+            $this->ensureProductUnits();
             $products = $this->productPool();
+            $salesUnitsByCenter = $this->salesUnitsByCenter();
             $ptnUserId = User::where('username', 'ptn')->value('id') ?: User::whereHas('roles', fn ($q) => $q->where('name', 'PTN'))->value('id');
 
             foreach ($this->centers() as $center) {
@@ -51,7 +57,15 @@ class WorkflowReportTestDataSeeder extends Seeder
                     $scenario = $this->scenario($index);
                     $createdAt = now()->subDays($scenario['age_days'])->subHours($index);
                     $customer = $this->createCustomer($center, $index, $createdAt);
-                    $request = $this->createRequest($center, $customer->id, $centerUserId, $index, $scenario, $createdAt);
+                    $request = $this->createRequest(
+                        $center,
+                        $customer->id,
+                        $centerUserId,
+                        $index,
+                        $scenario,
+                        $createdAt,
+                        $this->pickSalesUnitId($salesUnitsByCenter, $center, $index)
+                    );
                     $details = $this->createRequestDetails($request, $products, $index, $createdAt);
 
                     if ($scenario['certificate_status']) {
@@ -60,6 +74,7 @@ class WorkflowReportTestDataSeeder extends Seeder
                 }
 
                 $this->createSignedHardCopyTestCertificate($center, $centerUserId, $ptnUserId, $products);
+                $this->createLoginDeviceSamples($center, $centerUserId);
             }
             });
         });
@@ -81,6 +96,12 @@ class WorkflowReportTestDataSeeder extends Seeder
             ->where('request_no', 'like', self::PREFIX . '-%')
             ->pluck('id');
 
+        DB::table('sales_units')->where('code', 'like', self::PREFIX . '-DVBH-%')->delete();
+
+        if (Schema::hasTable('user_devices')) {
+            DB::table('user_devices')->where('device_uid', 'like', self::PREFIX . '-DEVICE-%')->delete();
+        }
+
         if ($requestIds->isEmpty()) {
             DB::table('customers')->where('customer_code', 'like', self::PREFIX . '-%')->delete();
 
@@ -93,6 +114,13 @@ class WorkflowReportTestDataSeeder extends Seeder
             ->pluck('id');
 
         if ($certificateIds->isNotEmpty()) {
+            $pdfPaths = DB::table('quality_certificates')
+                ->whereIn('id', $certificateIds)
+                ->whereNotNull('pdf_path')
+                ->pluck('pdf_path')
+                ->filter()
+                ->all();
+
             DB::table('print_logs')->whereIn('quality_certificate_id', $certificateIds)->delete();
             DB::table('certificate_request_reissue_certificates')
                 ->whereIn('quality_certificate_id', $certificateIds)
@@ -100,6 +128,10 @@ class WorkflowReportTestDataSeeder extends Seeder
                 ->delete();
             DB::table('quality_certificate_details')->whereIn('quality_certificate_id', $certificateIds)->delete();
             DB::table('quality_certificates')->whereIn('id', $certificateIds)->delete();
+
+            if ($pdfPaths) {
+                Storage::disk('local')->delete($pdfPaths);
+            }
         }
 
         if ($requestIds->isNotEmpty()) {
@@ -119,6 +151,101 @@ class WorkflowReportTestDataSeeder extends Seeder
         DB::table('certificate_request_details')->whereIn('certificate_request_id', $requestIds)->delete();
         DB::table('certificate_requests')->whereIn('id', $requestIds)->delete();
         DB::table('customers')->where('customer_code', 'like', self::PREFIX . '-%')->delete();
+    }
+
+    private function ensureProductUnits(): void
+    {
+        if (!Schema::hasTable('product_units')) {
+            return;
+        }
+
+        $now = now();
+        foreach ([
+            ['code' => 'CAI', 'name' => 'cái'],
+            ['code' => 'M', 'name' => 'm'],
+            ['code' => 'BO', 'name' => 'Bộ'],
+            ['code' => 'CUON', 'name' => 'Cuộn'],
+        ] as $unit) {
+            $exists = DB::table('product_units')->where('code', $unit['code'])->exists();
+
+            if ($exists) {
+                DB::table('product_units')
+                    ->where('code', $unit['code'])
+                    ->update([
+                        'name' => $unit['name'],
+                        'description' => self::PREFIX . ' - Don vi tinh test',
+                        'is_active' => true,
+                        'updated_at' => $now,
+                    ]);
+
+                continue;
+            }
+
+            DB::table('product_units')->insert([
+                'code' => $unit['code'],
+                'name' => $unit['name'],
+                'description' => self::PREFIX . ' - Don vi tinh test',
+                'is_active' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+    }
+
+    private function unitIdByName(string $name): ?int
+    {
+        if (!Schema::hasTable('product_units')) {
+            return null;
+        }
+
+        return DB::table('product_units')->where('name', $name)->value('id')
+            ?: DB::table('product_units')->where('code', strtoupper($name))->value('id');
+    }
+
+    private function salesUnitsByCenter(): Collection
+    {
+        $adminId = User::where('username', 'admin')->value('id');
+        $now = now();
+
+        foreach ($this->centers() as $center) {
+            foreach ([1, 2, 3] as $index) {
+                SalesUnit::updateOrCreate(
+                    [
+                        'distribution_center_id' => $center->id,
+                        'code' => self::PREFIX . '-DVBH-' . $center->code . '-' . $index,
+                    ],
+                    [
+                        'name' => 'Don vi ban hang test ' . $center->code . ' ' . $index,
+                        'address' => 'Dia chi cua hang test ' . $center->name . ' ' . $index,
+                        'phone' => '09' . $index . str_pad((string) $center->id, 8, '0', STR_PAD_LEFT),
+                        'tax_code' => 'TESTMST' . $center->code . $index,
+                        'bank_account' => 'TEST-' . $center->code . '-' . $index . ' - Ngan hang test',
+                        'representative' => 'Nguoi dai dien test ' . $index . ' - Giam doc',
+                        'note' => self::PREFIX . ' - du lieu test don vi ban hang',
+                        'is_active' => true,
+                        'created_by' => $adminId,
+                        'updated_by' => $adminId,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]
+                );
+            }
+        }
+
+        return SalesUnit::where('code', 'like', self::PREFIX . '-DVBH-%')
+            ->get()
+            ->groupBy('distribution_center_id');
+    }
+
+    private function pickSalesUnitId(Collection $salesUnitsByCenter, DistributionCenter $center, int $index): ?int
+    {
+        $items = $salesUnitsByCenter->get($center->id, collect())->values();
+
+        if ($items->isEmpty()) {
+            return null;
+        }
+
+        return $items[($index - 1) % $items->count()]->id;
     }
 
     private function productPool(): Collection
@@ -160,13 +287,16 @@ class WorkflowReportTestDataSeeder extends Seeder
             ->count() + 1;
 
         for ($i = $start; $i < $start + $needed; $i++) {
+            $unitName = ['cái', 'm', 'Bộ', 'Cuộn'][$i % 4];
+
             Product::updateOrCreate(
                 ['product_code' => self::PREFIX . '-SP-' . str_pad((string) $i, 4, '0', STR_PAD_LEFT)],
                 [
                     'product_group_id' => $group->id,
                     'quality_standard_id' => $standard->id,
+                    'unit_id' => $this->unitIdByName($unitName),
                     'product_name' => 'Sản phẩm test SLA ' . str_pad((string) $i, 4, '0', STR_PAD_LEFT),
-                    'unit' => 'm',
+                    'unit' => $unitName,
                     'nominal_size' => 'DN' . ([21, 27, 34, 42, 60, 75, 90, 110, 160, 200][$i % 10]),
                     'technical_requirements' => 'Đạt yêu cầu kỹ thuật test theo tiêu chuẩn công bố.',
                     'certificate_type' => 'CNCL',
@@ -197,7 +327,7 @@ class WorkflowReportTestDataSeeder extends Seeder
         ]);
     }
 
-    private function createRequest(DistributionCenter $center, int $customerId, ?int $creatorId, int $index, array $scenario, $createdAt): CertificateRequest
+    private function createRequest(DistributionCenter $center, int $customerId, ?int $creatorId, int $index, array $scenario, $createdAt, ?int $salesUnitId): CertificateRequest
     {
         $submittedAt = $scenario['submitted_minutes_ago'] !== null
             ? now()->subMinutes($scenario['submitted_minutes_ago'])
@@ -218,6 +348,7 @@ class WorkflowReportTestDataSeeder extends Seeder
             'request_type' => 'NORMAL',
             'distribution_center_id' => $center->id,
             'customer_id' => $customerId,
+            'sales_unit_id' => $salesUnitId,
             'delivery_date' => $createdAt->copy()->addDay()->toDateString(),
             'invoice_no' => $this->invoiceNo($center->code, $index),
             'require_hard_copy' => $index % 5 === 0,
@@ -273,6 +404,7 @@ class WorkflowReportTestDataSeeder extends Seeder
         $smartCaRequestedAt = $scenario['smartca_requested_minutes_ago'] !== null
             ? now()->subMinutes($scenario['smartca_requested_minutes_ago'])
             : null;
+        $productCount = $products->count();
 
         $certificateId = DB::table('quality_certificates')->insertGetId([
             'certificate_no' => self::PREFIX . '-CNCL-' . str_replace(self::PREFIX . '-YC-', '', $request->request_no),
@@ -283,6 +415,8 @@ class WorkflowReportTestDataSeeder extends Seeder
             'signed_by' => null,
             'pdf_path' => null,
             'print_count' => 0,
+            'hard_copy_single_page_count' => $this->estimateSinglePageCount($productCount),
+            'hard_copy_batch_page_count' => $this->estimateBatchPageCount($productCount),
             'rejected_at' => $scenario['certificate_status'] === 'REJECTED' ? now()->subMinutes(30) : null,
             'rejected_by' => $scenario['certificate_status'] === 'REJECTED' ? User::where('username', 'truongptn')->value('id') : null,
             'rejected_to' => $scenario['certificate_status'] === 'REJECTED' ? 'PTN' : null,
@@ -327,12 +461,16 @@ class WorkflowReportTestDataSeeder extends Seeder
         $signedAt = $createdAt->copy()->addHours(8);
         $customer = $this->createCustomer($center, 100 + $sequence, $createdAt);
         $requestNo = self::PREFIX . '-SIGNED-YC-' . $center->code . '-' . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+        $salesUnitId = SalesUnit::where('distribution_center_id', $center->id)
+            ->where('code', 'like', self::PREFIX . '-DVBH-%')
+            ->value('id');
 
         $request = CertificateRequest::create([
             'request_no' => $requestNo,
             'request_type' => 'NORMAL',
             'distribution_center_id' => $center->id,
             'customer_id' => $customer->id,
+            'sales_unit_id' => $salesUnitId,
             'delivery_date' => $createdAt->copy()->addDays(2)->toDateString(),
             'invoice_no' => self::PREFIX . '-SIGNED-HD-' . $center->code . '-' . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT),
             'require_hard_copy' => true,
@@ -384,6 +522,10 @@ class WorkflowReportTestDataSeeder extends Seeder
 
         DB::table('certificate_request_details')->insert($requestDetailRows);
 
+        $signedPdfPath = $this->createPlaceholderSignedPdf($requestNo, $center->code);
+        $singlePageCount = $this->estimateSinglePageCount(count($certificateDetailRows));
+        $batchPageCount = $this->estimateBatchPageCount(count($certificateDetailRows));
+
         $certificateId = DB::table('quality_certificates')->insertGetId([
             'certificate_no' => self::PREFIX . '-SIGNED-CNCL-' . $center->code . '-' . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT),
             'status' => 'ISSUED',
@@ -391,8 +533,10 @@ class WorkflowReportTestDataSeeder extends Seeder
             'created_by' => $ptnUserId ?: $centerUserId,
             'signed_at' => $signedAt,
             'signed_by' => 'VNPT SmartCA Test',
-            'pdf_path' => null,
+            'pdf_path' => $signedPdfPath,
             'print_count' => 0,
+            'hard_copy_single_page_count' => $singlePageCount,
+            'hard_copy_batch_page_count' => $batchPageCount,
             'smartca_status' => 'SIGNED',
             'smartca_transaction_id' => self::PREFIX . '-SIGNED-TRAN-' . $center->code . '-' . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT),
             'smartca_tran_code' => self::PREFIX . '-SIGNED-CODE-' . $center->code,
@@ -404,6 +548,7 @@ class WorkflowReportTestDataSeeder extends Seeder
             'smartca_requested_at' => $signedAt->copy()->subMinutes(5),
             'smartca_completed_at' => $signedAt,
             'pades_status' => 'SIGNED_PDF',
+            'pades_prepared_pdf_path' => $signedPdfPath,
             'pades_error' => null,
             'created_at' => $createdAt->copy()->addHours(3),
             'updated_at' => $signedAt,
@@ -414,6 +559,122 @@ class WorkflowReportTestDataSeeder extends Seeder
                 'quality_certificate_id' => $certificateId,
             ]))
             ->all());
+
+        $this->createPrintLogSamples($certificateId, $ptnUserId ?: $centerUserId, $signedAt, $sequence);
+    }
+
+    private function estimateSinglePageCount(int $productCount): int
+    {
+        return max(1, (int) ceil($productCount / 18));
+    }
+
+    private function estimateBatchPageCount(int $productCount): int
+    {
+        return max(1, (int) ceil($productCount / 20));
+    }
+
+    private function createPlaceholderSignedPdf(string $requestNo, string $centerCode): string
+    {
+        $path = 'certificates/test-data/' . $centerCode . '-' . md5($requestNo) . '.pdf';
+        $stream = "BT /F1 14 Tf 72 760 Td (TEST SIGNED PDF {$centerCode}) Tj 0 -24 Td ({$requestNo}) Tj ET";
+        $objects = [
+            '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+            '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+            '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >> endobj',
+            '4 0 obj << /Length ' . strlen($stream) . " >> stream\n" . $stream . "\nendstream endobj",
+            '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+        ];
+
+        $content = "%PDF-1.4\n";
+        $offsets = [0];
+
+        foreach ($objects as $object) {
+            $offsets[] = strlen($content);
+            $content .= $object . "\n";
+        }
+
+        $xref = strlen($content);
+        $content .= "xref\n0 6\n0000000000 65535 f \n";
+
+        for ($i = 1; $i <= 5; $i++) {
+            $content .= str_pad((string) $offsets[$i], 10, '0', STR_PAD_LEFT) . " 00000 n \n";
+        }
+
+        $content .= "trailer << /Root 1 0 R /Size 6 >>\nstartxref\n{$xref}\n%%EOF";
+
+        Storage::disk('local')->put($path, $content);
+
+        return $path;
+    }
+
+    private function createPrintLogSamples(int $certificateId, ?int $userId, $signedAt, int $sequence): void
+    {
+        if (!$userId) {
+            return;
+        }
+
+        $rows = [
+            [
+                'quality_certificate_id' => $certificateId,
+                'user_id' => $userId,
+                'reason' => self::PREFIX . ' - Test in don thuong',
+                'print_no' => 1,
+                'print_template' => 'single',
+                'print_mode' => 'normal',
+                'created_at' => $signedAt->copy()->addMinutes(10),
+                'updated_at' => $signedAt->copy()->addMinutes(10),
+            ],
+        ];
+
+        if ($sequence % 2 === 0) {
+            $rows[] = [
+                'quality_certificate_id' => $certificateId,
+                'user_id' => $userId,
+                'reason' => self::PREFIX . ' - Test in bo thuong',
+                'print_no' => 2,
+                'print_template' => 'batch',
+                'print_mode' => 'normal',
+                'created_at' => $signedAt->copy()->addMinutes(20),
+                'updated_at' => $signedAt->copy()->addMinutes(20),
+            ];
+        }
+
+        DB::table('print_logs')->insert($rows);
+    }
+
+    private function createLoginDeviceSamples(DistributionCenter $center, ?int $userId): void
+    {
+        if (!$userId || !Schema::hasTable('user_devices')) {
+            return;
+        }
+
+        $adminId = User::where('username', 'admin')->value('id');
+        $now = now();
+
+        foreach ([
+            UserDevice::STATUS_APPROVED => 'May tinh da duyet',
+            UserDevice::STATUS_PENDING => 'May tinh cho duyet',
+            UserDevice::STATUS_BLOCKED => 'May tinh da khoa',
+        ] as $status => $name) {
+            UserDevice::updateOrCreate(
+                [
+                    'user_id' => $userId,
+                    'device_uid' => self::PREFIX . '-DEVICE-' . $center->code . '-' . $status,
+                ],
+                [
+                    'device_name' => $name . ' - ' . $center->code,
+                    'status' => $status,
+                    'ip_address' => '10.2.' . ($center->id % 255) . '.' . (10 + strlen($status)),
+                    'user_agent' => 'Mozilla/5.0 TestData ' . self::PREFIX,
+                    'requested_at' => $now->copy()->subDays(3),
+                    'approved_at' => $status === UserDevice::STATUS_APPROVED ? $now->copy()->subDays(2) : null,
+                    'approved_by' => $status === UserDevice::STATUS_APPROVED ? $adminId : null,
+                    'blocked_at' => $status === UserDevice::STATUS_BLOCKED ? $now->copy()->subDay() : null,
+                    'blocked_by' => $status === UserDevice::STATUS_BLOCKED ? $adminId : null,
+                    'last_used_at' => $status === UserDevice::STATUS_APPROVED ? $now->copy()->subHours(6) : null,
+                ]
+            );
+        }
     }
 
     private function scenario(int $index): array

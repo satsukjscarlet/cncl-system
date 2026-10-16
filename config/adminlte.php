@@ -365,6 +365,12 @@ return [
             'can'  => 'product.view',
         ],
         [
+            'text' => 'Đơn vị tính',
+            'url'  => 'product-units',
+            'icon' => 'fas fa-ruler-combined',
+            'can'  => 'product_unit.view',
+        ],
+        [
             'text' => 'Khách hàng - Công trình',
             'url'  => 'customers',
             'icon' => 'fas fa-users',

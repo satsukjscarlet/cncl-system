@@ -1,3 +1,125 @@
+## 2026-10-13 - Them nut xem phieu/PDF tren chi tiet yeu cau cap phieu
+
+File da sua:
+- `show.blade.php` (`resources/views/certificate_requests/show.blade.php`): them lien ket `Xem phieu CNCL` va `Xem PDF` khi yeu cau da co phieu CNCL lien quan.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Tai man chi tiet yeu cau cap phieu, tai khoan co quyen `certificate.view` se thay nut xem chi tiet phieu va xem PDF neu yeu cau da duoc PTN lap phieu.
+- Neu yeu cau chua co phieu CNCL, hien ro `Chua lap phieu` trong khoi thong tin yeu cau.
+- Chi bo sung thao tac xem/tra cuu; cac thao tac nghiep vu nhu ky so, in, gui mail van giu o man chi tiet phieu va theo phan quyen rieng.
+
+Kiem tra:
+- `php artisan view:cache`.
+- `php artisan view:clear`.
+
+## 2026-10-13 - Cap nhat seeder data test theo nghiep vu moi
+
+File da sua:
+- `WorkflowReportTestDataSeeder.php` (`database/seeders/WorkflowReportTestDataSeeder.php`): bo sung du lieu test cho don vi tinh, don vi ban hang, thiet bi dang nhap, phieu da ky co file PDF, log in don/in bo va cache so trang ky tuoi.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Seeder van chi don lai nhom du lieu test tien to `TEST-SLA-*`, khong xoa du lieu that ngoai nhom test.
+- Moi Trung tam co 15 yeu cau test, gan don vi ban hang theo Trung tam, co du lieu nhap, cho DVKH, cho PTN, PTN lap phieu, cho Truong PTN duyet, cho gui ky, SmartCA pending con han/qua han, PTN tra lai DVKH va Truong PTN tra lai PTN.
+- Tao them 5 phieu da ky so co nhieu san pham, co `pdf_path`, `pades_prepared_pdf_path`, `pades_status = SIGNED_PDF`, `hard_copy_single_page_count`, `hard_copy_batch_page_count` de test tai lai file, cap lai, in don/in bo va bao cao ky tuoi.
+- Tao 15 don vi ban hang test theo 5 Trung tam, 15 thiet bi dang nhap mau theo trang thai da duyet/cho duyet/da khoa, va log in ky tuoi mau cho bao cao.
+
+Kiem tra:
+- `php -l database\seeders\WorkflowReportTestDataSeeder.php`.
+- `php artisan db:seed --class=WorkflowReportTestDataSeeder`.
+- Kiem tra nhanh so lieu: 80 yeu cau test, 35 phieu test, 5 phieu da ky co PDF, 15 don vi ban hang test, 15 thiet bi test, 7 log in ky tuoi.
+- `git diff --check -- database\seeders\WorkflowReportTestDataSeeder.php`.
+
+## 2026-10-13 - Chan loi dang nhap khi server thieu quyen quan ly thiet bi
+
+File da sua:
+- `NotificationService.php` (`app/Services/NotificationService.php`): truoc khi gui thong bao theo permission, kiem tra permission co ton tai; neu server chua seed quyen thi bo qua thay vi nem exception.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Sua loi `Spatie\Permission\Exceptions\PermissionDoesNotExist: There is no permission named device.manage for guard web` khi tai khoan Trung tam dang nhap bang thiet bi moi.
+- Loi xay ra khi code moi da duoc pull len server nhung chua chay `PermissionSeeder` de tao quyen `device.manage`.
+- Sau sua code, dang nhap khong bi 500 neu thieu permission; tuy nhien can seed quyen de man hinh Quan ly thiet bi hoat dong dung.
+
+Kiem tra:
+- `php -l app\Services\NotificationService.php`.
+- Kiem tra permission `device.manage` tren database local.
+
+## 2026-10-13 - Lam lai bo huong dan su dung cho Trung tam phan phoi
+
+File da sua:
+- `HUONG_DAN_TRUNG_TAM_PHAN_PHOI.md` (`docs/HUONG_DAN_TRUNG_TAM_PHAN_PHOI.md`): viet lai huong dan su dung cho tai khoan Trung tam theo giao dien/hien trang moi.
+- `KICH_BAN_VIDEO_HUONG_DAN_TRUNG_TAM.md` (`docs/KICH_BAN_VIDEO_HUONG_DAN_TRUNG_TAM.md`): viet lai kich ban video huong dan quay demo cho Trung tam.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bo sung cac noi dung moi: duyet thiet bi dang nhap, tai khoan ca nhan, don vi ban hang, luu nhap/gui DVKH, cam ket, canh bao trung hoa don, yeu cau ky tuoi, yeu cau gap, import/dan Excel theo ma va theo ten, trang thai tra lai, danh sach phieu va yeu cau cap lai.
+- Sua lai file tai lieu cu bi loi ma hoa tieng Viet.
+- Tach ro tai lieu doc va kich ban video de co the gui cho nguoi dung hoac dung dung video huong dan.
+
+Kiem tra:
+- Doc lai file bang PowerShell voi UTF-8.
+- `git diff --check`.
+
+## 2026-10-12 - Chan test tu dong xoa nham database that
+
+File da sua:
+- `TestCase.php` (`tests/TestCase.php`): them lop bao ve truoc khi PHPUnit khoi dong Laravel; neu con config cache, `APP_ENV` khong phai `testing`, hoac DB test khong phai `sqlite/:memory:` thi dung test ngay.
+- `phpunit.xml`: them `force="true"` cho `APP_ENV`, `DB_CONNECTION`, `DB_DATABASE`, `DB_URL` de tranh bien moi truong `.env`/he thong ghi de cau hinh test.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- Bao ve cac feature test dang dung `RefreshDatabase` khong duoc phep chay tren MySQL `cncl_system`.
+- Neu da chay `php artisan config:cache`, test se bao loi va yeu cau `php artisan config:clear` truoc khi chay.
+- Muc tieu la tranh lap lai su co test reset database that.
+
+Kiem tra:
+- `php -l tests\TestCase.php`.
+- `php artisan test --filter=ExampleTest`.
+
+## 2026-10-12 - Bo sung danh muc Don vi tinh cho san pham
+
+File da sua:
+- `2026_10_12_000002_create_product_units_and_link_products.php` (`database/migrations/2026_10_12_000002_create_product_units_and_link_products.php`): tao bang `product_units`, them `products.unit_id`, tu dong gom cac gia tri `products.unit` cu sang danh muc moi.
+- `ProductUnit.php` (`app/Models/ProductUnit.php`): them model danh muc don vi tinh.
+- `Product.php` (`app/Models/Product.php`): them `unit_id` vao fillable va quan he `productUnit`.
+- `ProductUnitController.php` (`app/Http/Controllers/ProductUnitController.php`): them man CRUD, ngung su dung va xoa han don vi tinh chua phat sinh lien ket.
+- `ProductController.php` (`app/Http/Controllers/ProductController.php`): form san pham chon `unit_id`, luu dong thoi text `unit`, loc/tim/sap xep theo don vi tinh.
+- `products/_form.blade.php` (`resources/views/products/_form.blade.php`): doi o nhap don vi tinh thanh select2 chon tu danh muc.
+- `products/index.blade.php` (`resources/views/products/index.blade.php`): them cot/filter don vi tinh.
+- `product_units/*.blade.php` (`resources/views/product_units/index.blade.php`, `create.blade.php`, `edit.blade.php`, `_form.blade.php`): them giao dien danh muc don vi tinh.
+- `routes/web.php`: them route `product-units`.
+- `config/adminlte.php`: them menu `Don vi tinh`.
+- `PermissionSeeder.php` (`database/seeders/PermissionSeeder.php`): them quyen `product_unit.*`, Admin co day du, cac vai tro noi bo co quyen xem.
+- `RolePermissionController.php` (`app/Http/Controllers/RolePermissionController.php`): them nhom/nhan quyen tieng Viet cho don vi tinh.
+- `ImportProductsFromExcel.php` (`app/Console/Commands/ImportProductsFromExcel.php`): import san pham tu dong tao/gan danh muc don vi tinh theo cot `don_vi_tinh`.
+- `ProductsImport.php` (`app/Imports/ProductsImport.php`): dong bo logic import cu voi danh muc don vi tinh.
+- `ProductsExport.php` (`app/Exports/ProductsExport.php`): export uu tien lay ten don vi tinh tu danh muc.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Noi dung:
+- San pham van giu cot text `unit` de PDF va du lieu cu khong bi anh huong.
+- Khi tao/sua san pham, nguoi dung chon don vi tinh tu danh muc; he thong luu ca `unit_id` va text `unit`.
+- Import Excel san pham van dung cot `don_vi_tinh` nhu cu; neu don vi tinh chua co, he thong tu tao danh muc moi.
+
+Kiem tra:
+- `php -l app\Http\Controllers\ProductUnitController.php`.
+- `php -l app\Http\Controllers\ProductController.php`.
+- `php -l app\Models\ProductUnit.php`.
+- `php -l database\migrations\2026_10_12_000002_create_product_units_and_link_products.php`.
+- `php -l app\Console\Commands\ImportProductsFromExcel.php`.
+- `php -l app\Imports\ProductsImport.php`.
+- `php artisan migrate`.
+- `php artisan db:seed --class=PermissionSeeder`.
+- `php artisan optimize:clear`.
+- `php artisan route:list --path=product-units`.
+- `php artisan view:cache`.
+- `git diff --check`.
+
+Ghi chu:
+- Co thu chay feature test, nhung moi truong test hien tai dang tro vao MySQL `cncl_system` that thay vi database test rieng nen `RefreshDatabase` bi loi schema. Khong tiep tuc dung ket qua nay de danh gia thay doi.
+
 ## 2026-10-12 - Rut gon cot trang trong thong ke ky tuoi theo Trung tam
 
 File da sua:

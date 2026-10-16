@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DistributionCenterController;
 use App\Http\Controllers\ProductGroupController;
+use App\Http\Controllers\ProductUnitController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\QualityStandardController;
 use App\Http\Controllers\UrgentReasonController;
@@ -107,6 +108,26 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('product-groups/{product_group}/force-delete', [ProductGroupController::class, 'forceDestroy'])
         ->middleware('permission:product_group.delete')
         ->name('product-groups.force-destroy');
+
+    Route::resource('product-units', ProductUnitController::class)
+        ->only(['index'])
+        ->middleware('permission:product_unit.view');
+
+    Route::resource('product-units', ProductUnitController::class)
+        ->only(['create', 'store'])
+        ->middleware('permission:product_unit.create');
+
+    Route::resource('product-units', ProductUnitController::class)
+        ->only(['edit', 'update'])
+        ->middleware('permission:product_unit.update');
+
+    Route::resource('product-units', ProductUnitController::class)
+        ->only(['destroy'])
+        ->middleware('permission:product_unit.delete');
+
+    Route::delete('product-units/{product_unit}/force-delete', [ProductUnitController::class, 'forceDestroy'])
+        ->middleware('permission:product_unit.delete')
+        ->name('product-units.force-destroy');
 
     Route::get('products-export', [ProductController::class, 'export'])
         ->middleware('permission:product.export')

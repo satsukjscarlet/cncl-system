@@ -10,6 +10,19 @@
     </div>
 
     <div class="d-flex flex-wrap align-items-center">
+        @php($relatedCertificate = $certificateRequest->qualityCertificate)
+
+        @can('certificate.view')
+            @if($relatedCertificate)
+                <a href="{{ route('quality-certificates.show', $relatedCertificate) }}" class="btn btn-outline-primary mr-2">
+                    <i class="fas fa-certificate"></i> Xem phiếu CNCL
+                </a>
+                <a href="{{ route('quality-certificates.pdf', $relatedCertificate) }}" target="_blank" class="btn btn-info mr-2">
+                    <i class="fas fa-file-pdf"></i> Xem PDF
+                </a>
+            @endif
+        @endcan
+
         @if($certificateRequest->status === 'DRAFT')
             @can('request.update')
                 <a href="{{ route('certificate-requests.edit', $certificateRequest) }}" class="btn btn-warning mr-2">
@@ -150,6 +163,29 @@
                 </p>
                 <p><strong>Người tạo:</strong> {{ $certificateRequest->creator->name ?? '—' }}</p>
                 <p><strong>Ngày tạo:</strong> {{ optional($certificateRequest->created_at)->format('d/m/Y H:i') }}</p>
+                <hr>
+                <p class="mb-2">
+                    <strong>Phiếu CNCL:</strong>
+                    @if($certificateRequest->qualityCertificate)
+                        <a href="{{ route('quality-certificates.show', $certificateRequest->qualityCertificate) }}">
+                            {{ $certificateRequest->qualityCertificate->certificate_no }}
+                        </a>
+                    @else
+                        <span class="text-muted">Chưa lập phiếu</span>
+                    @endif
+                </p>
+                @can('certificate.view')
+                    @if($certificateRequest->qualityCertificate)
+                        <div class="d-flex flex-wrap" style="gap:8px">
+                            <a href="{{ route('quality-certificates.show', $certificateRequest->qualityCertificate) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-certificate"></i> Xem phiếu
+                            </a>
+                            <a href="{{ route('quality-certificates.pdf', $certificateRequest->qualityCertificate) }}" target="_blank" class="btn btn-sm btn-info">
+                                <i class="fas fa-file-pdf"></i> Xem PDF
+                            </a>
+                        </div>
+                    @endif
+                @endcan
             </div>
 
             @can('dvkh.process')

@@ -9,6 +9,7 @@ use App\Models\UserDevice;
 use App\Models\UserNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
 
 class NotificationService
 {
@@ -53,6 +54,10 @@ class NotificationService
 
     public function sendToPermission(string $permission, array $payload): void
     {
+        if (!Permission::where('name', $permission)->where('guard_name', 'web')->exists()) {
+            return;
+        }
+
         $ids = User::permission($permission)
             ->where('is_active', true)
             ->pluck('id');

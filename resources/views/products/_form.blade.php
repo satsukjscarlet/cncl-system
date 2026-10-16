@@ -38,12 +38,20 @@
 
     <div class="col-md-4">
         <div class="form-group">
-            <label>Đơn vị tính</label>
-            <input type="text"
-                   name="unit"
-                   class="form-control"
-                   value="{{ old('unit', $product->unit ?? '') }}"
-                   placeholder="VD: Cái, Mét, Bộ">
+            <label>Đơn vị tính <span class="text-danger">*</span></label>
+            <select name="unit_id" class="form-control select2 @error('unit_id') is-invalid @enderror" required>
+                <option value="">-- Chọn đơn vị tính --</option>
+                @foreach($units as $unit)
+                    <option value="{{ $unit->id }}"
+                        {{ old('unit_id', $product->unit_id ?? '') == $unit->id ? 'selected' : '' }}>
+                        {{ $unit->code }} - {{ $unit->name }}
+                    </option>
+                @endforeach
+            </select>
+            @error('unit_id')
+                <span class="invalid-feedback">{{ $message }}</span>
+            @enderror
+            <small class="text-muted">Đơn vị tính được quản lý trong danh mục riêng để dữ liệu đồng nhất.</small>
         </div>
     </div>
 </div>

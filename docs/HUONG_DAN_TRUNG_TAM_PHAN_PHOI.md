@@ -1,359 +1,454 @@
-# Hướng dẫn sử dụng hệ thống CNCL cho Trung tâm phân phối
+# Hướng Dẫn Sử Dụng Hệ Thống CNCL Cho Trung Tâm Phân Phối
 
-Phiên bản: 1.0  
-Ngày cập nhật: 26/09/2026  
+Phiên bản: 2.0
+Ngày cập nhật: 13/10/2026
 Đối tượng sử dụng: Tài khoản Trung tâm phân phối
 
 ## 1. Mục đích
 
-Tài liệu này hướng dẫn Trung tâm phân phối sử dụng hệ thống cấp Phiếu Chứng nhận Chất lượng (CNCL) trong các công việc hằng ngày:
+Tài liệu này hướng dẫn Trung tâm phân phối sử dụng hệ thống cấp Phiếu Chứng nhận Chất lượng (CNCL) trong công việc hằng ngày:
 
-- Tạo và quản lý khách hàng - công trình của trung tâm.
+- Đăng nhập và quản lý tài khoản cá nhân.
+- Theo dõi việc cần làm, thông báo và trạng thái xử lý.
+- Quản lý khách hàng - công trình thuộc Trung tâm.
+- Chọn đơn vị bán hàng theo danh mục có sẵn.
 - Tạo yêu cầu cấp phiếu CNCL.
-- Import hoặc dán danh sách sản phẩm từ Excel.
-- Gửi yêu cầu sang DVKH.
-- Theo dõi trạng thái xử lý.
-- Nhận phiếu đã ký số qua email và tải lại phiếu khi cần.
-- Gửi yêu cầu cấp lại phiếu nếu phiếu đã phát hành bị sai hoặc thiếu thông tin.
+- Nhập danh sách sản phẩm thủ công, import Excel hoặc dán từ Excel.
+- Lưu nháp, gửi DVKH và xử lý yêu cầu bị trả lại.
+- Tra cứu phiếu đã phát hành, tải PDF và yêu cầu cấp lại phiếu.
 
-Tài khoản Trung tâm chỉ xem và thao tác dữ liệu thuộc trung tâm của mình.
+Tài khoản Trung tâm chỉ xem và thao tác dữ liệu thuộc Trung tâm của mình.
 
 ## 2. Đăng nhập
 
 1. Mở đường dẫn hệ thống do quản trị viên cung cấp.
-2. Nhập `Tên đăng nhập`.
-3. Nhập `Mật khẩu`.
+2. Nhập tên đăng nhập.
+3. Nhập mật khẩu.
 4. Bấm `Đăng nhập`.
 
-Sau khi đăng nhập, hệ thống mở Dashboard. Nếu trình duyệt hỏi quyền thông báo, nên chọn `Cho phép` để nhận thông báo khi yêu cầu được xử lý hoặc bị trả lại.
+### 2.1. Duyệt thiết bị đăng nhập
+
+Hệ thống có thể kiểm soát máy tính/trình duyệt được phép đăng nhập tài khoản Trung tâm.
+
+Khi đăng nhập trên thiết bị mới:
+
+- Nếu thiết bị chưa được duyệt, hệ thống sẽ không cho vào ngay.
+- Quản trị viên hoặc DVKH phụ trách thiết bị sẽ nhận thông báo duyệt thiết bị.
+- Sau khi thiết bị được duyệt, người dùng đăng nhập lại và sử dụng bình thường.
 
 Lưu ý:
 
-- Không dùng chung tài khoản giữa nhiều người.
-- Nếu quên mật khẩu, liên hệ quản trị viên để được reset.
-- Nếu đăng nhập báo sai thông tin, kiểm tra lại tên đăng nhập, mật khẩu và trạng thái tài khoản.
+- Không chia sẻ tài khoản cho đại lý hoặc người không được cấp quyền.
+- Không dùng chung tài khoản trên nhiều máy không được quản lý.
+- Nếu đổi máy hoặc đổi trình duyệt, có thể cần duyệt lại thiết bị.
 
-## 3. Các khu vực chính Trung tâm cần dùng
+### 2.2. Quên mật khẩu hoặc sai thông tin đăng nhập
 
-Menu thường dùng:
+Nếu không đăng nhập được, kiểm tra:
 
-- `Dashboard`: xem việc cần làm và thông báo mới.
-- `Yêu cầu cấp phiếu`: tạo, xem, sửa nháp, theo dõi yêu cầu.
-- `Khách hàng - Công trình`: quản lý danh mục khách hàng/công trình của trung tâm.
-- `Danh sách phiếu`: xem phiếu CNCL đã lập/phát hành, tải PDF, gửi yêu cầu cấp lại.
-- `Tài khoản của tôi`: đổi thông tin cá nhân, email và mật khẩu.
+- Tên đăng nhập có đúng không.
+- Mật khẩu có đúng không.
+- Tài khoản có đang bị khóa không.
+- Thiết bị đăng nhập đã được duyệt chưa.
 
-## 4. Dashboard và thông báo
+Nếu vẫn không đăng nhập được, liên hệ quản trị viên hoặc DVKH phụ trách hệ thống.
 
-Sau khi đăng nhập, Trung tâm nên kiểm tra Dashboard trước.
+## 3. Các menu Trung tâm thường dùng
 
-Khu vực `Việc cần làm` giúp biết nhanh:
+- `Dashboard`: xem việc cần làm, thông báo và số lượng yêu cầu đang chờ xử lý.
+- `Tài khoản của tôi`: cập nhật thông tin cá nhân, email, mật khẩu.
+- `Khách hàng - Công trình`: quản lý khách hàng/công trình của Trung tâm.
+- `Đơn vị bán hàng`: xem danh mục đơn vị bán hàng được gắn với Trung tâm.
+- `Yêu cầu cấp phiếu`: tạo, lưu nháp, gửi DVKH và theo dõi yêu cầu.
+- `Danh sách phiếu`: tra cứu phiếu CNCL, xem PDF, tải lại phiếu, yêu cầu cấp lại.
 
-- Yêu cầu đang là nháp.
+## 4. Dashboard, thông báo và việc cần làm
+
+Sau khi đăng nhập, nên kiểm tra Dashboard trước.
+
+Khu vực `Việc cần làm` giúp Trung tâm biết nhanh:
+
+- Yêu cầu nháp cần hoàn thiện hoặc gửi DVKH.
 - Yêu cầu bị DVKH trả lại cần sửa.
-- Phiếu đã phát hành.
-- Phiếu hoặc yêu cầu cần theo dõi.
+- Yêu cầu đang chờ DVKH kiểm tra.
+- Yêu cầu đang chờ PTN lập phiếu.
+- Phiếu đã lập và đang chờ ký/phát hành.
 
 Biểu tượng chuông ở góc trên dùng để xem thông báo. Khi bấm vào thông báo, hệ thống mở đúng yêu cầu hoặc phiếu liên quan.
 
-## 5. Quản lý khách hàng - công trình
+Nếu trình duyệt hỏi quyền hiển thị thông báo, nên chọn `Cho phép` để nhận thông báo nhanh khi có thay đổi.
 
-### 5.1. Xem danh sách khách hàng
+## 5. Tài khoản của tôi
+
+Vào `Tài khoản của tôi` để:
+
+- Cập nhật họ tên.
+- Cập nhật email.
+- Đổi mật khẩu.
+- Kiểm tra thông tin tài khoản.
+
+Email tài khoản Trung tâm rất quan trọng vì hệ thống dùng email này làm email nhận chính khi phiếu đã được ký số thành công. Email của khách hàng trên phiếu chỉ được CC nếu có khai báo.
+
+## 6. Quản lý khách hàng - công trình
 
 Vào `Khách hàng - Công trình`.
 
-Tại đây Trung tâm có thể:
+Trung tâm có thể:
 
-- Tìm khách hàng theo mã, tên, công trình, email, điện thoại hoặc mã số thuế.
-- Xem danh sách khách hàng thuộc trung tâm mình.
-- Thêm mới khách hàng.
-- Cập nhật thông tin khách hàng nếu được cấp quyền.
-- Ngừng sử dụng khách hàng/công trình nếu không còn dùng.
+- Xem khách hàng/công trình thuộc Trung tâm mình.
+- Tìm kiếm theo mã khách hàng, tên khách hàng, công trình, email, số điện thoại, mã số thuế.
+- Thêm mới khách hàng/công trình.
+- Cập nhật thông tin khách hàng/công trình nếu được cấp quyền.
+- Import khách hàng từ Excel nếu được cấp quyền.
 
-### 5.2. Thêm khách hàng mới
+### 6.1. Thêm khách hàng - công trình
 
 1. Vào `Khách hàng - Công trình`.
 2. Bấm `Thêm mới`.
 3. Nhập thông tin:
-   - Mã khách hàng.
-   - Tên khách hàng.
-   - Địa chỉ khách hàng nếu có.
-   - Mã số thuế nếu có.
-   - Người liên hệ, điện thoại, email nếu có.
-   - Tên công trình.
-   - Địa điểm công trình.
+   - Mã khách hàng: có thể nhập hoặc để hệ thống tự sinh nếu màn hình cho phép.
+   - Tên khách hàng: bắt buộc.
+   - Tên công trình: bắt buộc.
+   - Địa điểm công trình: bắt buộc.
+   - Địa chỉ khách hàng, mã số thuế, người liên hệ, điện thoại, email nếu có.
 4. Bấm `Lưu`.
 
 Lưu ý:
 
-- `Tên công trình` và `Địa điểm công trình` là thông tin quan trọng để in lên phiếu.
-- Nếu khách hàng có email, email này có thể được CC khi hệ thống gửi phiếu đã ký.
-- Mã khách hàng không nên nhập trùng trong cùng trung tâm.
+- Tên công trình và địa điểm công trình sẽ được đưa lên phiếu CNCL.
+- Nếu có email khách hàng, email này có thể được CC khi gửi phiếu.
+- Mỗi Trung tâm chỉ nhìn thấy danh mục khách hàng của Trung tâm mình.
 
-### 5.3. Import khách hàng từ Excel
+### 6.2. Import khách hàng từ Excel
 
 1. Vào `Khách hàng - Công trình`.
-2. Bấm `Import`.
-3. Tải file mẫu nếu chưa có.
-4. Nhập dữ liệu vào file Excel.
-5. Chọn file và bấm `Import`.
+2. Bấm chức năng import nếu tài khoản được cấp quyền.
+3. Tải file mẫu.
+4. Nhập dữ liệu vào Excel.
+5. Chọn file và import.
 
-Quy tắc quan trọng:
+Khi import:
 
-- Trung tâm chỉ import vào trung tâm của chính tài khoản đang đăng nhập.
-- Nếu trùng `mã khách hàng + trung tâm`, hệ thống sẽ cảnh báo trước khi cập nhật.
-- Người dùng cần xem kỹ danh sách cảnh báo trước khi xác nhận cập nhật.
+- Hệ thống kiểm tra trùng theo `mã khách hàng + Trung tâm`.
+- Nếu trùng, hệ thống hiển thị cảnh báo trước khi cập nhật.
+- Cần đọc kỹ danh sách lỗi/cảnh báo trước khi xác nhận.
 
-## 6. Tạo yêu cầu cấp phiếu CNCL
+## 7. Đơn vị bán hàng
+
+Vào `Đơn vị bán hàng` để xem danh sách đơn vị bán hàng thuộc Trung tâm.
+
+Mỗi đơn vị bán hàng có thể gồm:
+
+- Mã Bravo.
+- Tên đơn vị bán hàng.
+- Địa chỉ cửa hàng.
+- Số điện thoại liên lạc.
+- Mã số thuế.
+- Số tài khoản.
+- Đại diện/chức vụ.
+- Ghi chú.
+
+Trung tâm chỉ chọn đơn vị bán hàng từ danh sách có sẵn khi tạo yêu cầu cấp phiếu. Trung tâm không tự tạo đơn vị bán hàng; nếu thiếu đơn vị bán hàng, liên hệ DVKH hoặc quản trị viên để bổ sung.
+
+## 8. Tạo yêu cầu cấp phiếu CNCL
 
 Vào `Yêu cầu cấp phiếu` -> `Tạo yêu cầu cấp phiếu`.
 
-### 6.1. Chọn hoặc nhập khách hàng
+### 8.1. Thông tin chung
+
+Cần nhập/chọn:
+
+- Trung tâm phân phối: tài khoản Trung tâm sẽ được tự gắn theo tài khoản đăng nhập.
+- Đơn vị bán hàng: bắt buộc, chọn từ danh sách có sẵn.
+- Khách hàng/công trình: chọn khách hàng có sẵn hoặc nhập khách hàng mới.
+- Ngày xuất hàng: bắt buộc.
+- Số hóa đơn: nhập đúng theo chứng từ nếu có.
+- Tên người tạo yêu cầu: bắt buộc.
+- Ghi chú: nhập nếu cần DVKH/PTN lưu ý.
+
+### 8.2. Chọn khách hàng có sẵn hoặc nhập khách hàng mới
 
 Có 2 cách:
 
-- `Chọn khách hàng có sẵn`: dùng khách hàng đã có trong danh mục.
-- `Nhập khách hàng mới`: tạo nhanh khách hàng ngay trên màn hình lập yêu cầu.
+- `Chọn khách hàng có sẵn`: dùng khách hàng/công trình đã có trong danh mục.
+- `Nhập khách hàng mới`: tạo nhanh khách hàng ngay trong màn hình tạo yêu cầu.
 
-Nếu nhập khách hàng mới, cần nhập đầy đủ:
+Khi nhập khách hàng mới, các thông tin quan trọng là:
 
-- Mã khách hàng.
 - Tên khách hàng.
 - Tên công trình.
 - Địa điểm công trình.
+- Email nhận phiếu nếu có.
 
-### 6.2. Nhập thông tin yêu cầu
+### 8.3. Cảnh báo trùng số hóa đơn
 
-Các trường cần chú ý:
+Khi nhập số hóa đơn, hệ thống tự kiểm tra số hóa đơn đã tồn tại trên hệ thống hay chưa.
 
-- `Ngày xuất hàng`: bắt buộc.
-- `Số hóa đơn`: nhập đúng theo chứng từ.
-- `Tên người tạo yêu cầu`: bắt buộc, nhập tên người thực tế lập yêu cầu.
-- `Yêu cầu ký tươi`: bật nếu cần thêm bản in ký tươi.
-- `Số bản ký tươi`: nếu bật yêu cầu ký tươi thì phải nhập từ 1 trở lên.
-- `Yêu cầu cung cấp gấp`: bật khi cần xử lý gấp và chọn lý do.
-- `Ghi chú`: nhập thêm thông tin nếu cần DVKH/PTN lưu ý.
+Nếu có cảnh báo trùng:
 
-### 6.3. Cam kết nhận và lấy hàng
+- Kiểm tra lại số hóa đơn vừa nhập.
+- Mở các yêu cầu/phiếu liên quan nếu hệ thống hiển thị.
+- Chỉ tiếp tục khi chắc chắn số hóa đơn là đúng.
 
-Trước khi gửi DVKH, người dùng phải tích xác nhận cam kết:
+### 8.4. Yêu cầu ký tươi
 
-`Chúng tôi cam kết đã nhận và lấy hàng trong yêu cầu cấp phiếu này tại Công ty. Trường hợp thông tin trên không đúng sự thật, chúng tôi xin chịu hoàn toàn trách nhiệm và chấp nhận các hình thức xử phạt theo quy chế của công ty.`
+Bật `Yêu cầu ký tươi` khi cần thêm bản in ký tươi.
 
-Nếu chưa tích, hệ thống không cho gửi yêu cầu sang DVKH.
+Quy tắc:
 
-## 7. Nhập danh sách sản phẩm đề nghị cấp phiếu
+- Nếu không bật ký tươi, hệ thống không yêu cầu nhập số bản.
+- Nếu bật ký tươi, số bản phải từ 1 trở lên.
+- Số bản ký tươi là số bản Trung tâm yêu cầu PTN chuẩn bị theo quy trình nội bộ.
 
-Trong khu vực `Danh sách sản phẩm đề nghị cấp phiếu`, có 3 cách nhập sản phẩm.
+### 8.5. Yêu cầu cung cấp gấp
 
-### 7.1. Thêm từng dòng
+Bật `Mở yêu cầu gấp` nếu cần xử lý gấp.
+
+Khi bật yêu cầu gấp:
+
+- Phải chọn lý do gấp từ danh mục.
+- Yêu cầu sẽ được đánh dấu để DVKH/PTN nhận biết.
+
+## 9. Nhập danh sách sản phẩm
+
+Khu vực `Danh sách sản phẩm đề nghị cấp phiếu` có cột STT tự đếm dòng để dễ kiểm tra.
+
+Số lượng sản phẩm:
+
+- Bắt buộc nhập.
+- Phải từ 1 trở lên.
+- Không được để trống hoặc nhập số âm.
+
+### 9.1. Thêm từng dòng
 
 1. Bấm `Thêm dòng sản phẩm`.
 2. Chọn sản phẩm.
 3. Nhập số lượng.
-4. Lặp lại nếu có nhiều sản phẩm.
+4. Lặp lại cho các sản phẩm khác.
 
-Danh sách có cột STT để dễ kiểm tra thứ tự dòng.
+Có thể dùng phím tắt `Ctrl + Enter` để thêm nhanh dòng sản phẩm.
 
-### 7.2. Import Excel
+Khi tìm sản phẩm, có thể tìm theo mã hoặc tên sản phẩm. Kết quả chọn sản phẩm hiển thị dạng mã và tên để dễ đối chiếu.
 
-1. Bấm `Tải mẫu`.
-2. Nhập mã sản phẩm và số lượng vào file mẫu.
+### 9.2. Import Excel theo mã sản phẩm
+
+1. Bấm `Tải mẫu Excel`.
+2. Nhập 2 cột:
+   - `ma_san_pham`
+   - `so_luong`
 3. Bấm `Import Excel`.
-4. Chọn chế độ:
-   - `Ghi đè danh sách sản phẩm hiện tại`: xóa danh sách đang có và thay bằng file import.
-   - `Cộng thêm vào danh sách hiện tại`: thêm dữ liệu trong file vào danh sách đang có.
-5. Bấm `Import`.
+4. Chọn file.
+5. Chọn cách nhập:
+   - `Ghi đè danh sách sản phẩm hiện tại`.
+   - `Cộng thêm vào danh sách hiện tại`.
+6. Bấm `Import`.
 
-Nếu có lỗi, hệ thống sẽ hiển thị lỗi rõ theo từng dòng để người dùng sửa.
+Nếu mã sản phẩm trùng trong file, hệ thống cộng dồn số lượng.
 
-Lỗi thường gặp:
+### 9.3. Dán từ Excel theo mã sản phẩm
+
+1. Chuẩn bị Excel gồm 2 cột: mã sản phẩm và số lượng.
+2. Copy các dòng cần nhập.
+3. Bấm `Dán từ Excel`.
+4. Dán dữ liệu vào ô nhập.
+5. Chọn `Thay thế danh sách hiện tại` hoặc `Thêm vào danh sách hiện tại`.
+6. Bấm `Đưa vào danh sách`.
+
+### 9.4. Dán theo tên sản phẩm
+
+Dùng khi file Excel chỉ có tên sản phẩm và số lượng.
+
+Quy tắc:
+
+- Tên sản phẩm phải khớp chính xác với tên trong danh mục.
+- Nếu tên bị sai chính tả, thiếu/khoảng trắng khác biệt, hệ thống sẽ báo lỗi.
+- Nếu trong danh mục có nhiều sản phẩm trùng tên, nên dùng cách dán theo mã sản phẩm để tránh nhầm.
+
+### 9.5. Lỗi thường gặp khi nhập sản phẩm
 
 - Mã sản phẩm không tồn tại.
+- Tên sản phẩm không khớp chính xác.
 - Thiếu số lượng.
-- Số lượng không đúng định dạng.
-- File sai mẫu.
+- Số lượng nhỏ hơn 1.
+- File Excel sai mẫu.
+- Dữ liệu copy từ Excel thiếu cột.
 
-### 7.3. Dán dữ liệu từ Excel
+Hệ thống sẽ hiển thị lỗi theo từng dòng để người dùng sửa đúng vị trí.
 
-Nếu màn hình có chức năng dán dữ liệu:
+## 10. Cam kết trước khi gửi DVKH
 
-1. Chuẩn bị dữ liệu trong Excel gồm mã sản phẩm và số lượng.
-2. Copy các dòng cần nhập.
-3. Bấm chức năng dán/copy Excel trên màn hình yêu cầu.
-4. Kiểm tra lại danh sách sản phẩm sau khi hệ thống đưa dữ liệu vào bảng.
+Trước khi gửi yêu cầu sang DVKH, người dùng phải tích xác nhận:
 
-Sau khi import hoặc dán, người dùng vẫn có thể sửa số lượng từng dòng trước khi lưu.
+> Chúng tôi cam kết đã nhận và lấy hàng trong yêu cầu cấp phiếu này tại Công ty. Trường hợp thông tin trên không đúng sự thật, chúng tôi xin chịu hoàn toàn trách nhiệm và chấp nhận các hình thức xử phạt theo quy chế của công ty.
 
-## 8. Lưu nháp và gửi DVKH
+Nếu chưa tích cam kết, hệ thống không cho gửi DVKH.
 
-### 8.1. Lưu nháp
+## 11. Lưu nháp và gửi DVKH
+
+### 11.1. Lưu nháp
 
 Bấm `Lưu nháp` khi chưa muốn gửi xử lý.
 
 Ở trạng thái nháp:
 
 - Trung tâm vẫn sửa được yêu cầu.
-- DVKH, PTN không xử lý yêu cầu này.
-- SLA chưa tính từ thời điểm nháp.
+- DVKH và PTN không xử lý yêu cầu.
+- SLA chưa tính cho bước DVKH.
 
-### 8.2. Gửi DVKH
+### 11.2. Gửi DVKH
 
-Bấm `Lưu và gửi DVKH` hoặc `Gửi DVKH` khi đã kiểm tra xong.
+Bấm `Gửi DVKH` khi dữ liệu đã đúng.
 
-Trước khi gửi, cần đảm bảo:
+Trước khi gửi cần kiểm tra:
 
-- Đã chọn/nhập khách hàng.
+- Đã chọn đơn vị bán hàng.
+- Đã chọn hoặc nhập khách hàng/công trình.
 - Đã nhập ngày xuất hàng.
 - Đã nhập tên người tạo yêu cầu.
 - Đã có ít nhất một sản phẩm.
+- Số lượng sản phẩm đều từ 1 trở lên.
 - Đã tích cam kết.
-- Nếu yêu cầu ký tươi thì số bản ký tươi từ 1 trở lên.
+- Nếu ký tươi thì số bản từ 1 trở lên.
 - Nếu yêu cầu gấp thì đã chọn lý do gấp.
 
 Sau khi gửi DVKH:
 
 - Yêu cầu chuyển sang trạng thái `Chờ DVKH kiểm tra`.
-- Trung tâm không sửa trực tiếp yêu cầu đã gửi.
+- Trung tâm không sửa trực tiếp được nữa.
 - Nếu cần sửa, phải chờ DVKH trả lại hoặc liên hệ DVKH.
 
-## 9. Theo dõi yêu cầu sau khi gửi
+## 12. Theo dõi yêu cầu
 
 Vào `Yêu cầu cấp phiếu`.
 
-Trung tâm có thể:
+Có thể:
 
-- Tìm theo mã yêu cầu, khách hàng, công trình, số hóa đơn.
+- Tìm theo số yêu cầu, khách hàng, công trình, số hóa đơn, đơn vị bán hàng.
 - Lọc theo trạng thái.
-- Mở chi tiết yêu cầu để xem tiến trình xử lý.
+- Lọc theo yêu cầu nháp, trả lại, đang xử lý.
+- Sắp xếp các cột nếu màn hình có biểu tượng sắp xếp.
+- Mở chi tiết để xem tiến trình xử lý và lịch sử thao tác.
 
 Các trạng thái thường gặp:
 
 | Trạng thái | Ý nghĩa |
 | --- | --- |
-| Nháp | Yêu cầu chưa gửi DVKH |
+| Nháp | Yêu cầu chưa gửi DVKH, Trung tâm còn sửa được |
 | Chờ DVKH kiểm tra | Trung tâm đã gửi, DVKH đang kiểm tra |
-| Chờ PTN lập phiếu | DVKH đã xác nhận, PTN sẽ lập phiếu |
-| PTN xử lý / Chờ trưởng PTN ký | Phiếu đã được lập, chờ duyệt/ký số |
-| Đang chờ ký số | Đã gửi ký SmartCA, chờ người ký xác nhận |
+| Chờ PTN lập phiếu | DVKH đã xác nhận, PTN chuẩn bị lập phiếu |
+| PTN xử lý / Chờ Trưởng PTN duyệt | Phiếu đã được lập, chờ duyệt hoặc gửi ký |
+| Chờ gửi ký | Phiếu nằm trong danh sách chờ Trưởng PTN gửi ký SmartCA |
+| Đang chờ ký số | Đã gửi SmartCA, chờ người ký xác nhận trên app |
 | Đã ký / Đã phát hành | Phiếu đã ký số thành công |
-| Trả lại Trung tâm | Yêu cầu cần Trung tâm sửa lại |
+| Trả lại Trung tâm | DVKH trả lại để Trung tâm sửa |
 | Đã hủy / Thu hồi | Phiếu cũ bị hủy trong quy trình cấp lại |
 
-## 10. Xử lý yêu cầu bị trả lại
+## 13. Xử lý yêu cầu bị trả lại
 
-Khi DVKH trả lại yêu cầu, Trung tâm sẽ thấy thông báo và trạng thái trả lại.
-
-Cách xử lý:
+Khi DVKH trả lại yêu cầu:
 
 1. Mở thông báo hoặc vào `Yêu cầu cấp phiếu`.
-2. Mở chi tiết yêu cầu bị trả lại.
-3. Đọc lý do trả lại.
-4. Bấm sửa yêu cầu nếu hệ thống cho phép.
+2. Mở yêu cầu bị trả lại.
+3. Đọc kỹ lý do trả lại.
+4. Bấm `Sửa yêu cầu`.
 5. Cập nhật thông tin sai/thiếu.
 6. Gửi lại DVKH.
 
-Nên đọc kỹ lý do trả lại để tránh gửi lại nhiều lần.
+Không nên tạo yêu cầu mới nếu chỉ cần sửa yêu cầu đã bị trả lại.
 
-## 11. Nhận phiếu đã ký số
+## 14. Nhận email và tải phiếu đã ký
 
-Khi phiếu được ký số thành công:
+Khi phiếu ký số thành công:
 
-- Hệ thống gửi email cho email tài khoản Trung tâm tạo yêu cầu.
-- Email có thể CC cho DVKH, PTN, khách hàng và danh sách CC cấu hình thêm.
-- Email có link tra cứu/tải lại phiếu.
+- Email chính được gửi cho email của tài khoản Trung tâm tạo yêu cầu.
+- DVKH và PTN có thể được CC theo cấu hình hệ thống.
+- Email khách hàng được CC nếu khách hàng có email.
+- Email có link để tra cứu/tải lại phiếu.
 
-Trung tâm cũng có thể vào `Danh sách phiếu` để tìm phiếu và tải PDF.
+Trung tâm cũng có thể vào `Danh sách phiếu` để tìm và tải PDF.
 
-## 12. Tra cứu và tải lại phiếu
+## 15. Danh sách phiếu
 
 Vào `Danh sách phiếu`.
 
-Có thể tìm theo:
+Có thể:
 
-- Số phiếu.
-- Số yêu cầu.
-- Khách hàng/công trình.
-- Trạng thái.
-- Khoảng ngày lập phiếu.
+- Tìm theo số phiếu, số yêu cầu, khách hàng, công trình, số hóa đơn, đơn vị bán hàng.
+- Lọc theo trạng thái phiếu.
+- Lọc từ ngày đến ngày.
+- Lọc phiếu có yêu cầu ký tươi.
+- Mở chi tiết phiếu để xem thông tin, tiến trình, lịch sử và PDF.
 
-Mở chi tiết phiếu để:
+Trong chi tiết phiếu:
 
-- Xem thông tin phiếu.
-- Xem PDF.
-- Tải lại PDF.
-- Xem tiến trình xử lý.
-- Xem liên kết phiếu cũ/phiếu cấp lại nếu có.
+- Số yêu cầu có thể bấm để mở lại yêu cầu cấp phiếu liên quan.
+- Nếu phiếu được cấp lại hoặc bị thay thế, hệ thống hiển thị liên kết giữa phiếu cũ và phiếu mới.
+- Nếu yêu cầu có ký tươi, màn hình hiển thị số bản ký tươi đã yêu cầu.
 
-## 13. Yêu cầu cấp lại phiếu
+## 16. Yêu cầu cấp lại phiếu
 
-Dùng khi phiếu đã phát hành nhưng bị sai, thiếu hoặc cần cấp lại.
+Dùng khi phiếu đã phát hành nhưng sai, thiếu hoặc cần cấp lại.
 
 Điều kiện:
 
 - Chỉ thực hiện trên phiếu đã ký số/phát hành thành công.
 - Phiếu đã hủy/thu hồi không dùng để yêu cầu cấp lại tiếp.
 
-Cách gửi yêu cầu cấp lại:
+Cách thực hiện:
 
 1. Vào `Danh sách phiếu`.
 2. Mở phiếu cần cấp lại.
 3. Bấm `Yêu cầu cấp lại`.
 4. Nhập lý do cấp lại.
-5. Hệ thống tạo một yêu cầu mới từ dữ liệu phiếu cũ.
-6. Trung tâm kiểm tra và sửa lại thông tin cần thay đổi.
+5. Hệ thống tạo yêu cầu mới từ dữ liệu phiếu cũ.
+6. Trung tâm kiểm tra và sửa thông tin cần thay đổi.
 7. Gửi DVKH.
 
 Lưu ý:
 
-- Phiếu cũ chưa bị hủy ngay khi Trung tâm gửi yêu cầu cấp lại.
-- DVKH sẽ kiểm tra và xác nhận hủy/thu hồi phiếu cũ theo quy trình.
-- Trong chi tiết phiếu có phần liên kết để biết phiếu nào được cấp lại từ phiếu nào.
+- Phiếu cũ chưa bị hủy ngay khi Trung tâm tạo yêu cầu cấp lại.
+- DVKH kiểm tra và xác nhận hủy/thu hồi phiếu cũ theo quy trình.
+- Chi tiết phiếu có khu vực liên kết để biết phiếu nào thay thế phiếu nào.
 
-## 14. Những lỗi thường gặp
+## 17. Những lỗi thường gặp
 
 | Tình huống | Nguyên nhân thường gặp | Cách xử lý |
 | --- | --- | --- |
-| Không đăng nhập được | Sai tài khoản/mật khẩu hoặc tài khoản bị khóa | Liên hệ quản trị viên |
-| Không thấy dữ liệu khách hàng | Khách hàng thuộc trung tâm khác hoặc đang bị ngừng sử dụng | Kiểm tra lại danh mục khách hàng |
-| Không gửi DVKH được | Thiếu ngày xuất hàng, thiếu sản phẩm, chưa tích cam kết | Kiểm tra các trường bắt buộc |
-| Không thấy nút sửa | Yêu cầu đã gửi DVKH, không còn ở trạng thái nháp | Chờ DVKH trả lại hoặc liên hệ DVKH |
-| Import sản phẩm lỗi | Sai mã sản phẩm, thiếu số lượng, file sai mẫu | Xem thông báo lỗi và sửa file |
-| Cảnh báo trùng số hóa đơn | Số hóa đơn đã tồn tại trong cùng trung tâm | Kiểm tra lại trước khi gửi |
-| Không nhận email phiếu | Email tài khoản chưa đúng hoặc hệ thống mail chưa gửi | Kiểm tra email tài khoản, liên hệ quản trị |
-| Link thông báo không mở được | Dữ liệu không còn trạng thái phù hợp hoặc không đủ quyền | Mở lại từ danh sách yêu cầu/phiếu |
+| Không đăng nhập được | Sai tài khoản/mật khẩu, tài khoản bị khóa, thiết bị chưa duyệt | Kiểm tra lại thông tin hoặc liên hệ quản trị/DVKH |
+| Không thấy khách hàng | Khách hàng thuộc Trung tâm khác hoặc đang ngừng sử dụng | Kiểm tra danh mục khách hàng của Trung tâm |
+| Không thấy đơn vị bán hàng cần chọn | Đơn vị bán hàng chưa được khai báo cho Trung tâm | Liên hệ DVKH/quản trị viên |
+| Không gửi DVKH được | Thiếu trường bắt buộc, chưa tích cam kết, chưa có sản phẩm | Kiểm tra lại các trường có dấu `*` |
+| Không thấy nút sửa | Yêu cầu đã gửi DVKH, không còn là nháp | Chờ DVKH trả lại hoặc liên hệ DVKH |
+| Import sản phẩm lỗi | Sai mã/tên sản phẩm, thiếu số lượng, số lượng nhỏ hơn 1 | Xem lỗi từng dòng và sửa lại |
+| Cảnh báo trùng số hóa đơn | Số hóa đơn đã có trong hệ thống | Kiểm tra lại trước khi gửi |
+| Không nhận email phiếu | Email tài khoản chưa đúng hoặc mail bị chặn | Kiểm tra email tài khoản và thư mục spam |
+| Link thông báo không mở được | Không đủ quyền hoặc dữ liệu đã chuyển trạng thái | Mở lại từ danh sách yêu cầu/phiếu |
 
-## 15. Checklist sử dụng nhanh
+## 18. Checklist trước khi gửi DVKH
 
-Trước khi gửi yêu cầu sang DVKH, kiểm tra:
+Trước khi gửi yêu cầu, kiểm tra:
 
+- Đúng Trung tâm.
+- Đúng đơn vị bán hàng.
 - Đúng khách hàng/công trình.
 - Đúng ngày xuất hàng.
 - Đúng số hóa đơn.
 - Đã nhập tên người tạo yêu cầu.
-- Đúng danh sách sản phẩm.
-- Đúng số lượng.
+- Đã nhập đúng danh sách sản phẩm.
+- Mỗi dòng sản phẩm có số lượng từ 1 trở lên.
 - Đã chọn lý do nếu là yêu cầu gấp.
 - Đã nhập số bản nếu yêu cầu ký tươi.
 - Đã tích cam kết.
 
-Khi nhận phiếu đã ký:
+## 19. Mẫu thông tin cần gửi khi báo lỗi
 
-- Kiểm tra số phiếu.
-- Kiểm tra khách hàng/công trình.
-- Kiểm tra danh sách sản phẩm.
-- Tải PDF lưu lại nếu cần.
-- Nếu sai/thiếu, dùng chức năng yêu cầu cấp lại.
-
-## 16. Mẫu thông tin cần gửi khi báo lỗi
-
-Khi báo lỗi cho quản trị viên, nên gửi đủ:
+Khi báo lỗi, nên gửi đủ:
 
 ```text
 Tài khoản:
 Trung tâm:
 Màn hình đang thao tác:
-Mã yêu cầu hoặc số phiếu:
+Số yêu cầu hoặc số phiếu:
 Thao tác vừa thực hiện:
 Thông báo lỗi:
 Kết quả mong muốn:

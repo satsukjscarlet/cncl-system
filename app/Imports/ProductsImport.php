@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Product;
 use App\Models\ProductGroup;
+use App\Models\ProductUnit;
 use App\Models\QualityStandard;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
@@ -78,13 +79,17 @@ class ProductsImport implements ToModel, WithHeadingRow, WithChunkReading, Skips
                 );
             }
 
+            $unitName = $this->nullableString($row['don_vi_tinh'] ?? null);
+            $unit = $unitName ? $this->resolveProductUnit($unitName) : null;
+
             $product = Product::updateOrCreate(
                 ['product_code' => $productCode],
                 [
                     'product_group_id' => $group->id,
                     'quality_standard_id' => $standard?->id,
+                    'unit_id' => $unit?->id,
                     'product_name' => $productName,
-                    'unit' => $this->nullableString($row['don_vi_tinh'] ?? null),
+                    'unit' => $unitName,
                     'nominal_size' => $this->nullableString($row['kich_thuoc_danh_nghia'] ?? null),
                     'technical_requirements' => $this->nullableString($row['yeu_cau_ky_thuat'] ?? null),
                     'certificate_type' => $this->nullableString($row['loai_phieu'] ?? null) ?: 'CNCL',
@@ -118,5 +123,30 @@ class ProductsImport implements ToModel, WithHeadingRow, WithChunkReading, Skips
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
+    }
+
+    private function resolveProductUnit(string $name): ProductUnit
+    {
+        $unit = ProductUnit::where('name', $name)->first();
+
+        if ($unit) {
+            return $unit;
+        }
+
+        $baseCode = strtoupper(Str::slug($name, '_')) ?: 'DVT';
+        $code = substr($baseCode, 0, 40);
+        $index = 2;
+
+        while (ProductUnit::where('code', $code)->exists()) {
+            $code = substr($baseCode, 0, 36) . '_' . $index;
+            $index++;
+        }
+
+        return ProductUnit::create([
+            'code' => $code,
+            'name' => $name,
+            'description' => null,
+            'is_active' => true,
+        ]);
     }
 }

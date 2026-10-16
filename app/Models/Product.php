@@ -12,6 +12,7 @@ class Product extends Model
     protected $fillable = [
         'product_group_id',
         'quality_standard_id',
+        'unit_id',
         'product_code',
         'product_name',
         'unit',
@@ -35,6 +36,11 @@ class Product extends Model
     public function qualityStandard()
     {
         return $this->belongsTo(QualityStandard::class, 'quality_standard_id')->withTrashed();
+    }
+
+    public function productUnit()
+    {
+        return $this->belongsTo(ProductUnit::class, 'unit_id')->withTrashed();
     }
 
     public function requestDetails()

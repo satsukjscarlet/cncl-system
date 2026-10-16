@@ -29,6 +29,11 @@ class PermissionSeeder extends Seeder
             'product_group.import',
             'product_group.export',
 
+            'product_unit.view',
+            'product_unit.create',
+            'product_unit.update',
+            'product_unit.delete',
+
             'product.view',
             'product.create',
             'product.update',
@@ -166,6 +171,7 @@ class PermissionSeeder extends Seeder
             'product_group.import',
             'product_group.update',
             'product_group.view',
+            'product_unit.view',
         ]);
 
         $this->giveMissingPermissions($ptn, [
@@ -174,6 +180,7 @@ class PermissionSeeder extends Seeder
             'product.create',
             'product.update',
             'product.delete',
+            'product_unit.view',
             'quality_standard.view',
             'quality_standard.create',
             'quality_standard.update',
@@ -194,6 +201,7 @@ class PermissionSeeder extends Seeder
             'product.create',
             'product.update',
             'product.delete',
+            'product_unit.view',
             'quality_standard.view',
             'quality_standard.create',
             'quality_standard.update',

@@ -76,6 +76,7 @@ class RolePermissionController extends Controller
             'dashboard' => 'Dashboard',
             'distribution_center' => 'Trung tâm phân phối',
             'product_group' => 'Nhóm sản phẩm',
+            'product_unit' => 'Đơn vị tính',
             'product' => 'Sản phẩm',
             'quality_standard' => 'Tiêu chuẩn chất lượng',
             'urgent_reason' => 'Lý do yêu cầu gấp',
@@ -111,6 +112,11 @@ class RolePermissionController extends Controller
             'product_group.delete' => 'Xóa nhóm sản phẩm',
             'product_group.import' => 'Import nhóm sản phẩm',
             'product_group.export' => 'Export nhóm sản phẩm',
+
+            'product_unit.view' => 'Xem đơn vị tính',
+            'product_unit.create' => 'Thêm đơn vị tính',
+            'product_unit.update' => 'Sửa đơn vị tính',
+            'product_unit.delete' => 'Ngừng sử dụng đơn vị tính',
 
             'product.view' => 'Xem sản phẩm',
             'product.create' => 'Thêm sản phẩm',
