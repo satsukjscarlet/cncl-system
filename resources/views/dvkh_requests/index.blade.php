@@ -381,9 +381,7 @@
                             @else
                                 <span class="text-muted">-</span>
                             @endif
-                            @if($item->creator)
-                                <div class="dvkh-date-sub">Người gửi: {{ $item->creator->name ?? $item->creator->username }}</div>
-                            @endif
+                            <div class="dvkh-date-sub">Người tạo yêu cầu: {{ $item->requester_name ?: 'Chưa cung cấp' }}</div>
                         </td>
                         <td>{{ $item->distributionCenter->name ?? '-' }}</td>
                         <td>

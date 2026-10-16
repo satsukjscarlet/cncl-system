@@ -1,3 +1,12 @@
+## 2026-10-16 - Hien nguoi tao yeu cau trong danh sach DVKH
+
+File da sua:
+- `resources/views/dvkh_requests/index.blade.php`: doi dong Nguoi gui theo tai khoan sang Nguoi tao yeu cau theo requester_name trong cot Ngay gui DVKH; hien Chua cung cap neu du lieu cu de trong.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Kiem tra:
+- Bien dich Blade va kiem tra PHP bang TOKEN_PARSE; `git diff --check`.
+
 ## 2026-10-16 - Gom thao tac chi tiet yeu cau va chan PDF chua ky cho Trung tam
 
 File da sua:
