@@ -433,8 +433,9 @@
                                     <form action="{{ route('dvkh.requests.approve', $item) }}"
                                           method="POST"
                                           class="d-inline"
+                                          data-loading-lock
                                           data-loading-message="Đang xác nhận yêu cầu và chuyển sang PTN, vui lòng chờ..."
-                                          onsubmit="if (!confirm({!! json_encode($approveConfirm, JSON_UNESCAPED_UNICODE) !!})) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
+                                          onsubmit="if (!confirm(@js($approveConfirm))) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
                                         @csrf
                                         <button class="btn btn-sm btn-success" title="Xác nhận">
                                             <i class="fas fa-check"></i>

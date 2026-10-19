@@ -9,9 +9,7 @@
         <small class="text-muted">{{ $certificateRequest->request_no }}</small>
     </div>
 
-    <a href="{{ route('ptn.requests.index') }}" class="btn btn-default">
-        <i class="fas fa-arrow-left"></i> Quay lại
-    </a>
+
 </div>
 @stop
 
@@ -29,9 +27,21 @@
 @endif
 
 @include('quality_certificates.partials.workflow_steps', ['steps' => $requestWorkflowSteps])
+@if($certificateRequest->effectiveLastReturnedTo() === 'PTN')
+    <div class="alert alert-warning">
+        <strong><i class="fas fa-undo"></i> Trưởng PTN trả lại</strong>
+        <div>{{ $certificateRequest->last_return_reason ?: 'Xem lịch sử xử lý để biết nội dung cần bổ sung.' }}</div>
+        <small>{{ optional($certificateRequest->last_returned_at)->format('d/m/Y H:i') }} {{ $certificateRequest->lastReturnedBy->name ?? '' }}</small>
+    </div>
+@endif
+<div class="workflow-detail-summary">
+    <span><strong>Ngày gửi DVKH:</strong> {{ optional($certificateRequest->submitted_at)->format('d/m/Y H:i') ?: '-' }}</span>
+    <span><strong>Ngày chuyển PTN:</strong> {{ optional($certificateRequest->sent_to_ptn_at)->format('d/m/Y H:i') ?: '-' }}</span>
+    <span><strong>Sản phẩm:</strong> {{ $certificateRequest->details->count() }} dòng</span>
+</div>
 
 <div class="row">
-    <div class="col-md-4">
+    <div class="col-lg-6 workflow-info">
         <div class="card card-primary card-outline">
             <div class="card-header">
                 <h3 class="card-title">Thông tin yêu cầu</h3>
@@ -101,38 +111,11 @@
                 <p><strong>Ngày tạo:</strong> {{ optional($certificateRequest->created_at)->format('d/m/Y H:i') }}</p>
             </div>
 
-            @can('ptn.process')
-                <div class="card-footer">
-                    @if($certificateRequest->qualityCertificate)
-                        <a href="{{ route('quality-certificates.show', $certificateRequest->qualityCertificate) }}" class="btn btn-success">
-                            <i class="fas fa-file-signature"></i> Xem phiếu đã lập
-                        </a>
-                    @elseif(in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING']))
-                        <div class="d-flex flex-wrap align-items-center" style="gap: 8px;">
-                            <form action="{{ route('ptn.requests.receive-and-create-certificate', $certificateRequest) }}" method="POST"
-                                  class="m-0"
-                                  data-loading-lock
-                                  data-loading-message="Đang lập phiếu CNCL từ yêu cầu, vui lòng chờ..."
-                                  onsubmit="if (!confirm('Lập phiếu CNCL từ yêu cầu này?')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
-                                @csrf
-                                <button class="btn btn-primary">
-                                    <i class="fas fa-file-signature"></i> Lập phiếu CNCL
-                                </button>
-                            </form>
 
-                            @if($canReturnToDvkh)
-                                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnToDvkhModal">
-                                    <i class="fas fa-undo"></i> Trả lại DVKH
-                                </button>
-                            @endif
-                        </div>
-                    @endif
-                </div>
-            @endcan
         </div>
     </div>
 
-    <div class="col-md-8">
+    <div class="col-lg-6 workflow-info">
         <div class="card card-info card-outline">
             <div class="card-header">
                 <h3 class="card-title">Khách hàng / Công trình</h3>
@@ -152,11 +135,14 @@
 
 <div class="card">
     <div class="card-header bg-white">
-        <h3 class="card-title"><i class="fas fa-box"></i> Danh sách sản phẩm</h3>
+        <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:8px">
+            <h3 class="card-title"><i class="fas fa-box"></i> Danh sách sản phẩm <small id="ptnProductsCount">{{ $certificateRequest->details->count() }} dòng</small></h3>
+            <input type="search" class="form-control form-control-sm workflow-product-search" data-product-search="ptnProducts" aria-label="Tìm mã hoặc tên sản phẩm" placeholder="Tìm mã hoặc tên sản phẩm">
+        </div>
     </div>
 
-    <div class="card-body table-responsive p-0">
-        <table class="table table-bordered table-hover mb-0">
+    <div class="card-body table-responsive p-0 workflow-detail-table">
+        <table id="ptnProducts" class="table table-bordered table-hover mb-0">
             <thead class="thead-light">
                 <tr>
                     <th style="width:60px">STT</th>
@@ -165,20 +151,22 @@
                     <th>Kích thước</th>
                     <th>Yêu cầu kỹ thuật</th>
                     <th>Tiêu chuẩn</th>
+                    <th>ĐVT</th>
                     <th style="width:120px">Số lượng</th>
                 </tr>
             </thead>
 
             <tbody>
                 @foreach($certificateRequest->details as $detail)
-                    <tr>
+                    <tr data-product-text="{{ ($detail->product->product_code ?? '') . ' ' . ($detail->product->product_name ?? '') }}">
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $detail->product->product_code ?? '-' }}</td>
-                        <td>{{ $detail->product->product_name ?? '-' }}</td>
+                        <td class="workflow-product-name">{{ $detail->product->product_name ?? '-' }}</td>
                         <td>{{ $detail->product->nominal_size ?? '-' }}</td>
                         <td>{{ $detail->product->technical_requirements ?? '-' }}</td>
                         <td>{{ $detail->product->qualityStandard->code ?? '-' }}</td>
-                        <td>{{ $detail->quantity }}</td>
+                        <td>{{ $detail->product->unit ?? '-' }}</td>
+                        <td>{{ rtrim(rtrim(number_format($detail->quantity, 2, '.', ''), '0'), '.') }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -186,10 +174,13 @@
     </div>
 </div>
 
+<details class="mb-3">
+<summary class="mb-2" style="cursor:pointer">Lịch sử xử lý yêu cầu</summary>
 @include('quality_certificates.partials.history_timeline', [
     'logs' => $requestHistoryLogs,
     'title' => 'Lịch sử xử lý yêu cầu',
 ])
+</details>
 
 @can('ptn.process')
     @if($canReturnToDvkh)
@@ -234,6 +225,36 @@
         </div>
     @endif
 @endcan
+@component('components.workflow_action_bar', [
+    'number' => $certificateRequest->request_no,
+    'status' => $certificateRequest->displayStatusMeta(),
+    'backUrl' => route('ptn.requests.index'),
+])
+            @can('ptn.process')
+                    @if($certificateRequest->qualityCertificate)
+                        <a href="{{ route('quality-certificates.show', $certificateRequest->qualityCertificate) }}" class="btn btn-success">
+                            <i class="fas fa-file-signature"></i> Xem phiếu đã lập
+                        </a>
+                    @elseif(in_array($certificateRequest->status, ['WAIT_PTN', 'PTN_PROCESSING']))
+                            <form action="{{ route('ptn.requests.receive-and-create-certificate', $certificateRequest) }}" method="POST"
+                                  class="m-0"
+                                  data-loading-lock
+                                  data-loading-message="Đang lập phiếu CNCL từ yêu cầu, vui lòng chờ..."
+                                  onsubmit="if (!confirm('Lập phiếu CNCL từ yêu cầu này?')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
+                                @csrf
+                                <button class="btn btn-primary">
+                                    <i class="fas fa-file-signature"></i> Lập phiếu CNCL
+                                </button>
+                            </form>
+
+                            @if($canReturnToDvkh)
+                                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnToDvkhModal">
+                                    <i class="fas fa-undo"></i> Trả lại DVKH
+                                </button>
+                            @endif
+                    @endif
+            @endcan
+@endcomponent
 @stop
 
 @section('js')

@@ -38,6 +38,9 @@ class CertificateWorkflowTest extends TestCase
     {
         parent::setUp();
 
+        // Device approval has its own tests; workflow tests exercise role and state permissions.
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureLoginDeviceIsApproved::class);
+
         $this->seed([
             PermissionSeeder::class,
             DistributionCenterSeeder::class,
@@ -270,8 +273,8 @@ class CertificateWorkflowTest extends TestCase
         $this->actingAs($dvkh)
             ->get(route('certificate-requests.show', $certificateRequest))
             ->assertOk()
-            ->assertSee('dvkhRejectModal')
-            ->assertSee('Trả lại Trung tâm');
+            ->assertSee('Mở màn hình DVKH xử lý')
+            ->assertDontSee('dvkhRejectModal');
 
         $this->actingAs($dvkh)
             ->post(route('dvkh.requests.reject', $certificateRequest), [
@@ -1559,7 +1562,8 @@ class CertificateWorkflowTest extends TestCase
             ->assertSee($certificate->request->request_no)
             ->assertSee($certificate->request->requester_name)
             ->assertSee($requestUrl, false)
-            ->assertSee('Yêu cầu ký tươi: 2 bản');
+            ->assertSee('Yêu cầu ký tươi')
+            ->assertSee('2 bản');
 
         $this->actingAs($admin)
             ->get(route('certificate-requests.index', ['status_group' => 'all']))
@@ -1574,6 +1578,202 @@ class CertificateWorkflowTest extends TestCase
             ->assertSee($requestUrl, false)
             ->assertSee('Yêu cầu ký tươi')
             ->assertSee('Có - 2 bản');
+    }
+
+    public function test_ptn_and_certificate_action_bars_preserve_state_specific_actions(): void
+    {
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureLoginDeviceIsApproved::class);
+        $center = User::where('username', 'trungtam_np')->firstOrFail();
+        $ptn = User::where('username', 'ptn')->firstOrFail();
+        $manager = User::where('username', 'truongptn')->firstOrFail();
+        $customer = $this->createCustomerForCenter($center);
+        $certificate = $this->createIssuedCertificate($center, $customer, 'INV-ACTION-BARS', [[$this->product, 12]]);
+        $request = $certificate->request;
+        $request->update(['status' => 'PTN_PROCESSING', 'sent_to_ptn_at' => now()]);
+        $certificate->update(['status' => 'WAIT_PTN_MANAGER_APPROVAL', 'signed_at' => null]);
+        $certificateUrl = route('quality-certificates.show', $certificate);
+        $ptnUrl = route('ptn.requests.show', $request);
+
+        $this->actingAs($ptn)->get($ptnUrl)->assertOk()
+            ->assertSee('workflow-action-bar')->assertSee('Xem phiếu đã lập')
+            ->assertSee('Ngày chuyển PTN')->assertSee('data-product-search="ptnProducts"', false)
+            ->assertDontSee('data-target="#returnToDvkhModal"', false);
+        $this->actingAs($manager)->get($certificateUrl)->assertOk()
+            ->assertSee('workflow-action-bar')->assertSee('Đưa vào chờ gửi ký')
+            ->assertSee('Duyệt và gửi ký SmartCA')->assertSee('Từ chối ký')
+            ->assertSee('data-product-search="certificateProducts"', false);
+
+        $certificate->update([
+            'smartca_status' => 'PENDING', 'smartca_requested_at' => now(),
+            'smartca_transaction_id' => 'TEST-ACTION-BAR-TRANSACTION',
+        ]);
+        $this->get($certificateUrl)->assertOk()->assertSee('Kiểm tra kết quả ký')
+            ->assertDontSee('Gửi lại yêu cầu ký')->assertDontSee('Từ chối ký')
+            ->assertDontSee('TEST-ACTION-BAR-TRANSACTION');
+        $certificate->update(['smartca_requested_at' => now()->subMinutes(10)]);
+        $this->get($certificateUrl)->assertOk()->assertSee('Gửi lại yêu cầu ký')
+            ->assertSee('Yêu cầu ký đã quá hạn xác nhận');
+
+        $certificate->update([
+            'status' => 'REJECTED', 'smartca_status' => null, 'rejected_to' => 'PTN',
+            'rejected_reason' => 'Bo sung thong tin test', 'rejected_at' => now(),
+        ]);
+        $request->update([
+            'last_returned_from' => 'TRUONG_PTN', 'last_returned_to' => 'PTN',
+            'last_return_reason' => 'Bo sung thong tin test', 'last_returned_at' => now(),
+        ]);
+        $this->actingAs($ptn)->get($ptnUrl)->assertOk()->assertSee('Trưởng PTN trả lại')
+            ->assertSee('Bo sung thong tin test')->assertSee('Lập phiếu CNCL')->assertSee('Trả lại DVKH');
+        $this->get($certificateUrl)->assertOk()->assertSee('Phiếu đã được trả lại')
+            ->assertSee('Trả lại DVKH');
+
+        $request->update(['status' => 'COMPLETED']);
+        $certificate->update(['status' => 'ISSUED', 'signed_at' => now(), 'smartca_status' => 'SIGNED']);
+        $this->actingAs($manager)->get($certificateUrl)->assertOk()
+            ->assertSee('data-template="single"', false)->assertSee('data-template="batch"', false)
+            ->assertSee('Thao tác khác')->assertSee('Gửi lại email')
+            ->assertDontSee('data-target="#rejectSignatureModal"', false);
+        $certificate->update(['status' => 'REVOKED', 'revoked_reason' => 'Thu hoi test']);
+        $this->get($certificateUrl)->assertOk()->assertSee('Phiếu đã thu hồi, không còn hiệu lực')
+            ->assertDontSee('data-target="#printHardCopyModal"', false)->assertDontSee('Gửi lại email');
+    }
+
+    public function test_full_return_round_trip_resumes_and_issues_signed_certificate(): void
+    {
+        \Illuminate\Support\Facades\Http::preventStrayRequests();
+        \Illuminate\Support\Facades\Mail::fake();
+        Storage::fake('local');
+        $center = User::where('username', 'trungtam_np')->firstOrFail();
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $ptn = User::where('username', 'ptn')->firstOrFail();
+        $manager = User::where('username', 'truongptn')->firstOrFail();
+        $manager->update(['smartca_user_id' => 'TEST-ROUND-TRIP']);
+        $customer = $this->createCustomerForCenter($center);
+        $customer->update([
+            'customer_name' => str_repeat('Cong ty co phan thuong mai va xay dung ', 4),
+            'project_name' => str_repeat('Du an cong trinh ha tang ', 5),
+            'project_address' => str_repeat('Dia diem cong trinh thanh pho Hai Phong ', 6),
+        ]);
+        $salesUnit = $this->createSalesUnitForCenter($center);
+        $productIds = [];
+        for ($i = 1; $i <= 35; $i++) {
+            $product = $this->product->replicate();
+            $product->product_code = 'ROUND-' . $i;
+            $product->product_name = 'San pham ' . $i . ' - ' . str_repeat('Ong nhua PVC DN110 ', 4);
+            $product->unit = $i % 2 ? 'm' : 'cai';
+            $product->save();
+            $productIds[] = $product->id;
+        }
+        $payload = [
+            'customer_mode' => 'existing', 'customer_id' => $customer->id,
+            'sales_unit_id' => $salesUnit->id, 'delivery_date' => now()->toDateString(),
+            'invoice_no' => 'INV-ROUND-TRIP', 'requester_name' => 'Nguoi yeu cau thu nghiem',
+            'require_hard_copy' => '1', 'hard_copy_quantity' => 2, 'is_urgent' => '0',
+            'product_id' => $productIds, 'quantity' => array_fill(0, count($productIds), 12),
+            'request_action' => 'draft',
+        ];
+        $this->captureWorkflowUi('center-create', $this->actingAs($center)->get(route('certificate-requests.create'))->assertOk());
+        $this->actingAs($center)->post(route('certificate-requests.store'), $payload)->assertRedirect();
+        $request = CertificateRequest::where('invoice_no', 'INV-ROUND-TRIP')->firstOrFail();
+        $detailUrl = route('certificate-requests.show', $request);
+        $this->assertSame('DRAFT', $request->status);
+        $this->captureWorkflowUi('center-draft', $this->get($detailUrl)->assertOk()
+            ->assertSee('data-product-search="requestProducts"', false)->assertSee('ĐVT'));
+        $this->captureWorkflowUi('center-edit', $this->get(route('certificate-requests.edit', $request))->assertOk());
+        $this->travel(3)->days();
+        $this->post(route('certificate-requests.submit-draft', $request), ['customer_commitment_confirmed' => 1])->assertRedirect();
+        $this->assertSame('WAIT_DVKH', $request->fresh()->status);
+        $this->assertLessThan(1, app(SlaClockService::class)->elapsedMinutes($request->fresh(), 'DVKH'));
+        $this->captureWorkflowUi('center-wait', $this->get($detailUrl)->assertOk()->assertDontSee('data-target="#submitDraftModal"', false));
+        $this->captureWorkflowUi('center-dashboard', $this->get(route('dashboard'))->assertOk());
+        $dvkhUrl = route('dvkh.requests.show', $request);
+        $this->captureWorkflowUi('dvkh-wait', $this->actingAs($dvkh)->get($dvkhUrl)->assertOk()
+            ->assertSee('data-product-search="dvkhProducts"', false)->assertSee('ĐVT'));
+        $this->captureWorkflowUi('dvkh-list', $this->get(route('dvkh.requests.index'))->assertOk()
+            ->assertSee('Người tạo yêu cầu: Nguoi yeu cau thu nghiem'));
+        $this->captureWorkflowUi('dvkh-dashboard', $this->get(route('dashboard'))->assertOk());
+        $this->post(route('dvkh.requests.approve', $request))->assertRedirect();
+        $this->assertSame('WAIT_PTN', $request->fresh()->status);
+        $this->assertLessThan(1, app(SlaClockService::class)->elapsedMinutes($request->fresh(), 'PTN'));
+        $ptnUrl = route('ptn.requests.show', $request);
+        $this->captureWorkflowUi('ptn-wait', $this->actingAs($ptn)->get($ptnUrl)->assertOk());
+        $this->post(route('ptn.requests.receive-and-create-certificate', $request))->assertRedirect();
+        $oldCertificate = $request->fresh()->qualityCertificate;
+        $this->assertNotNull($oldCertificate);
+        $this->assertSame('WAIT_PTN_MANAGER_APPROVAL', $oldCertificate->status);
+        $this->actingAs($manager)->post(route('quality-certificates.reject-signature', $oldCertificate), [
+            'reject_to' => 'PTN', 'rejected_reason' => 'Kiem tra lai thong tin cong trinh',
+        ])->assertRedirect();
+        $this->assertSame('REJECTED', $oldCertificate->fresh()->status);
+        $this->captureWorkflowUi('ptn-returned', $this->actingAs($ptn)->get($ptnUrl)->assertOk()->assertSee('Trưởng PTN trả lại'));
+        $this->post(route('ptn.requests.return-to-dvkh', $request), ['reason' => 'Can DVKH xac nhan lai'])->assertRedirect();
+        $this->assertSame('WAIT_DVKH', $request->fresh()->status);
+        $this->captureWorkflowUi('dvkh-returned', $this->actingAs($dvkh)->get($dvkhUrl)->assertOk()->assertSee('PTN trả lại'));
+        $this->post(route('dvkh.requests.reject', $request), ['reason' => 'Bo sung dia diem cong trinh'])->assertRedirect();
+        $this->assertSame('DRAFT', $request->fresh()->status);
+        $this->assertNull($request->fresh()->submitted_at);
+        $this->captureWorkflowUi('center-returned', $this->actingAs($center)->get($detailUrl)->assertOk()->assertSee('DVKH trả lại yêu cầu'));
+        $payload['note'] = 'Da kiem tra lai thong tin';
+        $this->put(route('certificate-requests.update', $request), $payload)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post(route('certificate-requests.submit-draft', $request), ['customer_commitment_confirmed' => 1])->assertRedirect();
+        $this->assertNull($request->fresh()->last_returned_to);
+        $this->actingAs($dvkh)->post(route('dvkh.requests.approve', $request))->assertRedirect();
+        $this->actingAs($ptn)->post(route('ptn.requests.receive-and-create-certificate', $request))->assertRedirect();
+        $certificate = $request->fresh()->qualityCertificate;
+        $this->assertNotNull($certificate);
+        $this->assertNotSame($oldCertificate->id, $certificate->id);
+        $this->assertSame('REJECTED', $oldCertificate->fresh()->status);
+        $certificateUrl = route('quality-certificates.show', $certificate);
+        $this->captureWorkflowUi('certificate-approval', $this->actingAs($manager)->get($certificateUrl)->assertOk());
+        $this->post(route('quality-certificates.approve-for-signing', $certificate))->assertRedirect();
+        $this->assertSame('READY_TO_SIGN', $certificate->fresh()->status);
+
+        config(['services.smartca.pades_enabled' => true, 'services.smartca.pades_provider' => 'vnpt', 'services.smartca.sign_type' => 'hash']);
+        $api = ['endpoint' => 'mock://smartca', 'request' => [], 'response' => []];
+        $this->mock(\App\Services\SignedCertificatePdfService::class, function ($mock) {
+            $mock->shouldReceive('render')->once()->andReturn('%PDF-1.4 test unsigned');
+        });
+        $this->mock(\App\Services\SmartCaService::class, function ($mock) use ($api) {
+            $mock->shouldReceive('getCertificate')->once()->andReturn($api + ['certificate' => ['cert_data' => 'TEST-CERT', 'serial_number' => 'TEST-SERIAL']]);
+            $mock->shouldReceive('calculatePdfHash')->once()->andReturn($api + [
+                'hash_hex' => hash('sha256', 'test'), 'hash_base64' => base64_encode('test'),
+                'transaction_id' => 'TEST-HASH-TRAN', 'file_id' => 'TEST-FILE',
+            ]);
+            $mock->shouldReceive('initiateHashSignature')->once()->andReturn($api + [
+                'transaction_id' => 'TEST-SIGN-TRAN', 'tran_code' => 'TEST-CODE',
+                'doc_id' => 'TEST-DOC', 'data_hash' => hash('sha256', 'test'),
+            ]);
+            $mock->shouldReceive('signatureStatus')->once()->andReturn([
+                'endpoint' => 'mock://status', 'request' => [], 'response' => ['data' => ['signatures' => [
+                    ['doc_id' => 'TEST-DOC', 'signature_value' => 'TEST-SIGNATURE', 'timestamp_signature' => '20261016120000'],
+                ]]],
+            ]);
+            $mock->shouldReceive('externalizePdfSignature')->once()->andReturn($api + ['signed_pdf' => '%PDF-1.4 /ByteRange [0 1 2 3] test mock PDF']);
+        });
+        $this->post(route('quality-certificates.sign', $certificate))->assertRedirect()->assertSessionMissing('error');
+        $this->assertSame('SIGN_PENDING', $certificate->fresh()->status);
+        $this->captureWorkflowUi('certificate-pending', $this->get($certificateUrl)->assertOk());
+        $this->post(route('quality-certificates.smartca-status', $certificate))->assertRedirect()->assertSessionMissing('error');
+        $this->assertSame('ISSUED', $certificate->fresh()->status);
+        $this->assertSame('COMPLETED', $request->fresh()->status);
+        $this->assertSame('SIGNED_PDF', $certificate->fresh()->pades_status);
+        $this->captureWorkflowUi('certificate-issued', $this->get($certificateUrl)->assertOk());
+        $this->captureWorkflowUi('center-issued', $this->actingAs($center)->get($detailUrl)->assertOk()->assertSee('Xem phiếu đã phát hành'));
+        $this->captureWorkflowUi('center-list', $this->get(route('certificate-requests.index', ['status_group' => 'all']))->assertOk());
+        $this->get(route('quality-certificates.pdf', $certificate))->assertOk();
+        $this->travelBack();
+    }
+
+    private function captureWorkflowUi(string $name, \Illuminate\Testing\TestResponse $response): void
+    {
+        $directory = getenv('CNCL_UI_SNAPSHOT_DIR');
+        if (!$directory) {
+            return;
+        }
+        if (!is_dir($directory)) {
+            mkdir($directory, 0700, true);
+        }
+        file_put_contents($directory . DIRECTORY_SEPARATOR . $name . '.html', $response->getContent());
     }
 
     private function createProduct(): Product

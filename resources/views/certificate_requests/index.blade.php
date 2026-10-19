@@ -5,6 +5,22 @@
 @section('css')
     <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260819-1') }}">
     <style>
+        .filter-toolbar.certificate-request-filter-toolbar {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+        .certificate-request-filter-toolbar > * { min-width: 0; }
+        .certificate-request-filter-toolbar .filter-title { grid-column: 1 / -1; }
+        .certificate-request-filter-toolbar .filter-keyword { grid-column: span 2; }
+        .certificate-request-filter-toolbar .filter-actions { grid-column: 1 / -1; }
+        .request-list-card .card-header { flex-wrap: wrap; gap: 8px; }
+        .request-list-card .card-header .card-title { float: none; }
+        @media (max-width: 991.98px) {
+            .filter-toolbar.certificate-request-filter-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 575.98px) {
+            .filter-toolbar.certificate-request-filter-toolbar { grid-template-columns: minmax(0, 1fr); }
+            .certificate-request-filter-toolbar .filter-keyword { grid-column: 1 / -1; }
+        }
         .request-status-tabs {
             display: flex;
             gap: 8px;

@@ -55,47 +55,6 @@
             overflow-wrap: anywhere;
         }
 
-        .dvkh-action-box {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            z-index: 1030;
-            border-top: 1px solid #d9e1e9;
-            background: #fff;
-            padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
-            box-shadow: 0 -3px 12px rgba(0, 0, 0, .08);
-        }
-
-        .dvkh-action-layout {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-        }
-
-        .dvkh-action-summary {
-            min-width: 0;
-            overflow-wrap: anywhere;
-        }
-
-        .dvkh-action-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-
-        .dvkh-action-spacer {
-            height: 160px;
-        }
-
-        @media print {
-            .dvkh-action-box, .dvkh-action-spacer {
-                display: none;
-            }
-        }
-
         .dvkh-products th,
         .dvkh-products td {
             vertical-align: middle !important;
@@ -126,24 +85,6 @@
         }
 
         @media (max-width: 767.98px) {
-            .dvkh-action-layout {
-                align-items: stretch;
-                flex-direction: column;
-            }
-
-            .dvkh-action-buttons {
-                flex-shrink: 1;
-            }
-
-            .dvkh-action-buttons > * {
-                flex: 1 1 180px;
-            }
-
-            .dvkh-action-buttons .btn {
-                width: 100%;
-                white-space: normal;
-            }
-
             .dvkh-page .content-header-bar {
                 align-items: flex-start !important;
                 flex-direction: column;
@@ -173,11 +114,6 @@
             <small class="text-muted">{{ $certificateRequest->request_no }}</small>
         </div>
 
-        <div class="page-actions">
-            <a href="{{ route('dvkh.requests.index') }}" class="btn btn-default">
-                <i class="fas fa-arrow-left"></i> Quay lại
-            </a>
-        </div>
     </div>
 </div>
 @stop
@@ -292,49 +228,13 @@
         </div>
     @endif
 
-    @can('dvkh.process')
-        @if($certificateRequest->status === 'WAIT_DVKH')
-            @php
-                $approveConfirm = $invoiceDuplicates->isNotEmpty()
-                    ? 'Số hóa đơn của yêu cầu này đang trùng với yêu cầu khác. Bạn vẫn muốn xác nhận và chuyển sang PTN?'
-                    : 'Xác nhận yêu cầu này và chuyển sang PTN?';
-            @endphp
-
-            <div class="dvkh-action-box" id="dvkhActionBar" role="region" aria-label="Xử lý yêu cầu">
-                <div class="dvkh-action-layout">
-                    <div class="dvkh-action-summary">
-                        <div class="font-weight-bold">{{ $certificateRequest->request_no }}</div>
-                        <div class="text-muted small">
-                            Chờ DVKH xử lý
-                            @if($invoiceDuplicates->isNotEmpty())
-                                <span class="badge badge-warning ml-1"><i class="fas fa-exclamation-triangle"></i> Trùng số hóa đơn</span>
-                            @endif
-                        </div>
-                    </div>
-
-                    <div class="dvkh-action-buttons">
-                        <button type="button" class="btn btn-outline-danger" data-toggle="modal" data-target="#dvkhRejectModal">
-                            <i class="fas fa-undo"></i> Trả lại Trung tâm
-                        </button>
-                        <form action="{{ route('dvkh.requests.approve', $certificateRequest) }}"
-                              method="POST"
-                              class="d-inline"
-                              data-loading-message="Đang xác nhận yêu cầu và chuyển sang PTN, vui lòng chờ..."
-                              onsubmit="if (!confirm({!! json_encode($approveConfirm, JSON_UNESCAPED_UNICODE) !!})) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
-                            @csrf
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-check"></i> Xác nhận chuyển PTN
-                            </button>
-                        </form>
-
-                    </div>
-                </div>
-            </div>
-        @endif
-    @endcan
-
+    <div class="workflow-detail-summary">
+        <span><strong>Ngày gửi DVKH:</strong> {{ optional($certificateRequest->submitted_at)->format('d/m/Y H:i') ?: '-' }}</span>
+        <span><strong>Ngày chuyển PTN:</strong> {{ optional($certificateRequest->sent_to_ptn_at)->format('d/m/Y H:i') ?: '-' }}</span>
+        <span><strong>Người tạo yêu cầu:</strong> {{ $certificateRequest->requester_name ?: 'Chưa cung cấp' }}</span>
+    </div>
     <div class="row">
-        <div class="col-lg-5">
+        <div class="col-lg-6 workflow-info">
             <div class="card card-primary card-outline">
                 <div class="card-header bg-white">
                     <h3 class="card-title"><i class="fas fa-file-alt"></i> Thông tin yêu cầu</h3>
@@ -429,7 +329,7 @@
             </div>
         </div>
 
-        <div class="col-lg-7">
+        <div class="col-lg-6 workflow-info">
             <div class="card card-info card-outline">
                 <div class="card-header bg-white">
                     <h3 class="card-title"><i class="fas fa-building"></i> Khách hàng / Công trình</h3>
@@ -464,13 +364,15 @@
     </div>
 
     <div class="card">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <h3 class="card-title mb-0"><i class="fas fa-box"></i> Danh sách sản phẩm</h3>
-            <span class="badge badge-info">Tổng số: {{ $certificateRequest->details->count() }}</span>
+        <div class="card-header bg-white">
+            <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:8px">
+                <h3 class="card-title mb-0"><i class="fas fa-box"></i> Danh sách sản phẩm <small id="dvkhProductsCount">{{ $certificateRequest->details->count() }} dòng</small></h3>
+                <input type="search" class="form-control form-control-sm workflow-product-search" data-product-search="dvkhProducts" aria-label="Tìm mã hoặc tên sản phẩm" placeholder="Tìm mã hoặc tên sản phẩm">
+            </div>
         </div>
 
-        <div class="card-body table-responsive p-0">
-            <table class="table table-bordered table-hover mb-0 dvkh-products">
+        <div class="card-body table-responsive p-0 workflow-detail-table">
+            <table id="dvkhProducts" class="table table-bordered table-hover mb-0 dvkh-products">
                 <thead class="thead-light">
                     <tr>
                         <th class="col-center" style="width:60px">STT</th>
@@ -479,27 +381,29 @@
                         <th class="col-center" style="width:140px">Kích thước</th>
                         <th>Yêu cầu kỹ thuật</th>
                         <th class="col-center" style="width:150px">Tiêu chuẩn</th>
+                        <th class="col-center">ĐVT</th>
                         <th class="col-center" style="width:120px">Số lượng</th>
                     </tr>
                 </thead>
 
                 <tbody>
                     @forelse($certificateRequest->details as $detail)
-                        <tr>
+                        <tr data-product-text="{{ ($detail->product->product_code ?? '') . ' ' . ($detail->product->product_name ?? '') }}">
                             <td class="col-center">{{ $loop->iteration }}</td>
                             <td>{{ $detail->product->product_code ?? '-' }}</td>
-                            <td>
+                            <td class="workflow-product-name">
                                 <div class="font-weight-bold">{{ $detail->product->product_name ?? '-' }}</div>
                                 <div class="text-muted small">{{ $detail->product->group->name ?? '' }}</div>
                             </td>
                             <td class="col-center">{{ $detail->product->nominal_size ?? '-' }}</td>
                             <td>{{ $detail->product->technical_requirements ?? '-' }}</td>
                             <td class="col-center">{{ $detail->product->qualityStandard->code ?? '-' }}</td>
+                            <td class="col-center">{{ $detail->product->unit ?? '-' }}</td>
                             <td class="col-center font-weight-bold">{{ rtrim(rtrim(number_format($detail->quantity, 2, '.', ''), '0'), '.') }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">
+                            <td colspan="8" class="text-center text-muted py-4">
                                 <i class="fas fa-box-open fa-2x mb-2"></i>
                                 <div>Yêu cầu chưa có sản phẩm.</div>
                             </td>
@@ -510,19 +414,22 @@
         </div>
     </div>
 
+    <details class="mb-3">
+    <summary class="mb-2" style="cursor:pointer">Lịch sử xử lý yêu cầu</summary>
     @include('quality_certificates.partials.history_timeline', [
         'logs' => $requestHistoryLogs,
         'title' => 'Lịch sử xử lý yêu cầu',
     ])
+    </details>
 
     @can('dvkh.process')
         @if($certificateRequest->status === 'WAIT_DVKH')
-            <div class="dvkh-action-spacer" id="dvkhActionSpacer" aria-hidden="true"></div>
             <div class="modal fade" id="dvkhRejectModal" tabindex="-1">
                 <div class="modal-dialog">
                     <form method="POST"
                           action="{{ route('dvkh.requests.reject', $certificateRequest) }}"
                           class="modal-content"
+                          data-loading-lock
                           data-loading-message="Đang trả lại yêu cầu cho Trung tâm, vui lòng chờ..."
                           onsubmit="window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
                         @csrf
@@ -550,32 +457,14 @@
             </div>
         @endif
     @endcan
+    @include('dvkh_requests.partials.detail_actions')
 </div>
 @stop
 
 @section('js')
+@if($errors->has('reason'))
 <script>
-    $(function () {
-        const bar = document.getElementById('dvkhActionBar');
-        const spacer = document.getElementById('dvkhActionSpacer');
-        const content = document.querySelector('.content-wrapper');
-        if (!bar || !spacer || !content) return;
-
-        function syncActionBar() {
-            const bounds = content.getBoundingClientRect();
-            bar.style.left = Math.max(0, bounds.left) + 'px';
-            bar.style.right = Math.max(0, window.innerWidth - bounds.right) + 'px';
-            spacer.style.height = (bar.getBoundingClientRect().height + 16) + 'px';
-        }
-
-        syncActionBar();
-        window.addEventListener('resize', syncActionBar);
-        if (window.ResizeObserver) {
-            const observer = new ResizeObserver(syncActionBar);
-            observer.observe(content);
-            observer.observe(bar);
-        }
-        $(document).on('shown.lte.pushmenu collapsed.lte.pushmenu', syncActionBar);
-    });
+    $(function () { $('#dvkhRejectModal').modal('show'); });
 </script>
+@endif
 @stop

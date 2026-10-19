@@ -298,6 +298,7 @@ class RoleWorkspaceAccessTest extends TestCase
 
     public function test_distribution_center_user_cannot_open_other_center_request_or_certificate(): void
     {
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureLoginDeviceIsApproved::class);
         $npUser = User::where('username', 'trungtam_np')->firstOrFail();
         $tpUser = User::where('username', 'trungtam_tp')->firstOrFail();
         $admin = User::where('username', 'admin')->firstOrFail();
@@ -332,6 +333,7 @@ class RoleWorkspaceAccessTest extends TestCase
 
     public function test_internal_processing_roles_cannot_view_center_drafts_before_submission(): void
     {
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureLoginDeviceIsApproved::class);
         $npUser = User::where('username', 'trungtam_np')->firstOrFail();
         $dvkh = User::where('username', 'dvkh')->firstOrFail();
         $ptn = User::where('username', 'ptn')->firstOrFail();

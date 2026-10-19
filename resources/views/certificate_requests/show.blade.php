@@ -35,6 +35,19 @@
 @endif
 
 @include('quality_certificates.partials.workflow_steps', ['steps' => $requestWorkflowSteps])
+@if($certificateRequest->status === 'DRAFT' && $certificateRequest->effectiveLastReturnedTo() === 'TRUNG_TAM')
+    <div class="alert alert-warning">
+        <strong><i class="fas fa-undo"></i> DVKH trả lại yêu cầu</strong>
+        <div>{{ $certificateRequest->last_return_reason ?: 'Vui lòng xem ghi chú và lịch sử để bổ sung thông tin.' }}</div>
+        <small>{{ optional($certificateRequest->last_returned_at)->format('d/m/Y H:i') }} {{ $certificateRequest->lastReturnedBy->name ?? '' }}</small>
+    </div>
+@endif
+<div class="workflow-detail-summary">
+    <span><strong>Ngày gửi DVKH:</strong> {{ optional($certificateRequest->submitted_at)->format('d/m/Y H:i') ?: 'Chưa gửi' }}</span>
+    <span><strong>Người tạo yêu cầu:</strong> {{ $certificateRequest->requester_name ?: 'Chưa cung cấp' }}</span>
+    <span><strong>Ký tươi:</strong> {{ $certificateRequest->require_hard_copy ? $certificateRequest->hard_copy_quantity . ' bản' : 'Không' }}</span>
+    <span><strong>Sản phẩm:</strong> {{ $certificateRequest->details->count() }} dòng</span>
+</div>
 
 @if(($invoiceDuplicates ?? collect())->isNotEmpty())
     <div class="alert alert-warning">
@@ -81,7 +94,7 @@
 @endif
 
 <div class="row">
-    <div class="col-md-4">
+    <div class="col-lg-6 workflow-info">
         <div class="card card-primary card-outline">
             <div class="card-header">
                 <h3 class="card-title">Thông tin yêu cầu</h3>
@@ -166,7 +179,7 @@
         </div>
     </div>
 
-    <div class="col-md-8">
+    <div class="col-lg-6 workflow-info">
         <div class="card card-info card-outline">
             <div class="card-header">
                 <h3 class="card-title">Khách hàng / Công trình</h3>
@@ -186,13 +199,14 @@
 
 <div class="card">
     <div class="card-header bg-white">
-        <h3 class="card-title">
-            <i class="fas fa-box"></i> Danh sách sản phẩm
-        </h3>
+        <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:8px">
+            <h3 class="card-title"><i class="fas fa-box"></i> Danh sách sản phẩm <small id="requestProductsCount">{{ $certificateRequest->details->count() }} dòng</small></h3>
+            <input type="search" class="form-control form-control-sm workflow-product-search" data-product-search="requestProducts" aria-label="Tìm mã hoặc tên sản phẩm" placeholder="Tìm mã hoặc tên sản phẩm">
+        </div>
     </div>
 
-    <div class="card-body table-responsive p-0">
-        <table class="table table-bordered table-hover mb-0">
+    <div class="card-body table-responsive p-0 workflow-detail-table">
+        <table id="requestProducts" class="table table-bordered table-hover mb-0">
             <thead class="thead-light">
                 <tr>
                     <th style="width:60px">STT</th>
@@ -201,20 +215,22 @@
                     <th>Kích thước</th>
                     <th>Yêu cầu kỹ thuật</th>
                     <th>Tiêu chuẩn</th>
+                    <th>ĐVT</th>
                     <th style="width:120px">Số lượng</th>
                 </tr>
             </thead>
 
             <tbody>
                 @foreach($certificateRequest->details as $detail)
-                    <tr>
+                    <tr data-product-text="{{ ($detail->product->product_code ?? '') . ' ' . ($detail->product->product_name ?? '') }}">
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $detail->product->product_code ?? '—' }}</td>
-                        <td>{{ $detail->product->product_name ?? '—' }}</td>
+                        <td class="workflow-product-name">{{ $detail->product->product_name ?? '—' }}</td>
                         <td>{{ $detail->product->nominal_size ?? '—' }}</td>
                         <td>{{ $detail->product->technical_requirements ?? '—' }}</td>
                         <td>{{ $detail->product->qualityStandard->code ?? '—' }}</td>
-                        <td>{{ $detail->quantity }}</td>
+                        <td>{{ $detail->product->unit ?? '-' }}</td>
+                        <td>{{ rtrim(rtrim(number_format($detail->quantity, 2, '.', ''), '0'), '.') }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -222,10 +238,13 @@
     </div>
 </div>
 
+<details class="mb-3">
+<summary class="mb-2" style="cursor:pointer">Lịch sử xử lý yêu cầu</summary>
 @include('quality_certificates.partials.history_timeline', [
     'logs' => $requestHistoryLogs,
     'title' => 'Lịch sử xử lý yêu cầu',
 ])
+</details>
 
 @if($certificateRequest->status === 'DRAFT')
     @can('request.update')

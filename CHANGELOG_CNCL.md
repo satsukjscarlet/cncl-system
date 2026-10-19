@@ -1,3 +1,44 @@
+## 2026-10-16 - Ra soat vong tra lai va dong bo giao dien DVKH/Trung tam
+
+File da sua:
+- `resources/views/components/workflow_action_bar.blade.php`: dung chung thanh thao tac cho bon man chi tiet, ho tro canh bao trung hoa don, ket qua tim san pham rong va chieu rong bang tren mobile.
+- `resources/views/certificate_requests/partials/detail_actions.blade.php`: dung component chung, giu dieu huong theo vai tro va nut sua/gui nhap.
+- `resources/views/certificate_requests/show.blade.php`: them tom tat ngay gui/nguoi yeu cau, canh bao DVKH tra lai, don vi tinh, tim san pham, thu gon lich su va can lai hai cot thong tin.
+- `resources/views/dvkh_requests/partials/detail_actions.blade.php`: tach thanh thao tac DVKH, giu xac nhan chuyen PTN va tra lai; dung @js de nhung noi dung confirm an toan trong HTML.
+- `resources/views/dvkh_requests/show.blade.php`: bo CSS/JS thanh thao tac trung lap, them tom tat ngay gui/chuyen, tim san pham, don vi tinh va lich su thu gon.
+- `resources/views/dvkh_requests/index.blade.php`: sua loi dau nhay trong onsubmit xac nhan chuyen PTN, bo sung data-loading-lock.
+- `resources/views/certificate_requests/index.blade.php`: sua grid bo loc tran ngang tren desktop va tieu de danh sach bi dinh dong.
+- `resources/views/ptn_requests/show.blade.php`, `resources/views/quality_certificates/show.blade.php`: giu chieu rong cot ten san pham phu hop tren mobile.
+- `resources/views/dashboard/index.blade.php`: dung Chart.js local thay CDN khong co version.
+- `public/vendor/chartjs/chart.umd.js`, `public/vendor/chartjs/LICENSE.md`: them Chart.js 4.5.1 va giay phep MIT.
+- `tests/Feature/CertificateWorkflowTest.php`: them test tron vong tra lai/sua/gui lai/lap moi/ky/phat hanh, SLA va xuat HTML de kiem tra trinh duyet; bo middleware duyet thiet bi rieng trong nhom test workflow.
+- `tests/Feature/RoleWorkspaceAccessTest.php`: tach dieu kien duyet thiet bi khoi hai test phan quyen ho so, giu cac test thiet bi rieng.
+- `scripts/check-workflow-ui.cjs`: kiem tra Playwright chi doc snapshot, chan request ghi du lieu; kiem tra responsive, sidebar, loc san pham, modal, Cancel/loading va bieu do.
+- `docs/RA_SOAT_GIAO_DIEN_WORKFLOW_2026_10_16.md`: ghi pham vi, cac loi da xu ly va huong dan chay lai.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Kiem tra:
+- 51 feature test, 743 assertions thanh cong tren SQLite :memory:; SmartCA/mail/storage dung mock/fake trong test tron vong.
+- Playwright: 34/34 truong hop thanh cong tren desktop 1440x900 va mobile 390x844, du lieu ten dai va 35 dong san pham; kiem tra Cancel khong gui POST, loading duoc dong va canvas bieu do khong trong.
+- 11 Blade view/partial/component qua TOKEN_PARSE; `git diff --check`.
+- Khong migrate/seed hay thay doi du lieu MySQL; khong gui yeu cau ky/mail that.
+
+## 2026-10-16 - Toi uu chi tiet PTN va phieu CNCL
+
+File da sua:
+- `resources/views/components/workflow_action_bar.blade.php`: thanh thao tac co dinh dung chung hai man, do chieu rong vung noi dung/chieu cao thanh; khoang dem cuoi trang, bo cuc mobile, tim nhanh san pham va tieu de bang bam khi cuon.
+- `resources/views/ptn_requests/show.blade.php`: di chuyen nut lap/xem phieu va tra DVKH xuong thanh thao tac; hien ngay gui/chuyen PTN, ly do tra lai, don vi tinh, tim nhanh san pham va thu gon lich su.
+- `resources/views/quality_certificates/show.blade.php`: can lai thong tin, them tom tat, canh bao tra lai/qua han/thu hoi, don vi tinh va tim nhanh; thu gon lich su, ma giao dich SmartCA chi hien cho Admin.
+- `resources/views/quality_certificates/partials/detail_actions.blade.php`: tach cac nut hien co theo quyen/trang thai; gom gui lai email va yeu cau cap lai vao Thao tac khac, giu nut In don/In bo de truy cap.
+- `tests/Feature/CertificateWorkflowTest.php`: them test trang thai/phan quyen cua thanh thao tac; cap nhat assertion ky tuoi cu cho bo cuc danh sach tach cot hien tai.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Kiem tra:
+- 3 feature test, 74 assertions thanh cong tren SQLite :memory:.
+- Render du lieu yeu cau 355 va phieu 310 thanh cong; kiem tra PHP sau bien dich Blade cho 4 view/component.
+- `git diff --check`; khong migrate/seed hay thay doi du lieu MySQL.
+- Chua kiem tra truc quan bang trinh duyet.
+
 ## 2026-10-16 - Hien nguoi tao yeu cau trong danh sach DVKH
 
 File da sua:

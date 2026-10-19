@@ -9,9 +9,7 @@
         <small class="text-muted">{{ $qualityCertificate->certificate_no }}</small>
     </div>
 
-    <a href="{{ route('quality-certificates.index') }}" class="btn btn-default">
-        <i class="fas fa-arrow-left"></i> Quay lại
-    </a>
+
 </div>
 @stop
 
@@ -46,7 +44,9 @@
 @endphp
 
 @if($emergencyPrintLogs->isNotEmpty())
-    @php($latestEmergencyPrintLog = $emergencyPrintLogs->sortByDesc('created_at')->first())
+    @php
+        $latestEmergencyPrintLog = $emergencyPrintLogs->sortByDesc('created_at')->first();
+    @endphp
     <div class="alert alert-warning">
         <i class="fas fa-exclamation-triangle"></i>
         Phiếu này đã từng được in ký tươi khẩn cấp
@@ -56,8 +56,31 @@
     </div>
 @endif
 
+@if($qualityCertificate->status === 'REJECTED')
+    <div class="alert alert-warning">
+        <strong><i class="fas fa-undo"></i> Phiếu đã được trả lại</strong>
+        <div>{{ $qualityCertificate->rejected_reason ?: '-' }}</div>
+        <small>{{ optional($qualityCertificate->rejected_at)->format('d/m/Y H:i') }} {{ $qualityCertificate->rejectedBy->name ?? '' }}</small>
+    </div>
+@elseif($qualityCertificate->status === 'REVOKED')
+    <div class="alert alert-danger">
+        <strong><i class="fas fa-ban"></i> Phiếu đã thu hồi, không còn hiệu lực</strong>
+        <div>{{ $qualityCertificate->revoked_reason ?: '-' }}</div>
+    </div>
+@elseif(!$qualityCertificate->signed_at && ($smartCaCanResend || $qualityCertificate->smartca_status === 'PENDING'))
+    <div class="alert {{ $smartCaCanResend ? 'alert-warning' : 'alert-info' }}">
+        <strong>{{ $smartCaCanResend ? 'Yêu cầu ký đã quá hạn xác nhận' : 'Đang chờ xác nhận trên VNPT SmartCA' }}</strong>
+        <div>Gửi ký: {{ optional($qualityCertificate->smartca_requested_at)->format('d/m/Y H:i') ?: '-' }}; Hạn xác nhận: {{ optional($smartCaExpiresAt)->format('d/m/Y H:i') ?: '-' }}</div>
+    </div>
+@endif
+<div class="workflow-detail-summary">
+    <span><strong>Trung tâm:</strong> {{ $qualityCertificate->request->distributionCenter->name ?? '-' }}</span>
+    <span><strong>Người tạo yêu cầu:</strong> {{ $qualityCertificate->request->requester_name ?? '-' }}</span>
+    <span><strong>Ký tươi:</strong> {{ $qualityCertificate->request?->require_hard_copy ? $qualityCertificate->request->hard_copy_quantity . ' bản' : 'Không' }}</span>
+    <span><strong>Sản phẩm:</strong> {{ $qualityCertificate->details->count() }} dòng</span>
+</div>
 <div class="row">
-    <div class="col-md-4">
+    <div class="col-lg-6 workflow-info">
         <div class="card card-primary card-outline">
             <div class="card-header">
                 <h3 class="card-title">Thông tin phiếu</h3>
@@ -149,175 +172,17 @@
                     <p><strong>Gửi ký lúc:</strong> {{ $qualityCertificate->smartca_requested_at ? $qualityCertificate->smartca_requested_at->format('d/m/Y H:i') : '-' }}</p>
                     <p><strong>Hạn xác nhận:</strong> {{ $smartCaExpiresAt ? $smartCaExpiresAt->format('d/m/Y H:i') : '-' }}</p>
                 @endif
-                @if ($qualityCertificate->smartca_transaction_id)
-                    <p><strong>Mã giao dịch:</strong> <code>{{ $qualityCertificate->smartca_transaction_id }}</code></p>
-                @endif
+                @role('Admin')
+                    @if ($qualityCertificate->smartca_transaction_id)
+                        <details class="mb-3"><summary>Thông tin kỹ thuật SmartCA</summary>
+                            <p class="mt-2"><strong>Mã giao dịch:</strong> <code>{{ $qualityCertificate->smartca_transaction_id }}</code></p>
+                        </details>
+                    @endif
+                @endrole
                 <p><strong>Số lần in ký tươi:</strong> {{ $qualityCertificate->print_count }}</p>
             </div>
 
-            <div class="card-footer">
-                <div class="d-flex flex-wrap align-items-center" style="gap:8px">
-                    @can('certificate.view')
-                        @if(!auth()->user()->hasRole('TrungTam') || ($qualityCertificate->signed_at && in_array($qualityCertificate->status, ['ISSUED', 'REVOKED'], true) && $qualityCertificate->pades_status === 'SIGNED_PDF' && filled($qualityCertificate->pdf_path)))
-                        <a href="{{ route('quality-certificates.pdf', $qualityCertificate) }}" target="_blank" class="btn btn-info">
-                            <i class="fas fa-file-pdf"></i> {{ auth()->user()->hasRole('TrungTam') ? 'Xem PDF đã ký' : 'Xem PDF' }}
-                        </a>
-                        @endif
-                    @endcan
 
-                    @if ($qualityCertificate->signed_at)
-                        @can('certificate.email')
-                            @if($qualityCertificate->status !== 'REVOKED')
-                                <form action="{{ route('quality-certificates.resend-email', $qualityCertificate) }}" method="POST"
-                                      class="d-inline"
-                                      data-loading-lock
-                                      data-loading-message="Đang gửi lại email phiếu CNCL, vui lòng chờ..."
-                                      onsubmit="if (!confirm('Gửi lại email phiếu CNCL cho Trung tâm phân phối?')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
-                                    @csrf
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-envelope"></i> Gửi lại email
-                                    </button>
-                                </form>
-                            @endif
-                        @endcan
-
-                        <button class="btn btn-secondary" disabled>
-                            <i class="fas fa-lock"></i> Phiếu đã khóa
-                        </button>
-
-                        @can('certificate.print')
-                            @if($qualityCertificate->status !== 'REVOKED')
-                                @if($qualityCertificate->signed_at)
-                                    <button type="button"
-                                            class="btn btn-warning js-print-hard-copy"
-                                            data-toggle="modal"
-                                            data-target="#printHardCopyModal"
-                                            data-template="single"
-                                            data-mode="normal"
-                                            data-label="In đơn"
-                                            data-description="In theo mẫu ký tươi hiện tại, giữ vùng ghi chú/chữ ký cố định trên tất cả các trang.">
-                                        <i class="fas fa-print"></i> In đơn
-                                    </button>
-                                    <button type="button"
-                                            class="btn btn-info js-print-hard-copy"
-                                            data-toggle="modal"
-                                            data-target="#printHardCopyModal"
-                                            data-template="batch"
-                                            data-mode="normal"
-                                            data-label="In bộ"
-                                            data-description="In theo mẫu phân trang mới, các trang trước tận dụng diện tích bảng và chỉ chừa khoảng ký ở trang cuối.">
-                                        <i class="fas fa-layer-group"></i> In bộ
-                                    </button>
-                                @elseif($canEmergencyPrintHardCopy)
-                                    <button type="button"
-                                            class="btn btn-outline-warning js-print-hard-copy"
-                                            data-toggle="modal"
-                                            data-target="#printHardCopyModal"
-                                            data-template="single"
-                                            data-mode="emergency"
-                                            data-label="In đơn khẩn cấp"
-                                            data-description="Phiếu chưa ký số. Chỉ dùng khi SmartCA lỗi/quá hạn hoặc khách hàng cần gấp và phiếu đã vào bước chờ ký số. Thao tác sẽ được lưu lịch sử in khẩn cấp.">
-                                        <i class="fas fa-print"></i> In đơn khẩn cấp
-                                    </button>
-                                    <button type="button"
-                                            class="btn btn-outline-info js-print-hard-copy"
-                                            data-toggle="modal"
-                                            data-target="#printHardCopyModal"
-                                            data-template="batch"
-                                            data-mode="emergency"
-                                            data-label="In bộ khẩn cấp"
-                                            data-description="Phiếu chưa ký số. In theo mẫu phân trang mới và chỉ chừa khoảng ký ở trang cuối. Thao tác sẽ được lưu lịch sử in khẩn cấp.">
-                                        <i class="fas fa-layer-group"></i> In bộ khẩn cấp
-                                    </button>
-                                @endif
-                            @endif
-                        @endcan
-
-                        @can('request.create')
-                            @if($qualityCertificate->canRequestReissue())
-                                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#reissueModal">
-                                    <i class="fas fa-redo"></i> Yêu cầu cấp lại
-                                </button>
-                            @endif
-                        @endcan
-                    @else
-                        @can('certificate.sign')
-                            @if ($qualityCertificate->status === 'REJECTED')
-                                @unless($canReturnRejectedCertificateRequestToDvkh)
-                                    <button class="btn btn-secondary" disabled>
-                                        <i class="fas fa-undo"></i> Phiếu đã trả lại
-                                    </button>
-                                @endunless
-                            @elseif (in_array($qualityCertificate->smartca_status, ['PENDING', 'EXPIRED'], true) && $qualityCertificate->smartca_transaction_id)
-                                <form action="{{ route('quality-certificates.smartca-status', $qualityCertificate) }}"
-                                      method="POST"
-                                      class="d-inline"
-                                      onsubmit="window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message'))"
-                                      data-loading-lock
-                                      data-loading-message="Đang kiểm tra kết quả ký VNPT SmartCA và gửi email nếu ký thành công. Vui lòng chờ...">
-                                    @csrf
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-sync"></i> Kiểm tra kết quả ký
-                                    </button>
-                                </form>
-                                @if($smartCaCanResend)
-                                    <form action="{{ route('quality-certificates.sign', $qualityCertificate) }}" method="POST"
-                                          class="d-inline"
-                                          data-loading-lock
-                                          data-loading-message="Đang gửi lại yêu cầu ký sang VNPT SmartCA. Vui lòng chờ..."
-                                          onsubmit="if (!confirm('Gửi lại yêu cầu ký phiếu này sang VNPT SmartCA? Hệ thống sẽ kiểm tra giao dịch cũ trước khi gửi lại.')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
-                                        @csrf
-                                        <button type="submit" class="btn btn-warning">
-                                            <i class="fas fa-file-signature"></i> Gửi lại yêu cầu ký
-                                        </button>
-                                    </form>
-                                @endif
-                            @else
-                                @if($canApproveForSigning)
-                                    <form action="{{ route('quality-certificates.approve-for-signing', $qualityCertificate) }}"
-                                          method="POST"
-                                          class="d-inline"
-                                          data-loading-lock
-                                          data-loading-message="Đang đưa phiếu vào danh sách chờ gửi ký. Vui lòng chờ..."
-                                          onsubmit="window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
-                                        @csrf
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-paper-plane"></i> Đưa vào chờ gửi ký
-                                        </button>
-                                    </form>
-                                @endif
-
-                                <form action="{{ route('quality-certificates.sign', $qualityCertificate) }}" method="POST"
-                                      class="d-inline"
-                                      data-loading-lock
-                                      data-loading-message="Đang gửi yêu cầu ký sang VNPT SmartCA. Vui lòng chờ..."
-                                      onsubmit="if (!confirm('{{ $qualityCertificate->isAwaitingManagerApproval() ? 'Gửi ký trực tiếp phiếu này? Thao tác này đồng thời xác nhận Trưởng PTN đã duyệt nội dung.' : ($smartCaCanResend ? 'Gửi lại yêu cầu ký phiếu này sang VNPT SmartCA?' : 'Gửi yêu cầu ký phiếu này sang VNPT SmartCA?') }}')) return false; window.CnclLoading && window.CnclLoading.show(this.getAttribute('data-loading-message')); return true;">
-                                    @csrf
-                                    <button type="submit" class="btn {{ $smartCaCanResend ? 'btn-warning' : 'btn-success' }}" {{ $canSendSignature ? '' : 'disabled' }}>
-                                        <i class="fas fa-file-signature"></i> {{ $qualityCertificate->isAwaitingManagerApproval() ? 'Duyệt và gửi ký SmartCA' : ($smartCaCanResend ? 'Gửi lại yêu cầu ký' : 'Gửi yêu cầu ký SmartCA') }}
-                                    </button>
-                                </form>
-                            @endif
-                        @endcan
-
-                        @can('ptn.process')
-                            @if($canReturnRejectedCertificateRequestToDvkh)
-                                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnRejectedToDvkhModal">
-                                    <i class="fas fa-undo"></i> Trả lại DVKH
-                                </button>
-                            @endif
-                        @endcan
-
-                        @can('certificate.reject')
-                            @if($qualityCertificate->status !== 'REJECTED' && ($qualityCertificate->smartca_status !== 'PENDING' || $smartCaPendingExpired))
-                                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectSignatureModal">
-                                    <i class="fas fa-undo"></i> Từ chối ký
-                                </button>
-                            @endif
-                        @endcan
-                    @endif
-                </div>
-            </div>
         </div>
 
         @if($qualityCertificate->replacesCertificate || $qualityCertificate->replacedByCertificate || $qualityCertificate->status === 'REVOKED')
@@ -394,7 +259,7 @@
         @endif
     </div>
 
-    <div class="col-md-8">
+    <div class="col-lg-6 workflow-info">
         <div class="card card-info card-outline">
             <div class="card-header">
                 <h3 class="card-title">Khách hàng / Công trình</h3>
@@ -418,15 +283,19 @@
 
 <div class="card">
     <div class="card-header bg-white">
-        <h3 class="card-title"><i class="fas fa-box"></i> Danh sách sản phẩm trên phiếu</h3>
+        <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:8px">
+            <h3 class="card-title"><i class="fas fa-box"></i> Danh sách sản phẩm trên phiếu <small id="certificateProductsCount">{{ $qualityCertificate->details->count() }} dòng</small></h3>
+            <input type="search" class="form-control form-control-sm workflow-product-search" data-product-search="certificateProducts" aria-label="Tìm mã hoặc tên sản phẩm" placeholder="Tìm mã hoặc tên sản phẩm">
+        </div>
     </div>
 
-    <div class="card-body table-responsive p-0">
-        <table class="table table-bordered table-hover mb-0">
+    <div class="card-body table-responsive p-0 workflow-detail-table">
+        <table id="certificateProducts" class="table table-bordered table-hover mb-0">
             <thead class="thead-light">
                 <tr>
                     <th style="width:60px">STT</th>
                     <th>Tên sản phẩm</th>
+                    <th>ĐVT</th>
                     <th style="width:120px">Số lượng</th>
                     <th style="width:160px">Kích thước danh nghĩa</th>
                     <th>Yêu cầu kỹ thuật</th>
@@ -436,13 +305,14 @@
 
             <tbody>
                 @foreach ($qualityCertificate->details as $detail)
-                    <tr>
+                    <tr data-product-text="{{ ($detail->product->product_code ?? '') . ' ' . ($detail->product->product_name ?? '') }}">
                         <td>{{ $loop->iteration }}</td>
-                        <td>
+                        <td class="workflow-product-name">
                             <strong>{{ $detail->product->product_name ?? '-' }}</strong>
                             <div class="text-muted small">{{ $detail->product->product_code ?? '' }}</div>
                         </td>
-                        <td>{{ $detail->quantity }}</td>
+                        <td>{{ $detail->product->unit ?? '-' }}</td>
+                        <td>{{ rtrim(rtrim(number_format($detail->quantity, 2, '.', ''), '0'), '.') }}</td>
                         <td>{{ $detail->nominal_size ?: '-' }}</td>
                         <td>{{ $detail->technical_requirements ?: '-' }}</td>
                         <td>{{ $detail->quality_standard ?: '-' }}</td>
@@ -453,12 +323,13 @@
     </div>
 </div>
 
-@include('quality_certificates.partials.history_timeline', ['logs' => $certificateHistoryLogs])
+<details class="mb-3">
+    <summary class="mb-2" style="cursor:pointer">Lịch sử xử lý phiếu</summary>
+    @include('quality_certificates.partials.history_timeline', ['logs' => $certificateHistoryLogs])
+</details>
 
-<div class="card">
-    <div class="card-header bg-white">
-        <h3 class="card-title"><i class="fas fa-history"></i> Lịch sử in ký tươi</h3>
-    </div>
+<details class="card">
+    <summary class="card-header bg-white" style="cursor:pointer"><i class="fas fa-history"></i> Lịch sử in ký tươi ({{ $qualityCertificate->printLogs->count() }})</summary>
 
     <div class="card-body table-responsive p-0">
         <table class="table table-bordered table-hover mb-0">
@@ -505,7 +376,7 @@
             </tbody>
         </table>
     </div>
-</div>
+</details>
 
 @can('certificate.print')
 <div class="modal fade" id="printHardCopyModal" tabindex="-1">
@@ -684,6 +555,14 @@
 </div>
 @endif
 @endcan
+
+@component('components.workflow_action_bar', [
+    'number' => $qualityCertificate->certificate_no,
+    'status' => $statusMeta,
+    'backUrl' => route('quality-certificates.index'),
+])
+@include('quality_certificates.partials.detail_actions')
+@endcomponent
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
