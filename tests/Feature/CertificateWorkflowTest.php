@@ -1776,6 +1776,57 @@ class CertificateWorkflowTest extends TestCase
         file_put_contents($directory . DIRECTORY_SEPARATOR . $name . '.html', $response->getContent());
     }
 
+    public function test_delivery_date_cannot_be_after_today_when_creating_updating_or_submitting_requests(): void
+    {
+        $this->travelTo(Carbon::create(2026, 10, 19, 0, 15, 0, config('app.timezone')));
+        $center = User::where('username', 'trungtam_np')->firstOrFail();
+        $customer = $this->createCustomerForCenter($center);
+        $salesUnit = $this->createSalesUnitForCenter($center);
+        $payload = [
+            'customer_mode' => 'existing', 'customer_id' => $customer->id,
+            'sales_unit_id' => $salesUnit->id, 'delivery_date' => '2026-10-20',
+            'invoice_no' => 'INV-FUTURE-DATE', 'requester_name' => 'Nguoi yeu cau',
+            'require_hard_copy' => '0', 'hard_copy_quantity' => 0, 'is_urgent' => '0',
+            'product_id' => [$this->product->id], 'quantity' => [12],
+            'customer_commitment_confirmed' => '1', 'request_action' => 'draft',
+        ];
+        $this->actingAs($center)->get(route('certificate-requests.create'))->assertOk()
+            ->assertSee('max="2026-10-19"', false);
+        foreach (['draft', 'submit'] as $action) {
+            $this->postJson(route('certificate-requests.store'), array_replace($payload, ['request_action' => $action]))
+                ->assertUnprocessable()->assertJsonValidationErrors('delivery_date')
+                ->assertJsonPath('errors.delivery_date.0', 'Ngày xuất hàng không được lớn hơn ngày hiện tại.');
+        }
+        $this->assertDatabaseMissing('certificate_requests', ['invoice_no' => 'INV-FUTURE-DATE']);
+
+        foreach (['2026-10-18', '2026-10-19'] as $date) {
+            $data = array_replace($payload, ['delivery_date' => $date, 'invoice_no' => 'INV-DATE-' . $date]);
+            $this->post(route('certificate-requests.store'), $data)->assertRedirect()->assertSessionHasNoErrors();
+            $request = CertificateRequest::where('invoice_no', $data['invoice_no'])->firstOrFail();
+            $this->assertSame($date, $request->delivery_date->toDateString());
+            $this->get(route('certificate-requests.edit', $request))->assertOk()->assertSee('max="2026-10-19"', false);
+            $this->putJson(route('certificate-requests.update', $request), array_replace($data, ['delivery_date' => '2026-10-20']))
+                ->assertUnprocessable()->assertJsonValidationErrors('delivery_date');
+            $this->assertSame($date, $request->fresh()->delivery_date->toDateString());
+            $this->put(route('certificate-requests.update', $request), $data)->assertRedirect()->assertSessionHasNoErrors();
+
+            // Older drafts may already contain future dates entered before this rule existed.
+            $request->update(['delivery_date' => '2026-10-20']);
+            $this->post(route('certificate-requests.submit-draft', $request), ['customer_commitment_confirmed' => 1])
+                ->assertRedirect(route('certificate-requests.edit', $request))->assertSessionHas('error');
+            $this->assertSame('DRAFT', $request->fresh()->status);
+            $request->update(['delivery_date' => $date]);
+            $this->post(route('certificate-requests.submit-draft', $request), ['customer_commitment_confirmed' => 1])
+                ->assertRedirect()->assertSessionMissing('error');
+            $this->assertSame('WAIT_DVKH', $request->fresh()->status);
+        }
+        $ptn = User::where('username', 'ptn')->firstOrFail();
+        $this->actingAs($ptn)->postJson(route('ptn.requests.direct-store'), $payload + [
+            'distribution_center_id' => $center->distribution_center_id,
+        ])->assertUnprocessable()->assertJsonValidationErrors('delivery_date');
+        $this->travelBack();
+    }
+
     private function createProduct(): Product
     {
         $group = ProductGroup::create([

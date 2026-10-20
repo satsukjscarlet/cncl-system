@@ -163,7 +163,7 @@ class PtnRequestController extends Controller
             'new_email' => ['nullable', 'email', 'max:255'],
             'new_project_name' => ['required_if:customer_mode,new', 'nullable', 'string', 'max:500'],
             'new_project_address' => ['required_if:customer_mode,new', 'nullable', 'string'],
-            'delivery_date' => ['nullable', 'date'],
+            'delivery_date' => ['nullable', 'date', 'before_or_equal:today'],
             'invoice_no' => ['nullable', 'string', 'max:255'],
             'require_hard_copy' => ['nullable'],
             'hard_copy_quantity' => ['exclude_unless:require_hard_copy,1', 'required', 'integer', 'min:1'],
@@ -176,6 +176,7 @@ class PtnRequestController extends Controller
             'quantity' => ['required', 'array', 'min:1'],
             'quantity.*' => ['required', 'numeric', 'min:1'],
         ], [
+            'delivery_date.before_or_equal' => 'Ngày xuất hàng không được lớn hơn ngày hiện tại.',
             'new_project_name.required_if' => 'Vui lòng nhập tên công trình khi tạo khách hàng mới.',
             'new_project_address.required_if' => 'Vui lòng nhập địa điểm công trình khi tạo khách hàng mới.',
             'requester_name.required' => 'Vui lòng nhập tên người tạo yêu cầu.',

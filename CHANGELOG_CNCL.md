@@ -1,3 +1,18 @@
+## 2026-10-19 - Chan ngay xuat hang lon hon ngay hien tai
+
+File da sua:
+- `resources/views/certificate_requests/_form.blade.php`: dat max cho o ngay xuat hang theo ngay hien tai cua ung dung, ap dung tao/sua yeu cau va PTN lap truc tiep.
+- `app/Http/Controllers/CertificateRequestController.php`: validate before_or_equal:today khi tao/sua, thong bao tieng Viet; chan gui DVKH voi ban nhap cu dang co ngay tuong lai va huong den man sua.
+- `app/Http/Controllers/PtnRequestController.php`: chan ngay tuong lai khi PTN lap truc tiep, dung cung thong bao.
+- `tests/Feature/CertificateWorkflowTest.php`: kiem tra ngay hom nay/qua khu, tao nhap/gui truc tiep, sua, gui ban nhap cu, PTN lap truc tiep va gio sau nua dem tai Viet Nam.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Kiem tra:
+- Test gioi han ngay: 50 assertions thanh cong tren SQLite :memory:.
+- Toan bo CertificateWorkflowTest: 33 test, 482 assertions thanh cong.
+- PHP lint hai controller va `git diff --check`.
+- Khong migrate/seed hay thay doi du lieu MySQL.
+
 ## 2026-10-16 - Ra soat vong tra lai va dong bo giao dien DVKH/Trung tam
 
 File da sua:

@@ -230,6 +230,7 @@
             <label>Ngày xuất hàng <span class="text-danger">*</span></label>
             <input type="date"
                    name="delivery_date"
+                   max="{{ today()->toDateString() }}"
                    class="form-control @error('delivery_date') is-invalid @enderror"
                    required
                    value="{{ old('delivery_date', isset($certificateRequest) && $certificateRequest->delivery_date ? $certificateRequest->delivery_date->format('Y-m-d') : '') }}">
