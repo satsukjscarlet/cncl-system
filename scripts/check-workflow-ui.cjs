@@ -60,6 +60,33 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                     }
                     const bar = page.locator('.workflow-action-bar');
                     const detail = await bar.count() > 0;
+                    const deliveryDate = page.locator('#delivery_date');
+                    if (await deliveryDate.count()) {
+                        const original = await deliveryDate.inputValue();
+                        const today = await deliveryDate.getAttribute('data-today');
+                        const nextDate = days => {
+                            const date = new Date(today + 'T12:00:00Z');
+                            date.setUTCDate(date.getUTCDate() + days);
+                            return date.toISOString().slice(0, 10);
+                        };
+                        assert.equal(await deliveryDate.getAttribute('max'), null);
+                        assert.equal(await page.locator('[name="confirmed_delivery_date"]').count(), 0);
+                        const submit = page.locator('#request-submit-button');
+                        const commitment = page.locator('#customer_commitment_confirmed');
+                        if (!await commitment.isChecked()) await page.locator('label[for="customer_commitment_confirmed"]').click();
+                        assert(await commitment.isChecked());
+                        await deliveryDate.fill(nextDate(1));
+                        assert(await page.locator('#future-delivery-warning').isVisible());
+                        assert(await submit.isEnabled());
+                        await deliveryDate.fill(nextDate(2));
+                        assert(await submit.isEnabled());
+                        const saveDraft = page.locator('button[name="request_action"][value="draft"]');
+                        if (await saveDraft.count()) assert(await saveDraft.isEnabled());
+                        await deliveryDate.fill(today);
+                        assert.equal(await page.locator('#future-delivery-warning').isVisible(), false);
+                        assert(await submit.isEnabled());
+                        await deliveryDate.fill(original);
+                    }
                     async function checkBounds() {
                         const bounds = await page.evaluate(() => {
                             const bar = document.querySelector('.workflow-action-bar');
@@ -87,7 +114,8 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                             await search.fill('__no_matching_product__');
                             assert.equal(await rows.evaluateAll(items => items.filter(item => !item.hidden).length), 0);
                             assert(await page.getByText('Không tìm thấy sản phẩm phù hợp.', { exact: true }).isVisible());
-                            await search.fill('ROUND-1');
+                            const firstCode = (await rows.first().getAttribute('data-product-text')).trim().split(/\s+/)[0];
+                            await search.fill(firstCode);
                             assert(await rows.evaluateAll(items => items.filter(item => !item.hidden).length) > 0);
                             await search.fill('');
                             assert.equal(await rows.evaluateAll(items => items.filter(item => !item.hidden).length), total);

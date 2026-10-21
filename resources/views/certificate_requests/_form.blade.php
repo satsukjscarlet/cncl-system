@@ -9,6 +9,7 @@
     $formBackUrl = $formBackUrl ?? route('certificate-requests.index');
     $formSubmitText = $formSubmitText ?? 'Lưu và gửi DVKH';
     $formSubmitIcon = $formSubmitIcon ?? 'fas fa-save';
+    $isDirectPtnForm = request()->routeIs('ptn.requests.direct-*');
     $selectedCustomers = $selectedCustomers ?? collect();
     $selectedProducts = $selectedProducts ?? collect();
     $salesUnits = $salesUnits ?? collect();
@@ -230,13 +231,20 @@
             <label>Ngày xuất hàng <span class="text-danger">*</span></label>
             <input type="date"
                    name="delivery_date"
-                   max="{{ today()->toDateString() }}"
+                   id="delivery_date" data-today="{{ today()->toDateString() }}"
                    class="form-control @error('delivery_date') is-invalid @enderror"
                    required
                    value="{{ old('delivery_date', isset($certificateRequest) && $certificateRequest->delivery_date ? $certificateRequest->delivery_date->format('Y-m-d') : '') }}">
             @error('delivery_date')
                 <span class="invalid-feedback">{{ $message }}</span>
             @enderror
+            @php
+                $deliveryDateValue = old('delivery_date', isset($certificateRequest) && $certificateRequest->delivery_date ? $certificateRequest->delivery_date->toDateString() : '');
+                $futureDeliveryDate = \App\Support\FutureDeliveryDate::isFuture($deliveryDateValue);
+            @endphp
+            <div id="future-delivery-warning" class="alert alert-warning mt-2 mb-0" {{ $futureDeliveryDate ? '' : 'hidden' }}>
+                <div><i class="fas fa-exclamation-triangle"></i> Ngày xuất hàng <strong id="future-delivery-label">{{ $deliveryDateValue }}</strong> đang sau ngày hiện tại. Vui lòng kiểm tra lại trước khi gửi.</div>
+            </div>
         </div>
     </div>
 
@@ -586,12 +594,14 @@
         <i class="fas fa-arrow-left"></i> Quay lại
     </a>
 
+    @unless($isDirectPtnForm)
     <button type="submit" name="request_action" value="draft" class="btn btn-outline-secondary mr-2">
         <i class="fas fa-save"></i> Lưu nháp
     </button>
+    @endunless
 
     <button type="submit" name="request_action" value="submit" class="btn btn-primary" id="request-submit-button">
-        <i class="fas fa-paper-plane"></i> Gửi DVKH
+        <i class="{{ $isDirectPtnForm ? $formSubmitIcon : 'fas fa-paper-plane' }}"></i> {{ $isDirectPtnForm ? $formSubmitText : 'Gửi DVKH' }}
     </button>
 </div>
 
@@ -630,15 +640,26 @@
             const productRowTemplate = tableBody.querySelector('tr').cloneNode(true);
             let invoiceCheckTimer = null;
 
+            const deliveryDateInput = document.getElementById('delivery_date');
+            function syncFutureDeliveryDate() {
+                const value = deliveryDateInput.value;
+                document.getElementById('future-delivery-warning').hidden = !value || value <= deliveryDateInput.dataset.today;
+                document.getElementById('future-delivery-label').textContent = value.split('-').reverse().join('/');
+                syncSubmitButtonState();
+            }
+            deliveryDateInput.addEventListener('input', syncFutureDeliveryDate);
+            deliveryDateInput.addEventListener('change', syncFutureDeliveryDate);
+            syncFutureDeliveryDate();
+
             function syncSubmitButtonState() {
                 if (!commitmentCheckbox || !submitRequestButton) {
                     return;
                 }
 
                 submitRequestButton.disabled = !commitmentCheckbox.checked;
-                submitRequestButton.title = commitmentCheckbox.checked
-                    ? ''
-                    : 'Vui lòng tích xác nhận cam kết trước khi gửi DVKH';
+                submitRequestButton.title = !commitmentCheckbox.checked
+                    ? 'Vui lòng tích xác nhận cam kết trước khi gửi'
+                    : '';
             }
 
             function syncCustomerMode() {

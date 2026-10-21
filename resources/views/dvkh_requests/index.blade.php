@@ -389,7 +389,10 @@
                             <div class="text-muted small">{{ $item->customer->project_name ?? '' }}</div>
                             <div class="text-muted small">DVBH: {{ $item->salesUnit ? $item->salesUnit->code . ' - ' . $item->salesUnit->name : '-' }}</div>
                         </td>
-                        <td>{{ $item->delivery_date ? $item->delivery_date->format('d/m/Y') : '-' }}</td>
+                        <td>
+                            {{ $item->delivery_date ? $item->delivery_date->format('d/m/Y') : '-' }}
+                            @include('partials.future_delivery_badge', ['deliveryDate' => $item->delivery_date])
+                        </td>
                         <td>
                             {{ $item->invoice_no ?: '-' }}
                             @if(($item->invoice_duplicate_count ?? 0) > 0)
@@ -429,6 +432,9 @@
                                         $approveConfirm = ($item->invoice_duplicate_count ?? 0) > 0
                                             ? 'Số hóa đơn của yêu cầu này đang trùng với ' . $item->invoice_duplicate_count . ' yêu cầu khác. Bạn vẫn muốn xác nhận và chuyển sang PTN?'
                                             : 'Xác nhận yêu cầu này và chuyển sang PTN?';
+                                        if (\App\Support\FutureDeliveryDate::isFuture($item->delivery_date?->toDateString())) {
+                                            $approveConfirm = 'Ngày xuất hàng ' . $item->delivery_date->format('d/m/Y') . ' đang sau ngày hiện tại. ' . $approveConfirm;
+                                        }
                                     @endphp
                                     <form action="{{ route('dvkh.requests.approve', $item) }}"
                                           method="POST"

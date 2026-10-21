@@ -262,6 +262,11 @@
                         </button>
                     </div>
                     <div class="modal-body">
+                        @if(\App\Support\FutureDeliveryDate::isFuture($certificateRequest->delivery_date?->toDateString()))
+                            <div class="alert alert-warning">
+                                <p>Ngày xuất hàng {{ $certificateRequest->delivery_date->format('d/m/Y') }} đang sau ngày hiện tại.</p>
+                            </div>
+                        @endif
                         <p class="text-muted">
                             Sau khi gửi sang DVKH, yêu cầu sẽ không còn được sửa trực tiếp.
                         </p>

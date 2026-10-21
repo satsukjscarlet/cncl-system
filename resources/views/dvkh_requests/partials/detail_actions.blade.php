@@ -12,6 +12,9 @@
                 $approveConfirm = $invoiceDuplicates->isNotEmpty()
                     ? 'Số hóa đơn của yêu cầu này đang trùng với yêu cầu khác. Bạn vẫn muốn xác nhận và chuyển sang PTN?'
                     : 'Xác nhận yêu cầu này và chuyển sang PTN?';
+                if (\App\Support\FutureDeliveryDate::isFuture($certificateRequest->delivery_date?->toDateString())) {
+                    $approveConfirm = 'Ngày xuất hàng ' . $certificateRequest->delivery_date->format('d/m/Y') . ' đang sau ngày hiện tại. ' . $approveConfirm;
+                }
             @endphp
             <button type="button" class="btn btn-outline-danger" data-toggle="modal" data-target="#dvkhRejectModal">
                 <i class="fas fa-undo"></i> Trả lại Trung tâm

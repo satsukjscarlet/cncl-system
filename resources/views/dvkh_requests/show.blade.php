@@ -273,7 +273,10 @@
                         @endif
 
                         <div class="dvkh-info-label">Ngày xuất hàng</div>
-                        <div class="dvkh-info-value">{{ $certificateRequest->delivery_date ? $certificateRequest->delivery_date->format('d/m/Y') : '-' }}</div>
+                        <div class="dvkh-info-value">
+                            {{ $certificateRequest->delivery_date ? $certificateRequest->delivery_date->format('d/m/Y') : '-' }}
+                            @include('partials.future_delivery_badge', ['deliveryDate' => $certificateRequest->delivery_date])
+                        </div>
 
                         <div class="dvkh-info-label">Đơn vị bán hàng</div>
                         <div class="dvkh-info-value">

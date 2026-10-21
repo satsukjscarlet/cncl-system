@@ -1,3 +1,44 @@
+## 2026-10-21 - Ngay xuat hang tuong lai chi can canh bao
+
+Bo checkbox va dieu kien xac nhan rieng cho ngay xuat hang tuong lai khi tao, sua, gui nhap va DVKH chuyen PTN. Giu canh bao, ngay bat buoc, cam ket nhan/lay hang va xac nhan chuyen buoc hien co. Khong migrate/seed hay thay doi du lieu MySQL.
+
+File da sua:
+- `app/Support/FutureDeliveryDate.php`
+- `app/Http/Controllers/CertificateRequestController.php`
+- `app/Http/Controllers/PtnRequestController.php`
+- `app/Http/Controllers/DvkhRequestController.php`
+- `resources/views/certificate_requests/_form.blade.php`
+- `resources/views/certificate_requests/show.blade.php`
+- `resources/views/dvkh_requests/index.blade.php`
+- `resources/views/dvkh_requests/show.blade.php`
+- `resources/views/dvkh_requests/partials/detail_actions.blade.php`
+- `tests/Feature/CertificateWorkflowTest.php`
+- `scripts/check-workflow-ui.cjs`
+- `CHANGELOG_CNCL.md`
+
+Kiem tra: 52 feature test, 805 assertions thanh cong tren SQLite :memory:; PHP lint va 6 Blade view/partial qua TOKEN_PARSE.
+
+## 2026-10-20 - Cho phep ngay xuat hang tuong lai voi canh bao va xac nhan
+
+File da sua:
+- `app/Support/FutureDeliveryDate.php`: dung chung kiem tra ngay tuong lai va rule xac nhan gan voi dung ngay xuat hang theo mui gio ung dung.
+- `app/Http/Controllers/CertificateRequestController.php`: bo chan ngay tuong lai; luu nhap khong can xac nhan, tao/sua va gui DVKH bat buoc xac nhan ngay tuong lai.
+- `app/Http/Controllers/PtnRequestController.php`: ngay xuat hang van bat buoc; PTN lap truc tiep can xac nhan neu ngay tuong lai.
+- `app/Http/Controllers/DvkhRequestController.php`: doi chieu ngay duoc xac nhan khi chuyen PTN, tranh gui bo qua hoac xac nhan cho ngay khac.
+- `resources/views/certificate_requests/_form.blade.php`: bo max, them canh bao va checkbox, reset xac nhan khi doi ngay; giu luu nhap, hien dung nut lap phieu trong form PTN truc tiep.
+- `resources/views/certificate_requests/show.blade.php`: modal gui nhap hien ro ngay tuong lai va bat buoc checkbox, mo lai modal khi co loi xac nhan.
+- `resources/views/partials/future_delivery_badge.blade.php`: nhan ngay tuong lai tinh dong theo ngay hien tai.
+- `resources/views/dvkh_requests/index.blade.php`, `resources/views/dvkh_requests/show.blade.php`, `resources/views/dvkh_requests/partials/detail_actions.blade.php`: nhan canh bao, ngay cu the trong confirm chuyen PTN va token xac nhan theo ngay.
+- `tests/Feature/CertificateWorkflowTest.php`: thay test chan ngay bang test luu nhap, gui/xac nhan, xac nhan sai ngay, ngay hom nay/qua khu, PTN truc tiep va SLA.
+- `scripts/check-workflow-ui.cjs`: kiem tra canh bao ngay, nut gui, luu nhap va reset checkbox khi doi ngay trong trinh duyet.
+- `CHANGELOG_CNCL.md`: ghi nhan thay doi.
+
+Kiem tra:
+- 52 feature test, 817 assertions thanh cong tren SQLite :memory:.
+- Playwright: 10/10 truong hop desktop/mobile thanh cong; kiem tra canh bao, checkbox dung ngay, reset khi doi ngay va luu nhap khong bi khoa.
+- 6 Blade view/partial qua TOKEN_PARSE; PHP lint va `git diff --check`.
+- Khong thay doi database schema, khong migrate/seed hay sua du lieu MySQL; giu nguyen moc tinh SLA.
+
 ## 2026-10-19 - Chan ngay xuat hang lon hon ngay hien tai
 
 File da sua:

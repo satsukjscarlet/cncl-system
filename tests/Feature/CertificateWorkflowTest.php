@@ -1776,54 +1776,70 @@ class CertificateWorkflowTest extends TestCase
         file_put_contents($directory . DIRECTORY_SEPARATOR . $name . '.html', $response->getContent());
     }
 
-    public function test_delivery_date_cannot_be_after_today_when_creating_updating_or_submitting_requests(): void
+    public function test_future_delivery_date_warns_without_requiring_extra_confirmation(): void
     {
-        $this->travelTo(Carbon::create(2026, 10, 19, 0, 15, 0, config('app.timezone')));
+        $this->travelTo(Carbon::create(2026, 10, 21, 0, 15, 0, config('app.timezone')));
         $center = User::where('username', 'trungtam_np')->firstOrFail();
         $customer = $this->createCustomerForCenter($center);
         $salesUnit = $this->createSalesUnitForCenter($center);
         $payload = [
             'customer_mode' => 'existing', 'customer_id' => $customer->id,
-            'sales_unit_id' => $salesUnit->id, 'delivery_date' => '2026-10-20',
+            'sales_unit_id' => $salesUnit->id, 'delivery_date' => '2026-10-22',
             'invoice_no' => 'INV-FUTURE-DATE', 'requester_name' => 'Nguoi yeu cau',
             'require_hard_copy' => '0', 'hard_copy_quantity' => 0, 'is_urgent' => '0',
             'product_id' => [$this->product->id], 'quantity' => [12],
             'customer_commitment_confirmed' => '1', 'request_action' => 'draft',
         ];
         $this->actingAs($center)->get(route('certificate-requests.create'))->assertOk()
-            ->assertSee('max="2026-10-19"', false);
-        foreach (['draft', 'submit'] as $action) {
-            $this->postJson(route('certificate-requests.store'), array_replace($payload, ['request_action' => $action]))
-                ->assertUnprocessable()->assertJsonValidationErrors('delivery_date')
-                ->assertJsonPath('errors.delivery_date.0', 'Ngày xuất hàng không được lớn hơn ngày hiện tại.');
-        }
-        $this->assertDatabaseMissing('certificate_requests', ['invoice_no' => 'INV-FUTURE-DATE']);
-
-        foreach (['2026-10-18', '2026-10-19'] as $date) {
-            $data = array_replace($payload, ['delivery_date' => $date, 'invoice_no' => 'INV-DATE-' . $date]);
+            ->assertDontSee('max="2026-10-21"', false)->assertDontSee('name="confirmed_delivery_date"', false);
+        $this->post(route('certificate-requests.store'), $payload)->assertRedirect()->assertSessionHasNoErrors();
+        $request = CertificateRequest::where('invoice_no', 'INV-FUTURE-DATE')->firstOrFail();
+        $this->assertSame('DRAFT', $request->status);
+        $edit = route('certificate-requests.edit', $request);
+        $this->captureWorkflowUi('center-future-edit', $this->get($edit)->assertOk()
+            ->assertSee('future-delivery-warning')->assertDontSee('name="confirmed_delivery_date"', false));
+        $this->put(route('certificate-requests.update', $request), $payload)->assertRedirect()->assertSessionHasNoErrors();
+        $this->captureWorkflowUi('center-future-draft', $this->get(route('certificate-requests.show', $request))->assertOk()
+            ->assertSee('22/10/2026')->assertDontSee('submit_confirmed_delivery_date'));
+        $this->postJson(route('certificate-requests.submit-draft', $request))->assertUnprocessable()
+            ->assertJsonValidationErrors('customer_commitment_confirmed');
+        $this->post(route('certificate-requests.submit-draft', $request), ['customer_commitment_confirmed' => 1])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('WAIT_DVKH', $request->fresh()->status);
+        $this->assertLessThan(1, app(SlaClockService::class)->elapsedMinutes($request->fresh(), 'DVKH'));
+        $dvkh = User::where('username', 'dvkh')->firstOrFail();
+        $this->captureWorkflowUi('dvkh-future', $this->actingAs($dvkh)->get(route('dvkh.requests.show', $request))->assertOk()
+            ->assertSee('Ngày xuất hàng tương lai')->assertSee('22/10/2026'));
+        $this->captureWorkflowUi('dvkh-future-list', $this->get(route('dvkh.requests.index'))->assertOk()->assertSee('Ngày xuất hàng tương lai'));
+        $this->post(route('dvkh.requests.approve', $request))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('WAIT_PTN', $request->fresh()->status);
+        $this->actingAs($center);
+        foreach (['2026-10-20', '2026-10-21', '2026-10-22'] as $date) {
+            $data = array_replace($payload, ['delivery_date' => $date, 'invoice_no' => 'INV-DATE-' . $date, 'request_action' => 'submit']);
             $this->post(route('certificate-requests.store'), $data)->assertRedirect()->assertSessionHasNoErrors();
-            $request = CertificateRequest::where('invoice_no', $data['invoice_no'])->firstOrFail();
-            $this->assertSame($date, $request->delivery_date->toDateString());
-            $this->get(route('certificate-requests.edit', $request))->assertOk()->assertSee('max="2026-10-19"', false);
-            $this->putJson(route('certificate-requests.update', $request), array_replace($data, ['delivery_date' => '2026-10-20']))
+            $this->assertDatabaseHas('certificate_requests', ['invoice_no' => $data['invoice_no'], 'status' => 'WAIT_DVKH']);
+            $draft = CertificateRequest::create([
+                'request_no' => 'YC-DATE-' . $date, 'distribution_center_id' => $center->distribution_center_id,
+                'customer_id' => $customer->id, 'created_by' => $center->id, 'status' => 'DRAFT',
+            ]);
+            $this->put(route('certificate-requests.update', $draft), $data)->assertRedirect()->assertSessionHasNoErrors();
+            $this->assertSame('WAIT_DVKH', $draft->fresh()->status);
+        }
+        foreach (['', 'not-a-date'] as $invalid) {
+            $this->postJson(route('certificate-requests.store'), array_replace($payload, ['delivery_date' => $invalid]))
                 ->assertUnprocessable()->assertJsonValidationErrors('delivery_date');
-            $this->assertSame($date, $request->fresh()->delivery_date->toDateString());
-            $this->put(route('certificate-requests.update', $request), $data)->assertRedirect()->assertSessionHasNoErrors();
-
-            // Older drafts may already contain future dates entered before this rule existed.
-            $request->update(['delivery_date' => '2026-10-20']);
-            $this->post(route('certificate-requests.submit-draft', $request), ['customer_commitment_confirmed' => 1])
-                ->assertRedirect(route('certificate-requests.edit', $request))->assertSessionHas('error');
-            $this->assertSame('DRAFT', $request->fresh()->status);
-            $request->update(['delivery_date' => $date]);
-            $this->post(route('certificate-requests.submit-draft', $request), ['customer_commitment_confirmed' => 1])
-                ->assertRedirect()->assertSessionMissing('error');
-            $this->assertSame('WAIT_DVKH', $request->fresh()->status);
         }
         $ptn = User::where('username', 'ptn')->firstOrFail();
-        $this->actingAs($ptn)->postJson(route('ptn.requests.direct-store'), $payload + [
-            'distribution_center_id' => $center->distribution_center_id,
-        ])->assertUnprocessable()->assertJsonValidationErrors('delivery_date');
+        $direct = $payload + ['distribution_center_id' => $center->distribution_center_id];
+        $direct['invoice_no'] = 'INV-FUTURE-DIRECT';
+        $this->actingAs($ptn)->post(route('ptn.requests.direct-store'), $direct)->assertRedirect()
+            ->assertSessionHasNoErrors()->assertSessionMissing('error');
+        $this->assertDatabaseHas('certificate_requests', ['invoice_no' => 'INV-FUTURE-DIRECT', 'request_type' => 'DIRECT_PTN']);
+        $this->captureWorkflowUi('ptn-future-create', $this->get(route('ptn.requests.direct-create'))->assertOk()
+            ->assertDontSee('name="confirmed_delivery_date"', false));
+        $this->travel(1)->days();
+        $this->assertFalse(\App\Support\FutureDeliveryDate::isFuture('2026-10-22'));
+        $this->actingAs($dvkh)->get(route('dvkh.requests.show', $request))->assertOk()->assertDontSee('Ngày xuất hàng tương lai');
         $this->travelBack();
     }
 
