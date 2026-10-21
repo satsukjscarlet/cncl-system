@@ -5,12 +5,24 @@ namespace App\Exports;
 use App\Models\ProductGroup;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-class ProductGroupsExport implements FromCollection, WithHeadings
+class ProductGroupsExport implements FromCollection, WithHeadings, ShouldAutoSize
 {
+    public function __construct(private bool $template = false)
+    {
+    }
+
     public function collection()
     {
-        return ProductGroup::select('code', 'name', 'description', 'is_active')->get();
+        if ($this->template) {
+            return collect();
+        }
+
+        return ProductGroup::with('defaultQualityStandard')->orderBy('code')->get()->map(fn ($group) => [
+            $group->code, $group->name, $group->description, (int) $group->is_active,
+            $group->defaultQualityStandard?->code,
+        ]);
     }
 
     public function headings(): array
@@ -18,8 +30,9 @@ class ProductGroupsExport implements FromCollection, WithHeadings
         return [
             'Mã nhóm sản phẩm',
             'Tên nhóm sản phẩm',
-            'Tiêu chuẩn',
+            'Ghi chú',
             'Trạng thái',
+            'Mã tiêu chuẩn mặc định',
         ];
     }
 }

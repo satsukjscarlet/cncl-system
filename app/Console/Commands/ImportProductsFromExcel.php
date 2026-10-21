@@ -61,7 +61,7 @@ class ImportProductsFromExcel extends Command
 
         $groupCache = DB::table('product_groups')->pluck('id', 'code')->all();
         $groupNameCache = DB::table('product_groups')->pluck('id', 'name')->all();
-        $standardCache = DB::table('quality_standards')->pluck('id', 'code')->all();
+        $standardCache = DB::table('quality_standards')->where('is_active', true)->whereNull('deleted_at')->pluck('id', 'code')->all();
         $unitCache = DB::table('product_units')->pluck('id', 'name')->all();
         $batch = [];
         $batchSize = 1000;
@@ -101,6 +101,11 @@ class ImportProductsFromExcel extends Command
                     continue;
                 }
 
+                $standardId = $this->resolveQualityStandardId(
+                    $row['tieu_chuan_san_pham'] ?? null,
+                    $standardCache
+                );
+
                 $groupId = $this->resolveProductGroupId(
                     $row['ma_nhom_san_pham'] ?? null,
                     $row['ten_nhom_san_pham'] ?? null,
@@ -115,16 +120,18 @@ class ImportProductsFromExcel extends Command
                     continue;
                 }
 
-                $standardId = $this->resolveQualityStandardId(
-                    $row['tieu_chuan_san_pham'] ?? null,
-                    $standardCache
-                );
+                $preserveStandard = empty($row['tieu_chuan_san_pham']);
+                if ($preserveStandard && isset($batch[$productCode])) {
+                    $standardId = $batch[$productCode]['quality_standard_id'];
+                    $preserveStandard = $batch[$productCode]['_preserve_standard'];
+                }
                 $unitName = $row['don_vi_tinh'] ?? null;
                 $unitId = $this->resolveProductUnitId($unitName, $unitCache);
 
                 $batch[$productCode] = [
                     'product_group_id' => $groupId,
                     'quality_standard_id' => $standardId,
+                    '_preserve_standard' => $preserveStandard,
                     'unit_id' => $unitId,
                     'product_code' => $productCode,
                     'product_name' => $productName,
@@ -235,26 +242,7 @@ class ImportProductsFromExcel extends Command
             return (int) $cache[$code];
         }
 
-        $now = now();
-
-        DB::table('quality_standards')->insertOrIgnore([
-            'code' => $code,
-            'name' => $code,
-            'description' => null,
-            'is_active' => true,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
-
-        $id = DB::table('quality_standards')
-            ->where('code', $code)
-            ->value('id');
-
-        if ($id) {
-            $cache[$code] = (int) $id;
-        }
-
-        return $id ? (int) $id : null;
+        throw new \InvalidArgumentException('Tiêu chuẩn "' . $code . '" không tồn tại hoặc đã ngừng sử dụng.');
     }
 
     private function resolveProductUnitId(?string $name, array &$cache): ?int
@@ -301,6 +289,22 @@ class ImportProductsFromExcel extends Command
 
     private function flushProducts(array $products): int
     {
+        $existing = DB::table('products')->whereIn('product_code', array_keys($products))
+            ->pluck('quality_standard_id', 'product_code')->all();
+        $defaults = DB::table('product_groups as groups')
+            ->join('quality_standards as standards', 'standards.id', '=', 'groups.default_quality_standard_id')
+            ->whereIn('groups.id', array_column($products, 'product_group_id'))
+            ->where('standards.is_active', true)->whereNull('standards.deleted_at')
+            ->pluck('standards.id', 'groups.id')->all();
+        foreach ($products as $code => &$product) {
+            if ($product['_preserve_standard']) {
+                $product['quality_standard_id'] = array_key_exists($code, $existing)
+                    ? $existing[$code] : ($defaults[$product['product_group_id']] ?? null);
+            }
+            unset($product['_preserve_standard']);
+        }
+        unset($product);
+
         DB::table('products')->upsert(
             array_values($products),
             ['product_code'],

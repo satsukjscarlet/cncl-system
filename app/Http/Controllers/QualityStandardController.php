@@ -6,6 +6,7 @@ use App\Exports\QualityStandardsExport;
 use App\Helpers\ActivityLogger;
 use App\Imports\QualityStandardsImport;
 use App\Models\Product;
+use App\Models\ProductGroup;
 use App\Models\QualityStandard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,7 @@ class QualityStandardController extends Controller
         $query = QualityStandard::query()
             ->withCount([
                 'products as products_total_count' => fn ($query) => $query->withTrashed(),
+                'defaultProductGroups as groups_total_count' => fn ($query) => $query->withTrashed(),
             ]);
 
         if ($request->filled('keyword')) {
@@ -137,10 +139,11 @@ class QualityStandardController extends Controller
     {
         abort_unless(Auth::user()?->hasRole('Admin'), 403);
 
-        if (Product::withTrashed()->where('quality_standard_id', $qualityStandard->id)->exists()) {
+        if (Product::withTrashed()->where('quality_standard_id', $qualityStandard->id)->exists()
+            || ProductGroup::withTrashed()->where('default_quality_standard_id', $qualityStandard->id)->exists()) {
             return redirect()
                 ->route('quality-standards.index')
-                ->with('error', 'Không thể xóa hẳn tiêu chuẩn đã có sản phẩm liên kết.');
+                ->with('error', 'Không thể xóa hẳn tiêu chuẩn đã có sản phẩm hoặc nhóm sản phẩm liên kết.');
         }
 
         $oldData = $qualityStandard->toArray();

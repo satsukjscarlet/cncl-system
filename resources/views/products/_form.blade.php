@@ -7,10 +7,10 @@
     <div class="col-md-4">
         <div class="form-group">
             <label>Nhóm sản phẩm <span class="text-danger">*</span></label>
-            <select name="product_group_id" class="form-control select2" required>
+            <select id="product_group_id" name="product_group_id" class="form-control select2" required>
                 <option value="">-- Chọn nhóm sản phẩm --</option>
                 @foreach($groups as $group)
-                    <option value="{{ $group->id }}"
+                    <option value="{{ $group->id }}" data-default-standard="{{ $standards->contains(fn ($standard) => $standard->id == $group->default_quality_standard_id && $standard->is_active) ? $group->default_quality_standard_id : '' }}"
                         {{ old('product_group_id', $product->product_group_id ?? '') == $group->id ? 'selected' : '' }}>
                         {{ $group->code }} - {{ $group->name }}
                     </option>
@@ -83,7 +83,7 @@
     <div class="col-md-4">
         <div class="form-group">
             <label>Tiêu chuẩn sản phẩm</label>
-            <select name="quality_standard_id" class="form-control select2">
+            <select id="quality_standard_id" name="quality_standard_id" class="form-control select2">
                 <option value="">-- Chọn tiêu chuẩn --</option>
                 @foreach($standards as $standard)
                     <option value="{{ $standard->id }}"
@@ -111,6 +111,39 @@
         </div>
     </div>
 </div>
+
+@push('js')
+<script>
+    $(function () {
+        const group = $('#product_group_id');
+        const standard = $('#quality_standard_id');
+        const defaultForGroup = () => String(group.find(':selected').attr('data-default-standard') || '');
+        let previousDefault = defaultForGroup();
+        let manuallySelected = @json(isset($product) || session()->hasOldInput());
+        let applyingDefault = false;
+
+        function applyDefault(value) {
+            applyingDefault = true;
+            standard.val(value).trigger('change');
+            applyingDefault = false;
+        }
+
+        standard.on('change.groupDefault', function () {
+            if (!applyingDefault) manuallySelected = true;
+        });
+        group.on('change.groupDefault', function () {
+            const current = String(standard.val() || '');
+            const nextDefault = defaultForGroup();
+            if (!manuallySelected || (current !== '' && current === previousDefault)) {
+                applyDefault(nextDefault);
+                manuallySelected = false;
+            }
+            previousDefault = nextDefault;
+        });
+        if (!manuallySelected && !standard.val()) applyDefault(previousDefault);
+    });
+</script>
+@endpush
 
 <div class="form-group">
     <label>Yêu cầu kỹ thuật</label>

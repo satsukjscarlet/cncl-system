@@ -2,6 +2,10 @@
 
 @section('title', 'Cập nhật nhóm sản phẩm')
 
+@section('css')
+    <link rel="stylesheet" href="{{ asset('css/cncl-ui.css?v=20260725-1') }}">
+@stop
+
 @section('content_header')
     <div>
         <h1 class="m-0">Cập nhật nhóm sản phẩm</h1>
@@ -17,7 +21,7 @@
         </h3>
     </div>
 
-    <form method="POST" action="{{ route('product-groups.update', $group) }}">
+    <form method="POST" action="{{ route('product-groups.update', $group) }}" class="cncl-form">
         @method('PUT')
 
         <div class="card-body">

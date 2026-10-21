@@ -24,4 +24,9 @@ class QualityStandard extends Model
     {
         return $this->hasMany(Product::class, 'quality_standard_id');
     }
+
+    public function defaultProductGroups()
+    {
+        return $this->hasMany(ProductGroup::class, 'default_quality_standard_id');
+    }
 }

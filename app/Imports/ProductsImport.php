@@ -39,6 +39,14 @@ class ProductsImport implements ToModel, WithHeadingRow, WithChunkReading, Skips
             $groupCode = trim((string) ($row['ma_nhom_san_pham'] ?? ''));
             $groupName = trim((string) ($row['ten_nhom_san_pham'] ?? ''));
 
+            $standardCode = trim((string) ($row['tieu_chuan_san_pham'] ?? ''));
+            $standard = $standardCode !== ''
+                ? QualityStandard::where('code', $standardCode)->where('is_active', true)->first()
+                : null;
+            if ($standardCode !== '' && !$standard) {
+                throw new \InvalidArgumentException('Sản phẩm ' . $productCode . ': tiêu chuẩn "' . $standardCode . '" không tồn tại hoặc đã ngừng sử dụng.');
+            }
+
             $group = null;
 
             if (!empty($groupCode)) {
@@ -64,20 +72,11 @@ class ProductsImport implements ToModel, WithHeadingRow, WithChunkReading, Skips
                 return null;
             }
 
-            $standardCode = trim((string) ($row['tieu_chuan_san_pham'] ?? ''));
-
-            $standard = null;
-
-            if (!empty($standardCode)) {
-                $standard = QualityStandard::firstOrCreate(
-                    ['code' => $standardCode],
-                    [
-                        'name' => $standardCode,
-                        'description' => null,
-                        'is_active' => true,
-                    ]
-                );
-            }
+            $existing = Product::where('product_code', $productCode)->first();
+            $default = $group->defaultQualityStandard;
+            $standardId = $standard?->id ?? ($existing
+                ? $existing->quality_standard_id
+                : ($default && $default->is_active && !$default->trashed() ? $default->id : null));
 
             $unitName = $this->nullableString($row['don_vi_tinh'] ?? null);
             $unit = $unitName ? $this->resolveProductUnit($unitName) : null;
@@ -86,7 +85,7 @@ class ProductsImport implements ToModel, WithHeadingRow, WithChunkReading, Skips
                 ['product_code' => $productCode],
                 [
                     'product_group_id' => $group->id,
-                    'quality_standard_id' => $standard?->id,
+                    'quality_standard_id' => $standardId,
                     'unit_id' => $unit?->id,
                     'product_name' => $productName,
                     'unit' => $unitName,

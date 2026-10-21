@@ -143,7 +143,7 @@
                                     <button class="btn btn-sm btn-secondary" title="Đã ngừng sử dụng" disabled><i class="fas fa-ban"></i></button>
                                 @endif
                             @endcan
-                            @if(auth()->user()->hasRole('Admin') && (int) $standard->products_total_count === 0)
+                            @if(auth()->user()->hasRole('Admin') && (int) $standard->products_total_count === 0 && (int) $standard->groups_total_count === 0)
                                 <form action="{{ route('quality-standards.force-destroy', $standard) }}" method="POST"
                                       class="d-inline" onsubmit="return confirm('Xóa hẳn tiêu chuẩn này khỏi CSDL? Chỉ nên dùng khi tiêu chuẩn chưa có sản phẩm liên kết.')">
                                     @csrf

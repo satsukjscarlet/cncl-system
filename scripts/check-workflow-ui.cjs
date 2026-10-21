@@ -61,6 +61,48 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                     const bar = page.locator('.workflow-action-bar');
                     const detail = await bar.count() > 0;
                     const deliveryDate = page.locator('#delivery_date');
+                    if (name.startsWith('group-default-')) {
+                        const select = page.locator('#default_quality_standard_id');
+                        const box = page.locator('#default_quality_standard_id + .select2 .select2-selection--single');
+                        assert.equal(await box.evaluate(el => Math.round(el.getBoundingClientRect().height)), 40);
+                        assert.equal(await box.evaluate(el => getComputedStyle(el).display), 'flex');
+                        await box.click();
+                        const search = page.locator('.select2-container--open .select2-search__field');
+                        await search.waitFor({ state: 'visible' });
+                        await page.waitForFunction(() => document.activeElement?.classList.contains('select2-search__field'));
+                        await search.fill('STD-A');
+                        const result = page.locator('.select2-results__option--selectable').filter({ hasText: 'STD-A' });
+                        await result.first().click();
+                        assert.notEqual(await select.inputValue(), '');
+                        assert.equal(await page.locator('.select2-container--open').count(), 0);
+                    }
+                    if (name === 'product-default-create' || name === 'product-default-edit') {
+                        const result = await page.evaluate(() => {
+                            const group = $('#product_group_id');
+                            const standard = $('#quality_standard_id');
+                            const groups = Object.fromEntries(group.find('option').toArray().filter(o => o.value).map(o => [o.textContent.trim().split(' - ')[0], o.value]));
+                            const standards = Object.fromEntries(standard.find('option').toArray().filter(o => o.value).map(o => [o.textContent.trim().split(' - ')[0], o.value]));
+                            const initial = standard.val();
+                            const values = [];
+                            group.val(groups.GROUP).trigger('change');
+                            values.push(standard.val());
+                            group.val(groups['GROUP-B']).trigger('change');
+                            values.push(standard.val());
+                            standard.val(standards['STD-C']).trigger('change');
+                            group.val(groups.GROUP).trigger('change');
+                            values.push(standard.val());
+                            standard.val('').trigger('change');
+                            group.val(groups['GROUP-B']).trigger('change');
+                            values.push(standard.val());
+                            return { initial, values, standards, select2: group.hasClass('select2-hidden-accessible') };
+                        });
+                        assert(result.select2, 'Select2 did not initialize');
+                        assert.equal(result.initial, name.endsWith('-edit') ? result.standards['STD-B'] : '');
+                        assert.deepEqual(result.values, [
+                            name.endsWith('-edit') ? result.standards['STD-B'] : result.standards['STD-A'],
+                            result.standards['STD-B'], result.standards['STD-C'], '',
+                        ]);
+                    }
                     if (await deliveryDate.count()) {
                         const original = await deliveryDate.inputValue();
                         const today = await deliveryDate.getAttribute('data-today');

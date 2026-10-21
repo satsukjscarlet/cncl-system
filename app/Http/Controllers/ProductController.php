@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -141,7 +142,7 @@ class ProductController extends Controller
     {
         $data = $request->validate([
             'product_group_id' => ['required', 'exists:product_groups,id'],
-            'quality_standard_id' => ['nullable', 'exists:quality_standards,id'],
+            'quality_standard_id' => ['nullable', Rule::exists('quality_standards', 'id')->where('is_active', true)->whereNull('deleted_at')],
             'unit_id' => ['required', 'exists:product_units,id'],
             'product_code' => ['required', 'string', 'max:255', 'unique:products,product_code'],
             'product_name' => ['required', 'string', 'max:500'],
@@ -157,6 +158,11 @@ class ProductController extends Controller
         $data['certificate_type'] = $data['certificate_type'] ?: 'CNCL';
         $data['certificate_template'] = $data['certificate_template'] ?: 'default';
         $data['unit'] = ProductUnit::findOrFail($data['unit_id'])->name;
+
+        if (!$request->exists('quality_standard_id')) {
+            $default = ProductGroup::findOrFail($data['product_group_id'])->defaultQualityStandard;
+            $data['quality_standard_id'] = $default && $default->is_active && !$default->trashed() ? $default->id : null;
+        }
 
         $product = Product::create($data);
 
@@ -176,8 +182,12 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        $groups = ProductGroup::where('is_active', true)->orderBy('name')->get();
-        $standards = QualityStandard::where('is_active', true)->orderBy('name')->get();
+        $groups = ProductGroup::where(function ($query) use ($product) {
+            $query->where('is_active', true)->orWhere('id', $product->product_group_id);
+        })->orderBy('name')->get();
+        $standards = QualityStandard::where(function ($query) use ($product) {
+            $query->where('is_active', true)->orWhere('id', $product->quality_standard_id);
+        })->orderBy('name')->get();
         $units = ProductUnit::where(function ($query) use ($product) {
             $query->where('is_active', true)
                 ->orWhere('id', $product->unit_id);
@@ -190,7 +200,9 @@ class ProductController extends Controller
     {
         $data = $request->validate([
             'product_group_id' => ['required', 'exists:product_groups,id'],
-            'quality_standard_id' => ['nullable', 'exists:quality_standards,id'],
+            'quality_standard_id' => ['nullable', Rule::exists('quality_standards', 'id')->whereNull('deleted_at')->where(function ($query) use ($product) {
+                $query->where('is_active', true)->orWhere('id', $product->quality_standard_id);
+            })],
             'unit_id' => ['required', 'exists:product_units,id'],
             'product_code' => ['required', 'string', 'max:255', 'unique:products,product_code,' . $product->id],
             'product_name' => ['required', 'string', 'max:500'],

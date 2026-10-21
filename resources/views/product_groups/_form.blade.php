@@ -35,6 +35,21 @@
 </div>
 
 <div class="form-group">
+    <label for="default_quality_standard_id">Tiêu chuẩn chất lượng mặc định</label>
+    <select id="default_quality_standard_id" name="default_quality_standard_id" class="form-control select2">
+        <option value="">-- Chưa thiết lập --</option>
+        @foreach($standards as $standard)
+            <option value="{{ $standard->id }}" {{ old('default_quality_standard_id', $group->default_quality_standard_id ?? '') == $standard->id ? 'selected' : '' }}>
+                {{ $standard->code }} - {{ $standard->name }}{{ $standard->is_active ? '' : ' (Ngừng sử dụng)' }}
+            </option>
+        @endforeach
+    </select>
+    @error('default_quality_standard_id')
+        <span class="text-danger small">Tiêu chuẩn không hợp lệ hoặc đã ngừng sử dụng.</span>
+    @enderror
+</div>
+
+<div class="form-group">
     <label>Ghi chú</label>
     <textarea name="description"
               class="form-control"

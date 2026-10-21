@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Helpers\ActivityLogger;
 use App\Models\ProductGroup;
+use App\Models\QualityStandard;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use App\Exports\ProductGroupsExport;
 use App\Imports\ProductGroupsImport;
@@ -17,6 +19,7 @@ class ProductGroupController extends Controller
     public function index(Request $request)
     {
         $query = ProductGroup::query()
+            ->with('defaultQualityStandard')
             ->withCount([
                 'products as products_total_count' => fn ($query) => $query->withTrashed(),
             ]);
@@ -45,7 +48,9 @@ class ProductGroupController extends Controller
 
     public function create()
     {
-        return view('product_groups.create');
+        return view('product_groups.create', [
+            'standards' => QualityStandard::where('is_active', true)->orderBy('code')->get(),
+        ]);
     }
 
     public function store(Request $request)
@@ -54,6 +59,7 @@ class ProductGroupController extends Controller
             'code' => ['required', 'string', 'max:50', 'unique:product_groups,code'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'default_quality_standard_id' => ['nullable', Rule::exists('quality_standards', 'id')->where('is_active', true)->whereNull('deleted_at')],
             'is_active' => ['nullable'],
         ]);
 
@@ -78,6 +84,9 @@ class ProductGroupController extends Controller
     {
         return view('product_groups.edit', [
             'group' => $productGroup,
+            'standards' => QualityStandard::where(function ($query) use ($productGroup) {
+                $query->where('is_active', true)->orWhere('id', $productGroup->default_quality_standard_id);
+            })->orderBy('code')->get(),
         ]);
     }
 
@@ -87,6 +96,9 @@ class ProductGroupController extends Controller
             'code' => ['required', 'string', 'max:50', 'unique:product_groups,code,' . $productGroup->id],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'default_quality_standard_id' => ['nullable', Rule::exists('quality_standards', 'id')->whereNull('deleted_at')->where(function ($query) use ($productGroup) {
+                $query->where('is_active', true)->orWhere('id', $productGroup->default_quality_standard_id);
+            })],
             'is_active' => ['nullable'],
         ]);
 
@@ -183,8 +195,6 @@ class ProductGroupController extends Controller
 
     public function template(): BinaryFileResponse
     {
-        $file = storage_path('app/templates/template_nhom_san_pham.xlsx');
-
-        return response()->download($file);
+        return Excel::download(new ProductGroupsExport(true), 'template_nhom_san_pham.xlsx');
     }
 }

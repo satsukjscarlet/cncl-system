@@ -13,11 +13,17 @@ class ProductGroup extends Model
         'code',
         'name',
         'description',
+        'default_quality_standard_id',
         'is_active',
     ];
 
     public function products()
     {
         return $this->hasMany(Product::class);
+    }
+
+    public function defaultQualityStandard()
+    {
+        return $this->belongsTo(QualityStandard::class, 'default_quality_standard_id')->withTrashed();
     }
 }

@@ -1,3 +1,57 @@
+## 2026-10-21 - Sua giao dien Select2 tieu chuan mac dinh
+
+Nguyen nhan: form them/sua nhom chua nap cncl-ui.css va chua dung lop cncl-form nhu form san pham. Nap CSS chung va dong bo lop form, khong sua CSS/JS Select2 toan he thong hay logic du lieu.
+
+File da sua:
+- `resources/views/product_groups/create.blade.php`
+- `resources/views/product_groups/edit.blade.php`
+- `tests/Feature/ProductGroupDefaultStandardTest.php`
+- `scripts/check-workflow-ui.cjs`
+- `CHANGELOG_CNCL.md`
+
+Kiem tra: 10 tests, 89 assertions tren SQLite :memory:; Playwright 8/8 desktop/mobile, gom chieu cao 40px, can chu, mo dropdown, focus tim kiem, chon tieu chuan va khong tran ngang. Khong thay doi database.
+
+## 2026-10-21 - Dong bo Excel nhom san pham va tieu chuan mac dinh
+
+File xuat va file mau dung chung 5 cot: Ma nhom san pham, Ten nhom san pham, Ghi chu, Trang thai, Ma tieu chuan mac dinh. File mau sinh dong, khong con phu thuoc file xlsx cu. Import cap nhat theo ma nhom, giu tieu chuan/trang thai cu neu o trong; cot tieu_chuan cu chi la ghi chu. Kiem tra ma tieu chuan, trang thai, ma nhom lap va bao dong loi; kiem tra het truoc khi ghi, luu trong transaction, khong luu mot phan khi file sai. Tieu chuan ngung su dung chi duoc giu lai neu da la mac dinh cua chinh nhom do.
+
+File da sua:
+- `app/Exports/ProductGroupsExport.php`
+- `app/Imports/ProductGroupsImport.php`
+- `app/Http/Controllers/ProductGroupController.php`
+- `resources/views/product_groups/index.blade.php`
+- `tests/Feature/ProductGroupDefaultStandardTest.php`
+- `docs/DEPLOY_PRODUCT_GROUP_DEFAULT_STANDARD.md`
+- `CHANGELOG_CNCL.md`
+
+Kiem tra: 13 tests, 124 assertions tren SQLite :memory:, gom round-trip xlsx xuat/import, tai mau, giu cau hinh cu, file cu, ma sai/ngung su dung, loi upload hien tren giao dien, ma lap va khong luu mot phan. PHP lint va git diff --check thanh cong. Khong migrate/seed hay sua database MySQL; khong can migration moi ngoai migration tieu chuan mac dinh da them truoc do.
+
+## 2026-10-21 - Tieu chuan chat luong mac dinh theo nhom san pham
+
+Them lua chon tieu chuan mac dinh cho nhom. Tao san pham tu dien theo nhom, van cho phep thay doi; giu lua chon rieng khi doi nhom va khong ghi de san pham cu khi mo form sua. Mac dinh ngung su dung khong duoc tu ap dung cho san pham moi. Khong tu chuyen ghi chu cu thanh lien ket.
+
+Import san pham (ca web/CLI theo lo va lop import Excel): co ma thi phai khop tieu chuan dang su dung, khong tu tao tieu chuan moi; de trong thi san pham moi lay mac dinh, san pham cu giu gia tri cu. Chan xoa han tieu chuan co nhom lien ket, ke ca nhom xoa mem. Khong doi quyen hien co.
+
+File da sua/them:
+- `database/migrations/2026_10_21_000001_add_default_quality_standard_to_product_groups.php`
+- `app/Models/ProductGroup.php`
+- `app/Models/QualityStandard.php`
+- `app/Http/Controllers/ProductGroupController.php`
+- `app/Http/Controllers/ProductController.php`
+- `app/Http/Controllers/QualityStandardController.php`
+- `app/Imports/ProductsImport.php`
+- `app/Console/Commands/ImportProductsFromExcel.php`
+- `resources/views/product_groups/_form.blade.php`
+- `resources/views/product_groups/index.blade.php`
+- `resources/views/products/_form.blade.php`
+- `resources/views/quality_standards/index.blade.php`
+- `tests/Feature/ProductGroupDefaultStandardTest.php`
+- `scripts/check-workflow-ui.cjs`
+- `docs/DEPLOY_PRODUCT_GROUP_DEFAULT_STANDARD.md`
+- `CHANGELOG_CNCL.md`
+
+Kiem tra: 61 feature test, 894 assertions thanh cong (nhom mac dinh, xoa danh muc, phan quyen va quy trinh phieu) tren SQLite :memory:; 6/6 Playwright desktop/mobile, PHP lint, node --check va git diff --check. Khong migrate/seed hay sua du lieu MySQL hien tai; can backup va migrate --force khi trien khai VPS.
+
 ## 2026-10-21 - Ngay xuat hang tuong lai chi can canh bao
 
 Bo checkbox va dieu kien xac nhan rieng cho ngay xuat hang tuong lai khi tao, sua, gui nhap va DVKH chuyen PTN. Giu canh bao, ngay bat buoc, cam ket nhan/lay hang va xac nhan chuyen buoc hien co. Khong migrate/seed hay thay doi du lieu MySQL.

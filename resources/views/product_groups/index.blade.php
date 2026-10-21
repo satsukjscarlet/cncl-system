@@ -38,6 +38,12 @@
 @stop
 
 @section('content')
+@if($errors->any())
+    <div class="alert alert-danger">
+        <strong>Chưa nhập dữ liệu. Vui lòng sửa các lỗi sau và tải lại file:</strong>
+        <ul class="mb-0">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul>
+    </div>
+@endif
 @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show">
         <i class="fas fa-check-circle"></i> {{ session('success') }}
@@ -100,6 +106,7 @@
                     <th style="width:70px">STT</th>
                     <th style="width:160px">@include('partials.sort_link', ['column' => 'code', 'label' => 'Mã nhóm'])</th>
                     <th>@include('partials.sort_link', ['column' => 'name', 'label' => 'Tên nhóm'])</th>
+                    <th>Tiêu chuẩn mặc định</th>
                     <th>Ghi chú</th>
                     <th style="width:140px">@include('partials.sort_link', ['column' => 'is_active', 'label' => 'Trạng thái'])</th>
                     <th style="width:170px" class="text-center">Thao tác</th>
@@ -111,6 +118,7 @@
                         <td>{{ $groups->firstItem() + $loop->index }}</td>
                         <td><span class="badge badge-primary">{{ $group->code }}</span></td>
                         <td><strong>{{ $group->name }}</strong></td>
+                        <td>{{ $group->defaultQualityStandard?->code ?: '-' }}</td>
                         <td class="text-muted">{{ $group->description ?: '-' }}</td>
                         <td>
                             @if($group->is_active)
@@ -145,7 +153,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
+                        <td colspan="7" class="text-center text-muted py-4">
                             <i class="fas fa-database fa-2x mb-2"></i><br>
                             Chưa có dữ liệu nhóm sản phẩm.
                         </td>
@@ -175,7 +183,10 @@
             </div>
             <div class="modal-body">
                 <div class="alert alert-info">
-                    File import cần đúng định dạng: <strong>ma_nhom_san_pham, ten_nhom_san_pham, tieu_chuan</strong>
+                    Các cột: <strong>ma_nhom_san_pham, ten_nhom_san_pham, ghi_chu, trang_thai, ma_tieu_chuan_mac_dinh</strong>.
+                    Có thể dùng trực tiếp file Xuất Excel để cập nhật theo mã nhóm.
+                    Mã tiêu chuẩn phải có trong danh mục; để trống giữ cấu hình cũ. Trạng thái: 1 đang dùng, 0 ngừng sử dụng.
+                    File cũ có cột tieu_chuan vẫn được đọc như ghi chú. Nếu có lỗi, toàn bộ lần import sẽ không được lưu.
                 </div>
                 <div class="form-group">
                     <label>Chọn file Excel</label>
