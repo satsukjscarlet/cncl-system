@@ -21,38 +21,38 @@ class SalesUnitController extends Controller
     public function index(Request $request)
     {
         $query = SalesUnit::with('distributionCenter')
+            ->select('sales_units.*')
             ->withCount([
                 'certificateRequests as certificate_requests_total_count' => fn ($query) => $query->withTrashed(),
             ]);
 
         if (Auth::user()->hasRole('TrungTam')) {
-            $query->where('distribution_center_id', Auth::user()->distribution_center_id);
+            $query->where('sales_units.distribution_center_id', Auth::user()->distribution_center_id);
         }
 
         if ($request->filled('distribution_center_id') && !Auth::user()->hasRole('TrungTam')) {
-            $query->where('distribution_center_id', $request->distribution_center_id);
+            $query->where('sales_units.distribution_center_id', $request->distribution_center_id);
         }
 
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
-                $q->where('code', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('name', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('address', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('phone', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('tax_code', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('bank_account', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('representative', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('note', 'like', '%' . $request->keyword . '%');
+                $q->where('sales_units.code', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('sales_units.name', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('sales_units.address', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('sales_units.phone', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('sales_units.tax_code', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('sales_units.bank_account', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('sales_units.representative', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('sales_units.note', 'like', '%' . $request->keyword . '%');
             });
         }
 
         if ($request->filled('status')) {
-            $query->where('is_active', $request->status);
+            $query->where('sales_units.is_active', $request->status);
         }
 
         $salesUnits = $query
             ->leftJoin('distribution_centers as sort_centers', 'sort_centers.id', '=', 'sales_units.distribution_center_id')
-            ->select('sales_units.*')
             ->orderBy('sort_centers.code')
             ->orderBy('sales_units.name')
             ->paginate(15)

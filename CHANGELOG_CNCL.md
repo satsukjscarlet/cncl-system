@@ -1,3 +1,14 @@
+## 2026-10-22 - Sua loi tim kiem don vi ban hang khi JOIN trung tam
+
+Ghi ro sales_units cho cac cot tim kiem va bo loc trung tam/trang thai, tranh Column ambiguous khi JOIN distribution_centers. Dat select truoc withCount de khong lam mat certificate_requests_total_count, giu kiem tra lien ket tren giao dien. Khong thay doi du lieu/quyen.
+
+File da sua/them:
+- `app/Http/Controllers/SalesUnitController.php`
+- `tests/Feature/SalesUnitListTest.php`
+- `CHANGELOG_CNCL.md`
+
+Kiem tra: 20 tests/341 assertions (tim kiem va RoleWorkspaceAccessTest); chay lai 2 tests/32 assertions sau khi them truong hop Trung tam khong xem duoc don vi cua trung tam khac. Gom 8 truong tim kiem, loc ket hop, trang thai ngung dung va giu so luong lien ket. Chi dung SQLite :memory:, khong migrate/seed MySQL. PHP lint va git diff --check thanh cong.
+
 ## 2026-10-21 - Sua giao dien Select2 tieu chuan mac dinh
 
 Nguyen nhan: form them/sua nhom chua nap cncl-ui.css va chua dung lop cncl-form nhu form san pham. Nap CSS chung va dong bo lop form, khong sua CSS/JS Select2 toan he thong hay logic du lieu.
