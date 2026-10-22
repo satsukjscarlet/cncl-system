@@ -7,6 +7,18 @@ use RuntimeException;
 
 abstract class TestCase extends BaseTestCase
 {
+    public function actingAs(\Illuminate\Contracts\Auth\Authenticatable $user, $guard = null)
+    {
+        $guard = $guard ?: $this->app['auth']->getDefaultDriver();
+        $current = $this->app['auth']->guard($guard)->user();
+        if (!$current || $current->getAuthIdentifier() !== $user->getAuthIdentifier()) {
+            // Switching test identities represents a fresh login, not a reused session of another user.
+            $this->app['session']->forget('password_hash_' . $guard);
+        }
+
+        return parent::actingAs($user, $guard);
+    }
+
     protected function setUp(): void
     {
         $this->guardAgainstUnsafeTestDatabase();

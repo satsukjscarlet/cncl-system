@@ -162,19 +162,9 @@
                             autocomplete="new-password" required>
                     </div>
 
-                    <div class="custom-control custom-checkbox">
-                        <input type="checkbox"
-                            name="logout_other_devices"
-                            value="1"
-                            class="custom-control-input"
-                            id="logout_other_devices"
-                            checked>
-                        <label class="custom-control-label" for="logout_other_devices">
-                            Đăng xuất khỏi các thiết bị khác sau khi đổi mật khẩu
-                        </label>
-                        <small class="form-text text-muted">
-                            Phiên hiện tại vẫn được giữ để tiếp tục làm việc.
-                        </small>
+                    <div class="text-muted small">
+                        Sau khi đổi mật khẩu, các thiết bị khác phải đăng nhập lại.
+                        Phiên hiện tại vẫn được giữ để tiếp tục làm việc.
                     </div>
                 </div>
 

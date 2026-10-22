@@ -26,10 +26,7 @@ class PasswordController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        $logoutOtherDevices = $request->boolean('logout_other_devices', true);
-        $revokedSessions = $logoutOtherDevices
-            ? app(SessionSecurityService::class)->revokeUserSessions($request->user(), $request->session()->getId())
-            : 0;
+        $revokedSessions = app(SessionSecurityService::class)->revokeUserSessions($request->user(), $request->session()->getId());
 
         ActivityLogger::log(
             'Tài khoản cá nhân',
@@ -38,7 +35,7 @@ class PasswordController extends Controller
             null,
             [
                 'username' => $request->user()->username,
-                'logout_other_devices' => $logoutOtherDevices,
+                'logout_other_devices' => true,
                 'revoked_sessions' => $revokedSessions,
             ],
             $request->user()

@@ -1,3 +1,19 @@
+## 2026-10-22 - Thu hoi phien va cookie ghi nho khi doi mat khau
+
+Them AuthenticateSession vao web middleware de chan request dung mat khau cu, gom PDF/API/thao tac luu. Xoay remember_token trong SessionSecurityService va xoa session theo dung connection/table. Doi mat khau luon thu hoi phien khac, giu phien hien tai, bo checkbox gay hieu nham. Khong the thu hoi PDF da tai ve/nap san; can doi/dat lai mat khau sau khi deploy de thu hoi cac phien database cu. Gioi han phien file/Redis chua co dau van tay duoc ghi ro trong tai lieu.
+
+File da sua/them:
+- `bootstrap/app.php`
+- `app/Services/SessionSecurityService.php`
+- `app/Http/Controllers/Auth/PasswordController.php`
+- `resources/views/profile/edit.blade.php`
+- `tests/Feature/Auth/SessionRevocationTest.php`
+- `tests/TestCase.php`: doi danh tinh actingAs mo phong login moi, khong tai su dung password_hash cua nguoi khac; guard bao ve database van giu nguyen.
+- `docs/PASSWORD_SESSION_REVOCATION.md`
+- `CHANGELOG_CNCL.md`
+
+Kiem tra: 63 tests/849 assertions thanh cong tren SQLite :memory: (auth, thu hoi session/cookie, phan quyen va workflow). PHP lint/git diff --check. Lan chay them cac scaffold cu co 6 failure do route reset mat khau qua email va DELETE profile da tat; khong sua route/nghiep vu khac de lam xanh test. Khong migrate/seed hay sua du lieu MySQL.
+
 ## 2026-10-22 - Sua loi tim kiem don vi ban hang khi JOIN trung tam
 
 Ghi ro sales_units cho cac cot tim kiem va bo loc trung tam/trang thai, tranh Column ambiguous khi JOIN distribution_centers. Dat select truoc withCount de khong lam mat certificate_requests_total_count, giu kiem tra lien ket tren giao dien. Khong thay doi du lieu/quyen.
