@@ -1,3 +1,22 @@
+## 2026-10-22 - Dong bo logo ung dung Nhua Tien Phong
+
+Dung favicon chinh thuc tu https://nhuatienphong.vn/main/imgs/ntp/favicon.png (website https://nhuatienphong.vn/). Luu anh noi bo, dong goi PNG nguyen ban vao ICO cho AdminLTE va favicon.ico goc. Them favicon co version vao login/layout Breeze, thay component logo Laravel bang logo Tien Phong san co. Logo sidebar bo bo tron/bong do de giu dung dang logo. Khong thay logo/file PDF, khong sua du lieu.
+
+File da sua/them:
+- `config/adminlte.php`
+- `public/favicon.ico`
+- `public/favicons/favicon.ico`
+- `public/images/ntp-favicon.png`
+- `resources/views/partials/app_favicon.blade.php`
+- `resources/views/auth/login.blade.php`
+- `resources/views/layouts/app.blade.php`
+- `resources/views/layouts/guest.blade.php`
+- `resources/views/components/application-logo.blade.php`
+- `tests/Feature/ApplicationBrandingTest.php`
+- `CHANGELOG_CNCL.md`
+
+Kiem tra: 6 tests/21 assertions tren SQLite :memory:, PHP lint va git diff --check; Playwright desktop/mobile 2/2 thanh cong. Tren VPS lam moi config/view cache sau pull; favicon cu co the can Ctrl+F5 hoac dong/mo tab do cache trinh duyet. Khong can migrate/seed.
+
 ## 2026-10-22 - Thu hoi phien va cookie ghi nho khi doi mat khau
 
 Them AuthenticateSession vao web middleware de chan request dung mat khau cu, gom PDF/API/thao tac luu. Xoay remember_token trong SessionSecurityService va xoa session theo dung connection/table. Doi mat khau luon thu hoi phien khac, giu phien hien tai, bo checkbox gay hieu nham. Khong the thu hoi PDF da tai ve/nap san; can doi/dat lai mat khau sau khi deploy de thu hoi cac phien database cu. Gioi han phien file/Redis chua co dau van tay duoc ghi ro trong tai lieu.

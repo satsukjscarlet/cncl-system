@@ -30,7 +30,7 @@ return [
     |
     */
 
-    'use_ico_only' => false,
+    'use_ico_only' => true,
     'use_full_favicon' => false,
 
     /*
@@ -65,8 +65,8 @@ return [
 
     'logo' => '<b>CNCL</b> NTP',
     'logo_img' => 'images/logo.png',
-    'logo_img_class' => 'brand-image img-circle elevation-3',
-    'logo_img_alt' => 'NTP',
+    'logo_img_class' => 'brand-image',
+    'logo_img_alt' => 'Nhựa Tiền Phong',
 
     /*
     |--------------------------------------------------------------------------
@@ -84,8 +84,8 @@ return [
     'auth_logo' => [
         'enabled' => false,
         'img' => [
-            'path' => 'vendor/adminlte/dist/img/AdminLTELogo.png',
-            'alt' => 'Auth Logo',
+            'path' => 'images/logo.png',
+            'alt' => 'Nhựa Tiền Phong',
             'class' => '',
             'width' => 50,
             'height' => 50,
