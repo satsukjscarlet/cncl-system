@@ -132,6 +132,35 @@ class QualityCertificate extends Model
         return $this->hasMany(PrintLog::class, 'quality_certificate_id');
     }
 
+    public function hardCopySupplements()
+    {
+        return $this->hasMany(HardCopySupplement::class);
+    }
+
+    public function allowsHardCopySupplement(): bool
+    {
+        return !$this->trashed() && $this->status === self::STATUS_ISSUED && $this->signed_at
+            && $this->pades_status === 'SIGNED_PDF' && filled($this->pdf_path)
+            && !$this->revoked_at && !$this->replaced_by_certificate_id && $this->request
+            && !CertificateRequest::where('request_type', 'REISSUE')->whereNotIn('status', ['CANCELLED', 'COMPLETED'])
+                ->where(fn ($q) => $q->where('reissue_of_certificate_id', $this->id)
+                    ->orWhereHas('reissueCertificates', fn ($c) => $c->where('quality_certificates.id', $this->id)))->exists();
+    }
+
+    public function legacyReissueRequests()
+    {
+        return $this->hasMany(CertificateRequest::class, 'reissue_of_certificate_id');
+    }
+
+    public function scopeHardCopySupplementEligible($query)
+    {
+        $pending = fn ($q) => $q->where('request_type', 'REISSUE')->whereNotIn('status', ['CANCELLED', 'COMPLETED']);
+        return $query->whereNull('quality_certificates.deleted_at')->where('status', self::STATUS_ISSUED)->whereNotNull('signed_at')
+            ->where('pades_status', 'SIGNED_PDF')->whereNotNull('pdf_path')->where('pdf_path', '!=', '')
+            ->whereNull('revoked_at')->whereNull('replaced_by_certificate_id')->whereHas('request')
+            ->whereDoesntHave('legacyReissueRequests', $pending)->whereDoesntHave('reissueRequests', $pending);
+    }
+
     public function displayStatusMeta(): array
     {
         if ($this->status === self::STATUS_REVOKED) {
@@ -181,6 +210,14 @@ class QualityCertificate extends Model
         ], true)
             && !$this->signed_at
             && !in_array($this->smartca_status, ['PENDING', 'SIGNED'], true);
+    }
+
+    public function scopeWaitingForManagerApproval($query)
+    {
+        return $query->whereNull('signed_at')->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL'])
+            ->where(function ($q) {
+                $q->whereNull('smartca_status')->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
+            });
     }
 
     public function isReadyToSendSignature(): bool

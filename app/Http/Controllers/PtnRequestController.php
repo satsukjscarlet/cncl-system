@@ -65,13 +65,7 @@ class PtnRequestController extends Controller
         if ($statusFilter !== null && $statusFilter !== '') {
             $query->where('status', $statusFilter);
         } elseif (!$request->filled('returned')) {
-            $query->where(function ($q) {
-                $q->where('status', 'WAIT_PTN')
-                    ->orWhere(function ($returned) {
-                        $returned->where('status', 'PTN_PROCESSING')
-                            ->where('last_returned_to', 'PTN');
-                    });
-            });
+            $query->waitingForPtnWork();
         }
 
         if ($request->filled('urgent')) {

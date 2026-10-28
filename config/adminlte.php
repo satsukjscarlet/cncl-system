@@ -440,6 +440,12 @@ return [
             'icon' => 'fas fa-print',
             'can'  => 'certificate.print',
         ],
+        [
+            'text' => 'Bổ sung bản ký tươi',
+            'url' => 'hard-copy-supplements',
+            'icon' => 'fas fa-copy',
+            'can' => 'certificate.view',
+        ],
 
         ['header' => 'BÁO CÁO', 'can' => 'report.view'],
         [
@@ -453,6 +459,12 @@ return [
             'url'  => 'reports/hard-copy',
             'icon' => 'fas fa-print',
             'can'  => 'report.view',
+        ],
+        [
+            'text' => 'Dung lượng hệ thống',
+            'url' => 'reports/storage-usage',
+            'icon' => 'fas fa-hdd',
+            'can' => 'storage-usage.view',
         ],
 
         ['header' => 'HỆ THỐNG', 'can' => 'log.view'],
@@ -514,6 +526,8 @@ return [
     'filters' => [
         JeroenNoten\LaravelAdminLte\Menu\Filters\GateFilter::class,
         App\AdminLte\Menu\PendingDeviceBadgeFilter::class,
+        App\AdminLte\Menu\PendingSupplementBadgeFilter::class,
+        App\AdminLte\Menu\PendingWorkflowBadgeFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\HrefFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\SearchFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\ActiveFilter::class,

@@ -112,6 +112,12 @@ class NotificationController extends Controller
         $data = $notification->data ?? [];
         $user = $request->user();
 
+        if ($id = data_get($data, 'hard_copy_supplement_id')) {
+            $service = app(\App\Services\HardCopySupplementService::class);
+            $item = \App\Models\HardCopySupplement::visibleTo($user)->find($id);
+            return $item && $service->canView($user) ? route('hard-copy-supplements.show', $item) : null;
+        }
+
         $requestId = data_get($data, 'request_id');
         $certificateId = data_get($data, 'certificate_id');
 

@@ -22,6 +22,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrap();
+        \Illuminate\Support\Facades\Gate::define('storage-usage.view', fn ($user) => $user->hasRole('Admin'));
 
         // TLS may terminate at the proxy while PHP receives an HTTP request.
         // Keep generated links HTTPS when the configured public URL uses HTTPS.

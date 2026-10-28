@@ -13,6 +13,18 @@ class WorkQueueService
     {
         $role = $this->primaryRole($user);
         $items = $this->itemsForRole($role, $user);
+        $supplements = \App\Models\HardCopySupplement::visibleTo($user);
+        $service = app(HardCopySupplementService::class);
+        if ($service->canView($user)) {
+            $statuses = $user->hasRole('TrungTam') ? ['RETURNED'] : array_filter([
+                $service->dvkh($user) ? 'WAIT_DVKH' : null, $service->ptn($user) ? 'WAIT_PTN' : null,
+            ]);
+            foreach ($statuses as $status) {
+                $items[] = $this->item('Bổ sung ký tươi: ' . \App\Models\HardCopySupplement::LABELS[$status],
+                    (clone $supplements)->where('status', $status)->whereHas('certificate', fn ($q) => $q->hardCopySupplementEligible())->count(),
+                    'fas fa-copy', 'info', route('hard-copy-supplements.index', ['status' => $status]));
+            }
+        }
         $items = array_values(array_filter($items, fn ($item) => $item['count'] > 0));
         $total = collect($items)->sum('count');
 

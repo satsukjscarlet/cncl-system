@@ -14,6 +14,7 @@
 @stop
 
 @section('content')
+@if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>@endif
 @if (session('success'))
     <div class="alert alert-success">
         <i class="fas fa-check-circle"></i> {{ session('success') }}
@@ -27,6 +28,7 @@
 @endif
 
 @include('quality_certificates.partials.workflow_steps', ['steps' => $certificateWorkflowSteps])
+@include('hard_copy_supplements.certificate_panel', ['certificate' => $qualityCertificate])
 
 @php
     $smartCaPendingTtlMinutes = max(1, (int) config('services.smartca.pending_ttl_minutes', 5));

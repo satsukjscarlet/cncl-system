@@ -1,3 +1,123 @@
+## 2026-10-28 - Cho phep mo ca In don va In bo trong cung yeu cau bo sung
+
+Bo khoa doi mau; PTN duoc mo ca hai mau khi WAIT_PTN, van giu dieu kien phieu hop le va khoa giao dich. Ghi dung mau/so trang tung luot vao event va print log; doi chieu so trang rieng tung mau de chan thay doi bat thuong. Truong print_template/page_count hien tai luu mau mo gan nhat cho bao cao/bo loc, khong cong doi so ban khi mo hai mau. Cap nhat nhan giao dien, dinh nghia bao cao/Excel va tai lieu. Khong migration/seed hay sua phieu da ky.
+
+File da sua: `app/Http/Controllers/HardCopySupplementController.php`, `resources/views/hard_copy_supplements/show.blade.php`, `resources/views/hard_copy_supplements/request_summary.blade.php`, `resources/views/hard_copy_supplements/filters.blade.php`, `resources/views/hard_copy_supplements/report.blade.php`, `app/Exports/HardCopySupplementExport.php`, `tests/Feature/HardCopySupplementTest.php`, `docs/BO_SUNG_BAN_KY_TUOI.md`, `CHANGELOG_CNCL.md`.
+
+## 2026-10-28 - Toi uu chi tiet yeu cau bo sung ban ky tuoi
+
+Dong bo giao dien chi tiet voi danh sach: tom tat trang thai/so ban/ngay gui/mau in, tien trinh 3 buoc, thong tin phieu va noi dung bo sung tach ro, khu vuc thao tac theo vai tro va thanh nut co dinh. Lich su moi nhat truoc, co trang thai rong; phan biet so to du kien va luot mo file. Sua nhan tien trinh tra lai/tam dung de khong hien dang xu ly sai. Them lien ket label-input, CSS chi tiet co pham vi rieng. Giu nguyen quyen, nghiep vu, endpoint va du lieu, khong migration/seed.
+
+File da sua: `resources/views/hard_copy_supplements/show.blade.php`, `resources/views/hard_copy_supplements/request_summary.blade.php`, `resources/views/hard_copy_supplements/request_fields.blade.php`, `public/css/hard-copy-supplements.css`, `tests/Feature/HardCopySupplementTest.php`, `CHANGELOG_CNCL.md`.
+
+## 2026-10-28 - Bo dem menu DVKH, PTN va Truong PTN
+
+Them badge DVKH WAIT_DVKH; PTN WAIT_PTN va PTN_PROCESSING tra lai PTN; Truong PTN dem phieu cho duyet (gom DRAFT cu), loai da ky/dang ky/qua han. Dung scope chung cho dem menu va loc danh sach PTN/cho duyet, khong doi dieu kien nghiep vu hien tai. Menu Truong PTN mo WAIT_APPROVAL de khop so dem; an so 0, gioi han 99+, kiem tra quyen va khong hien cho Trung tam. Khong job/migration/seed.
+
+File da sua/them: `app/AdminLte/Menu/PendingWorkflowBadgeFilter.php`, `app/Models/CertificateRequest.php`, `app/Models/QualityCertificate.php`, `app/Http/Controllers/PtnRequestController.php`, `app/Http/Controllers/QualityCertificateController.php`, `config/adminlte.php`, `tests/Feature/HardCopySupplementTest.php`, `CHANGELOG_CNCL.md`.
+
+## 2026-10-28 - Bo dem viec cho xu ly tren menu bo sung ky tuoi
+
+DVKH dem WAIT_DVKH; PTN co quyen xu ly va in dem WAIT_PTN; Admin dem ca hai. Trung tam khong hien badge/bo loc viec cho. Dem va loc dung chung truy van loai phieu khong du dieu kien (huy/thu hoi/cap lai/xoa mem). An badge khi 0, hien 99+ khi tren 99; bam menu vao work_queue=1, co checkbox de bo loc va cac tab tra cuu toan bo. Khong job, migration/seed hay thay doi quy trinh. Bo dem cap nhat khi tai/chuyen trang.
+
+File da sua/them: `app/AdminLte/Menu/PendingSupplementBadgeFilter.php`, `app/Services/HardCopySupplementService.php`, `app/Http/Controllers/HardCopySupplementController.php`, `config/adminlte.php`, `resources/views/hard_copy_supplements/index.blade.php`, `resources/views/hard_copy_supplements/filters.blade.php`, `tests/Feature/HardCopySupplementTest.php`, `CHANGELOG_CNCL.md`.
+
+## 2026-10-28 - Dong bo giao dien danh sach bo sung ban ky tuoi
+
+Dong bo tab trang thai, thanh bo loc co bieu tuong tim kiem, tieu de bang/bo dem va phan trang voi cac danh sach hien co. Them cot thao tac mo chi tiet; giu nguyen bo loc, sap xep, quyen Trung tam va quy trinh. CSS danh sach gioi han trong supplement-index, khong doi bo cuc chi tiet/bao cao; bo loc dung chung chi them bieu tuong. Khong migration/seed hay sua du lieu nghiep vu.
+
+File da sua:
+- `resources/views/hard_copy_supplements/index.blade.php`
+- `resources/views/hard_copy_supplements/filters.blade.php`
+- `resources/views/hard_copy_supplements/table.blade.php`
+- `public/css/hard-copy-supplements.css`
+- `tests/Feature/HardCopySupplementTest.php`
+- `scripts/check-workflow-ui.cjs`
+- `CHANGELOG_CNCL.md`
+
+## 2026-10-27 - Phan loai PDF va lich su bien dong dung luong
+
+Them bang thu muc PDF theo loai da ky/chua ky/trung gian/khac, so file, dung luong va ty le. Doi chieu duong dan phieu va quy uoc luu SmartCA, khong kiem dinh chu ky mat ma. Ghi snapshot tong hop private sau moi lan quet day du, theo pham vi cai dat va thang; so sanh lan truoc/moc dau tien, bieu do va bang ngay co quet. Khong noi suy ngay thieu, khong dung scan thieu lam moc, khong cong snapshot vao dung luong storage; khong job/migration/seed hay sua du lieu nghiep vu.
+
+File da sua/them:
+- `app/Services/StorageUsageService.php`
+- `app/Services/StorageUsageHistoryService.php`
+- `app/Http/Controllers/StorageUsageController.php`
+- `resources/views/reports/storage_usage.blade.php`
+- `tests/Feature/StorageUsageTest.php`
+- `scripts/check-storage-usage-ui.cjs`
+- `docs/BAO_CAO_DUNG_LUONG.md`
+- `CHANGELOG_CNCL.md`
+
+## 2026-10-26 - Bao cao dung luong he thong cho Admin
+
+Quet theo yeu cau khi mo man hinh hoac bam Quet lai, khong job, khong xoa/sua du lieu nghiep vu. Dem file/PDF va kich thuoc trong storage, tong hop thu muc, dung luong phan vung, du lieu/chi muc MySQL va tung bang. Khoa tranh quet dong thoi, gioi han quet file 20 giay va canh bao so lieu chua day du; bo qua symlink, khong doc noi dung PDF. Khong migration/seed. So lieu database la uoc tinh; khong tinh luu tru ngoai storage/cloud.
+
+File: `app/Services/StorageUsageService.php`, `app/Http/Controllers/StorageUsageController.php`, `resources/views/reports/storage_usage.blade.php`, `routes/web.php`, `config/adminlte.php`, `app/Providers/AppServiceProvider.php`, `tests/Feature/StorageUsageTest.php`, `CHANGELOG_CNCL.md`.
+
+## 2026-10-26 - Toi uu danh sach va chi tiet bo sung ban ky tuoi
+
+Danh sach: them loc nhanh theo trang thai va bo dem theo dung pham vi/bo loc hien tai; tim ma BSKT/day so, khach hang/cong trinh, nguoi gui, so phieu/yeu cau va DVBH; sap xep an toan theo ma, so ban, trang thai va ngay. Bo loc nang cao thu gon, giu lua chon va trang thai sap xep. Bang co nhan trang thai, lien ket phieu, thong tin khach hang/cong trinh va phan trang ro rang. Nut Phieu da phat hanh dung gia tri filter SIGNED cua man danh sach phieu, khong dung ISSUED khong duoc ho tro.
+
+Chi tiet: tien trinh 3 buoc, khach hang/cong trinh/Trung tam/DVBH, ly do tra lai o dau trang, can doi noi dung theo vai tro. Gom nut xu ly vao thanh co dinh; tra lai/huy dung modal nhap ly do, huy nam trong Thao tac khac. Lich su tach noi dung mo file in khoi ly do yeu cau. Dung withCount thay vi tai toan bo printLogs; eager load du lieu can thiet, khong N+1 cho bang. Khong doi trang thai/quyen/quy trinh, khong migration/seed.
+
+File da sua/them:
+- `app/Http/Controllers/HardCopySupplementController.php`
+- `app/Models/HardCopySupplement.php`
+- `public/css/hard-copy-supplements.css`
+- `resources/views/hard_copy_supplements/index.blade.php`
+- `resources/views/hard_copy_supplements/filters.blade.php`
+- `resources/views/hard_copy_supplements/table.blade.php`
+- `resources/views/hard_copy_supplements/show.blade.php`
+- `resources/views/hard_copy_supplements/request_summary.blade.php`
+- `resources/views/hard_copy_supplements/report.blade.php`
+- `tests/Feature/HardCopySupplementTest.php`
+- `scripts/check-workflow-ui.cjs`
+- `docs/BO_SUNG_BAN_KY_TUOI.md`
+- `CHANGELOG_CNCL.md`
+
+Kiem tra: 62 tests/996 assertions tren SQLite :memory: (bo sung, quy trinh phieu, phan quyen); Playwright 14/14 desktop/mobile, gom modal tra lai, huy confirm khong ket loading, can sidebar/thanh thao tac va khong tran ngang. MySQL that: render danh sach/chi tiet yeu cau 1 voi admin/DVKH/PTN, tim BSKT va sort thanh cong; doi chieu hash ban ghi va so su kien yeu cau 1 giu nguyen. PHP lint va git diff --check thanh cong. Khong sua du lieu yeu cau 1 tren MySQL.
+
+## 2026-10-26 - Yeu cau bo sung ban ky tuoi sau phat hanh
+
+Bo sung kha nang tim thay thao tac: nut Yeu cau bo sung ban ky tuoi tren thanh thao tac co dinh cua chi tiet phieu, tu mo panel nhap. Tai khoan noi bo cung thay nut Bo sung ban ky tuoi va thong tin phan quyen/lich su khi chua co yeu cau, khong mo quyen gui thay Trung tam. File sua: `resources/views/hard_copy_supplements/certificate_panel.blade.php`, `resources/views/quality_certificates/partials/detail_actions.blade.php`, `tests/Feature/HardCopySupplementTest.php`, `scripts/check-workflow-ui.cjs`, `docs/BO_SUNG_BAN_KY_TUOI.md`, `CHANGELOG_CNCL.md`. 9 tests/166 assertions qua SQLite :memory:; khong sua du lieu MySQL.
+
+Xac minh MySQL sau khi nguoi dung mo dich vu: da backup cncl_system vao `storage/app/private/backups/cncl_system_before_hard_copy_supplements_20261026_132829.sql` (16.153.993 bytes), kiem tra dump hoan tat va SHA-256. Da chay rieng migration `2026_10_26_000001_create_hard_copy_supplements`, view:clear; schema va unique active_certificate_id hop le. Render danh sach/bao cao/Viec can lam voi admin, trungtam_np, dvkh, ptn, truongptn thanh cong. Doi chieu truoc/sau khong doi so dong: users 12, products 14.859, customers 48, product_groups 41, quality_standards 34, sales_units 72, certificate_requests 68, quality_certificates 56, print_logs 56. Khong seed, khong tao yeu cau bo sung test tren MySQL (bang moi 0 dong). Day la cap nhat database may hien tai, khong phai xac nhan da trien khai VPS.
+
+Quy trinh tach rieng: Trung tam gui -> DVKH xac nhan/tra lai -> PTN mo file In don/In bo va xac nhan hoan tat. Khong co buoc Nhan xu ly. Mot phieu chi co mot yeu cau dang mo, khoa transaction theo phieu va unique active_certificate_id de tranh gui trung/xu ly dong thoi. Cho sua/gui lai va huy dung buoc; sau mo file khong doi mau/tra lai, DVKH huy can xac nhan phoi hop PTN dung in. Luu su kien rieng, nhat ky in lien ket, thong bao va Viec can lam theo quyen/pham vi Trung tam. Chan phieu huy/thu hoi/thay the/cho cap lai, giu lich su.
+
+Khong doi so phieu/noi dung/PDF SmartCA/so ban yeu cau goc, khong gui ky lai, khong tang so phieu phat hanh. Bao cao ky tuoi cu giu nhu cau ban dau theo ngay ky so, co lien ket sang bao cao bo sung: filter Trung tam, DVBH, trang thai, mau in, tu khoa, ngay gui/duyet/hoan tat/ky so; tong hop Trung tam/thang, chi tiet va Excel. Tach ban ban dau, bo sung da duyet/hoan tat, tong trong ket qua; khong dem trung phieu/ban hoan tat. So to du kien theo mau va so trang ghi nhan, ban chua chon mau chua tinh to. Excel chan chuoi cong thuc tu du lieu nguoi dung. Khong render PDF trong report.
+
+File da sua/them:
+- `database/migrations/2026_10_26_000001_create_hard_copy_supplements.php`
+- `app/Models/HardCopySupplement.php`
+- `app/Models/HardCopySupplementEvent.php`
+- `app/Models/QualityCertificate.php`
+- `app/Models/PrintLog.php`
+- `app/Services/HardCopySupplementService.php`
+- `app/Services/WorkQueueService.php`
+- `app/Http/Controllers/HardCopySupplementController.php`
+- `app/Http/Controllers/NotificationController.php`
+- `app/Exports/HardCopySupplementExport.php`
+- `routes/web.php`
+- `config/adminlte.php`
+- `resources/views/quality_certificates/show.blade.php`
+- `resources/views/reports/hard_copy.blade.php`
+- `resources/views/hard_copy_supplements/certificate_panel.blade.php`
+- `resources/views/hard_copy_supplements/filters.blade.php`
+- `resources/views/hard_copy_supplements/index.blade.php`
+- `resources/views/hard_copy_supplements/messages.blade.php`
+- `resources/views/hard_copy_supplements/report.blade.php`
+- `resources/views/hard_copy_supplements/request_fields.blade.php`
+- `resources/views/hard_copy_supplements/show.blade.php`
+- `resources/views/hard_copy_supplements/table.blade.php`
+- `tests/Feature/HardCopySupplementTest.php`
+- `scripts/check-workflow-ui.cjs`
+- `docs/BO_SUNG_BAN_KY_TUOI.md`
+- `CHANGELOG_CNCL.md`
+
+Kiem tra: 65 tests/990 assertions thanh cong tren SQLite :memory: (bo sung, workflow phieu, phan quyen, session), gom render PDF that In don/In bo va xuat Excel. Playwright 8/8 desktop/mobile; them 2/2 kiem tra huy hop thoai Hoan tat khong khoa loading. PHP lint, route:list va git diff --check. Chi kiem tra status migration MySQL nhung ket noi 127.0.0.1:3306 dang bi tu choi; khong chay migration/seed hay sua du lieu MySQL. Can backup va chay migration bo sung truoc khi bat tinh nang tren VPS. Dung quyen hien co, khong can PermissionSeeder/job moi.
+
 ## 2026-10-22 - Dong bo logo ung dung Nhua Tien Phong
 
 Dung favicon chinh thuc tu https://nhuatienphong.vn/main/imgs/ntp/favicon.png (website https://nhuatienphong.vn/). Luu anh noi bo, dong goi PNG nguyen ban vao ICO cho AdminLTE va favicon.ico goc. Them favicon co version vao login/layout Breeze, thay component logo Laravel bang logo Tien Phong san co. Logo sidebar bo bo tron/bong do de giu dung dang logo. Khong thay logo/file PDF, khong sua du lieu.

@@ -230,12 +230,7 @@ class QualityCertificateController extends Controller
 
         $metrics = [
             'waiting_approval' => (clone $baseQuery)
-                ->whereNull('signed_at')
-                ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL'])
-                ->where(function ($q) {
-                    $q->whereNull('smartca_status')
-                        ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
-                })
+                ->waitingForManagerApproval()
                 ->count(),
             'ready' => (clone $baseQuery)
                 ->whereNull('signed_at')
@@ -296,12 +291,7 @@ class QualityCertificateController extends Controller
                     $q->whereNull('smartca_status')
                         ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
                 }),
-            'WAIT_APPROVAL' => $query->whereNull('signed_at')
-                ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL'])
-                ->where(function ($q) {
-                    $q->whereNull('smartca_status')
-                        ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
-                }),
+            'WAIT_APPROVAL' => $query->waitingForManagerApproval(),
             'PENDING' => $query->whereNull('signed_at')
                 ->where('smartca_status', 'PENDING')
                 ->where('smartca_requested_at', '>', $expiredBefore),

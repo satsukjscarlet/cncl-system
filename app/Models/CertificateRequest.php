@@ -8,6 +8,15 @@ use Illuminate\Support\Str;
 
 class CertificateRequest extends Model
 {
+    public function scopeWaitingForPtnWork($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('status', 'WAIT_PTN')->orWhere(function ($returned) {
+                $returned->where('status', 'PTN_PROCESSING')->where('last_returned_to', 'PTN');
+            });
+        });
+    }
+
     use SoftDeletes;
 
     protected $fillable = [

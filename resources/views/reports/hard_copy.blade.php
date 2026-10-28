@@ -88,6 +88,10 @@
 @stop
 
 @section('content')
+<div class="mb-3 d-flex flex-wrap" style="gap:8px">
+    <span class="font-weight-bold align-self-center">Nhu cầu ban đầu theo ngày ký số</span>
+    <a href="{{ route('reports.hard-copy-supplements') }}" class="btn btn-outline-primary"><i class="fas fa-copy"></i> Báo cáo bổ sung bản ký tươi</a>
+</div>
 <div class="row hard-copy-kpi">
     <div class="col-xl-3 col-lg-4 col-md-6">
         <div class="small-box bg-primary">
@@ -113,7 +117,7 @@
         <div class="small-box bg-warning">
             <div class="inner">
                 <h3>{{ number_format($summary['copy_count']) }}</h3>
-                <p>Tổng số bản in yêu cầu</p>
+                <p>Số bản in yêu cầu ban đầu</p>
             </div>
             <div class="icon"><i class="fas fa-copy"></i></div>
         </div>
@@ -343,7 +347,7 @@
 
 <div class="alert alert-info">
     <i class="fas fa-info-circle"></i>
-    Báo cáo chỉ tính các phiếu đã ký số/phát hành và có yêu cầu ký tươi. Số tờ dự kiến = số bản in yêu cầu x số trang của từng mẫu in. Lượt bấm in chỉ là số lần người dùng bấm nút in trên hệ thống, không xác nhận số bản thực tế từ máy in.
+    Báo cáo này tính nhu cầu ký tươi ban đầu theo ngày ký số; yêu cầu bổ sung nằm trong Báo cáo bổ sung bản ký tươi. Số tờ dự kiến = số bản in yêu cầu ban đầu x số trang của từng mẫu in. Lượt bấm in (gồm cả bổ sung) không xác nhận số bản thực tế từ máy in.
 </div>
 
 <div class="card hard-copy-center-card">

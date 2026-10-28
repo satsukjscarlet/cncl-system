@@ -61,6 +61,30 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                     const bar = page.locator('.workflow-action-bar');
                     const detail = await bar.count() > 0;
                     const deliveryDate = page.locator('#delivery_date');
+                    if (name.startsWith('supplement-list-')) {
+                        assert.equal(await page.locator('.supplement-filter-panel').count(), 1);
+                        assert.equal(await page.locator('.supplement-list-heading').count(), 1);
+                        assert.equal(await page.locator('#supplement-center').count(), name.endsWith('-center') ? 0 : 1);
+                        assert(await page.locator('a[aria-label^="Xem chi tiết BSKT-"]').first().isVisible());
+                        const advanced = page.locator('.supplement-filter details');
+                        await advanced.locator('summary').click();
+                        assert(await advanced.evaluate(el => el.open), 'Advanced filters did not open');
+                        await advanced.locator('summary').click();
+                    }
+                    if (name.startsWith('supplement-certificate-')) {
+                        await page.locator('a[href="#hard-copy-supplement-panel"]').click();
+                        assert(await page.locator('#hard-copy-supplement-panel').evaluate(el => el.open), 'Supplement panel did not open');
+                        const createForm = page.locator('#hard-copy-supplement-panel form');
+                        assert.equal(await createForm.count(), name.endsWith('-center') ? 1 : 0);
+                        if (name.endsWith('-center')) assert(await createForm.locator('input[name="quantity"]').isVisible());
+                    }
+                    if (name === 'supplement-ptn') {
+                        let dialogs = 0;
+                        page.once('dialog', dialog => { dialogs++; return dialog.dismiss(); });
+                        await page.locator('button[form="completeSupplementForm"]').click();
+                        assert.equal(dialogs, 1, 'Supplement completion confirmation did not open');
+                        assert.equal(await page.locator('.cncl-loading').count(), 0, 'Cancel completion left loading active');
+                    }
                     if (name.startsWith('group-default-')) {
                         const select = page.locator('#default_quality_standard_id');
                         const box = page.locator('#default_quality_standard_id + .select2 .select2-selection--single');
@@ -156,9 +180,11 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                             await search.fill('__no_matching_product__');
                             assert.equal(await rows.evaluateAll(items => items.filter(item => !item.hidden).length), 0);
                             assert(await page.getByText('Không tìm thấy sản phẩm phù hợp.', { exact: true }).isVisible());
-                            const firstCode = (await rows.first().getAttribute('data-product-text')).trim().split(/\s+/)[0];
-                            await search.fill(firstCode);
-                            assert(await rows.evaluateAll(items => items.filter(item => !item.hidden).length) > 0);
+                            if (total > 0) {
+                                const firstCode = (await rows.first().getAttribute('data-product-text')).trim().split(/\s+/)[0];
+                                await search.fill(firstCode);
+                                assert(await rows.evaluateAll(items => items.filter(item => !item.hidden).length) > 0);
+                            }
                             await search.fill('');
                             assert.equal(await rows.evaluateAll(items => items.filter(item => !item.hidden).length), total);
                         }
@@ -180,11 +206,14 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                         });
                         await checkBounds();
                         await page.screenshot({ path: path.join(output, `${name}-${viewport.width}-bottom.png`) });
-                        const modalButton = bar.locator('[data-toggle="modal"]').first();
+                        const modalButton = bar.locator('[data-toggle="modal"]:visible').first();
                         if (await modalButton.count()) {
                             await modalButton.click();
                             const modal = page.locator('.modal.show');
                             await modal.waitFor({ state: 'visible' });
+                            await page.waitForTimeout(350);
+                            const modalBounds = await modal.locator('.modal-dialog').boundingBox();
+                            assert(modalBounds.y >= 0 && modalBounds.x >= 0 && modalBounds.x + modalBounds.width <= viewport.width + 2, 'Modal is clipped');
                             assert(await modal.evaluate(element => Number(getComputedStyle(element).zIndex)) > 1030);
                             await page.screenshot({ path: path.join(output, `${name}-${viewport.width}-modal.png`) });
                             await modal.locator('[data-dismiss="modal"]').first().click();

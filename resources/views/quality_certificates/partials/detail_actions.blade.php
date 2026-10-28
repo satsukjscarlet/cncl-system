@@ -1,4 +1,10 @@
 @can('certificate.view')
+                        @if($qualityCertificate->signed_at)
+                        <a href="#hard-copy-supplement-panel" class="btn btn-outline-primary"
+                           onclick="var panel = document.getElementById('hard-copy-supplement-panel'); if (panel) panel.open = true;">
+                            <i class="fas fa-copy"></i> {{ app(\App\Services\HardCopySupplementService::class)->center(auth()->user(), $qualityCertificate) && $qualityCertificate->allowsHardCopySupplement() ? 'Yêu cầu bổ sung bản ký tươi' : 'Bổ sung bản ký tươi' }}
+                        </a>
+                        @endif
                         @if(!auth()->user()->hasRole('TrungTam') || ($qualityCertificate->signed_at && in_array($qualityCertificate->status, ['ISSUED', 'REVOKED'], true) && $qualityCertificate->pades_status === 'SIGNED_PDF' && filled($qualityCertificate->pdf_path)))
                         <a href="{{ route('quality-certificates.pdf', $qualityCertificate) }}" target="_blank" class="btn btn-info">
                             <i class="fas fa-file-pdf"></i> {{ $qualityCertificate->signed_at ? 'Xem PDF đã ký' : 'Xem trước PDF' }}

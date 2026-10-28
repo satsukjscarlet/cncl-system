@@ -33,6 +33,13 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('hard-copy-supplements', [\App\Http\Controllers\HardCopySupplementController::class, 'index'])->name('hard-copy-supplements.index');
+    Route::get('hard-copy-supplements/{supplement}', [\App\Http\Controllers\HardCopySupplementController::class, 'show'])->name('hard-copy-supplements.show');
+    Route::post('quality-certificates/{qualityCertificate}/hard-copy-supplements', [\App\Http\Controllers\HardCopySupplementController::class, 'store'])->name('hard-copy-supplements.store');
+    Route::post('hard-copy-supplements/{supplement}/print', [\App\Http\Controllers\HardCopySupplementController::class, 'print'])->name('hard-copy-supplements.print');
+    Route::post('hard-copy-supplements/{supplement}/actions/{action}', [\App\Http\Controllers\HardCopySupplementController::class, 'action'])->whereIn('action', ['resubmit', 'approve', 'return', 'cancel', 'complete'])->name('hard-copy-supplements.action');
+    Route::get('reports/hard-copy-supplements', [\App\Http\Controllers\HardCopySupplementController::class, 'report'])->name('reports.hard-copy-supplements');
+    Route::get('reports/hard-copy-supplements/export', [\App\Http\Controllers\HardCopySupplementController::class, 'report'])->name('reports.hard-copy-supplements.export');
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
@@ -462,6 +469,11 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('sla-configs', SlaConfigController::class)
         ->only(['destroy'])
         ->middleware('permission:sla.delete');
+
+    Route::get('reports/storage-usage', [\App\Http\Controllers\StorageUsageController::class, 'index'])
+        ->middleware('role:Admin')->name('reports.storage-usage');
+    Route::post('reports/storage-usage/scan', [\App\Http\Controllers\StorageUsageController::class, 'scan'])
+        ->middleware('role:Admin')->name('reports.storage-usage.scan');
 
     Route::get('reports/summary', [ReportController::class, 'summary'])
         ->middleware('permission:report.view')

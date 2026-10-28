@@ -13,6 +13,7 @@ class PrintLog extends Model
         'print_no',
         'print_template',
         'print_mode',
+        'hard_copy_supplement_id',
     ];
 
     public function certificate()
