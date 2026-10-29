@@ -1,5 +1,7 @@
 # Bổ sung bản ký tươi sau phát hành
 
+Hướng dẫn thao tác dành cho người dùng các phòng ban: [Hướng dẫn yêu cầu bổ sung bản ký tươi](HUONG_DAN_YEU_CAU_BO_SUNG_KY_TUOI.md).
+
 ## Thao tác
 
 1. Trung tâm mở chi tiết phiếu đã ký số/phát hành, bấm **Yêu cầu bổ sung bản ký tươi** trên thanh thao tác cố định để mở form, nhập số bản, lý do và ghi chú nhận bản giấy rồi gửi DVKH. Phiếu không cần có yêu cầu ký tươi ban đầu. Admin/DVKH/PTN thấy nút **Bổ sung bản ký tươi** để xem lịch sử; không có form gửi thay Trung tâm.
@@ -34,6 +36,8 @@ Chi tiết hiển thị tiến trình ba bước, thông tin phiếu/khách hàn
 Màn hình giữ bốn chỉ tiêu tổng quan. Bảng Trung tâm/tháng/ĐVBH hiển thị Trang In đơn, Tờ In đơn dự kiến, Trang In bộ, Tờ In bộ dự kiến; cột Trang ở bảng tổng hợp là tổng số trang một bản của từng phiếu, không phải số tờ và không nhân với tổng số bản. Chi tiết phiếu và Excel hiển thị đầy đủ số bản ban đầu/bổ sung hoàn tất/tổng bản, số trang một bản, số tờ dự kiến từng mẫu và lượt mở file ban đầu. Phần Định nghĩa số liệu luôn có trên màn hình. Lượt mở file không phải số bản thực in. Chưa hoàn tất không thống kê ở đây; tra cứu tại danh sách hoặc **Báo cáo bổ sung bản ký tươi**. Báo cáo tổng hợp phát hành không tăng số phiếu.
 
 Báo cáo bổ sung có bộ lọc Trung tâm (ẩn với tài khoản Trung tâm), đơn vị bán hàng, trạng thái, mẫu in, từ khóa và khoảng ngày theo Ngày gửi bổ sung / Ngày DVKH duyệt / Ngày PTN hoàn tất / Ngày ký số. Có thống kê theo Trung tâm, tháng của loại ngày đã chọn, chi tiết phân trang và Excel cùng bộ lọc.
+
+Giao diện có bốn ô chính (lượt yêu cầu, phiếu không trùng, bản đã duyệt, bản hoàn tất); năm số liệu còn lại nằm ở dải phụ. Bộ lọc nâng cao mở sẵn trên báo cáo; phần phạm vi ghi rõ loại ngày đang dùng. Bảng Trung tâm và tháng có dòng tổng; tổng phiếu toàn kết quả không cộng số phiếu từng tháng. Định nghĩa số liệu luôn hiển thị trước bảng chi tiết.
 
 - Bản bổ sung đã duyệt: tổng của Chờ PTN và Đã hoàn tất, chỉ phiếu hiện còn đủ điều kiện. Không cộng đang chờ DVKH, trả lại hoặc đã hủy.
 - Bản hoàn tất đã nằm trong bản được duyệt; không cộng thêm lần nữa.

@@ -61,6 +61,16 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                     const bar = page.locator('.workflow-action-bar');
                     const detail = await bar.count() > 0;
                     const deliveryDate = page.locator('#delivery_date');
+                    if (name.startsWith('supplement-report')) {
+                        assert.equal(await page.locator('.supplement-report-kpis .small-box').count(), 4);
+                        assert.equal(await page.locator('.supplement-report-secondary > div').count(), 5);
+                        assert(await page.locator('.supplement-filter details').evaluate(el => el.open));
+                        assert.equal(await page.locator('#supplement-center').count(), name.endsWith('-center') ? 0 : 1);
+                        assert(await page.getByText('Định nghĩa số liệu', {exact: true}).isVisible());
+                        if (name.endsWith('-empty')) {
+                            assert.equal(await page.locator('.supplement-report-kpis h3').allTextContents().then(values => values.every(value => value.trim() === '0')), true);
+                        }
+                    }
                     if (name === 'hard-copy-completed-report') {
                         assert.equal(await page.locator('.hard-copy-kpi .small-box').count(), 4);
                         assert(await page.locator('.hard-copy-kpi').getByText('Tờ In đơn dự kiến', {exact: true}).isVisible());

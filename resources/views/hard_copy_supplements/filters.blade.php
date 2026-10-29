@@ -1,5 +1,6 @@
 @php
-    $advancedOpen = request()->filled('distribution_center_id') || request()->filled('sales_unit_id') || request()->filled('print_template') || request()->filled('date_from') || request()->filled('date_to') || (request('date_basis') && request('date_basis') !== 'submitted_at');
+    $advancedApplied = request()->filled('distribution_center_id') || request()->filled('sales_unit_id') || request()->filled('print_template') || request()->filled('date_from') || request()->filled('date_to') || (request('date_basis') && request('date_basis') !== 'submitted_at');
+    $advancedOpen = ($reportFilters ?? false) || $advancedApplied;
 @endphp
 <form method="GET" class="supplement-filter cncl-form">
     @if(request()->filled('quality_certificate_id'))
@@ -24,7 +25,7 @@
         @if(request()->boolean('work_queue'))<span class="badge badge-info ml-2">Đang áp dụng</span>@endif
     </div>
     @endif
-    <details @if($advancedOpen) open @endif><summary><i class="fas fa-sliders-h mr-1" aria-hidden="true"></i> Bộ lọc nâng cao @if($advancedOpen)<span class="badge badge-info">Đang áp dụng</span>@endif</summary>
+    <details @if($advancedOpen) open @endif><summary><i class="fas fa-sliders-h mr-1" aria-hidden="true"></i> Bộ lọc nâng cao @if($advancedApplied)<span class="badge badge-info">Đang áp dụng</span>@endif</summary>
     <div class="row">
         @unless(auth()->user()->hasRole('TrungTam'))
         <div class="col-lg-4 col-md-6 form-group"><label for="supplement-center">Trung tâm</label><select id="supplement-center" name="distribution_center_id" class="form-control select2"><option value="">Tất cả trung tâm</option>

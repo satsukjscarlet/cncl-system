@@ -327,8 +327,15 @@ class HardCopySupplementTest extends TestCase
             }
         }
         $response = $this->actingAs(User::where('username', 'admin')->firstOrFail())->get(route('reports.hard-copy-supplements'));
-        $response->assertOk();
+        $response->assertOk()->assertSee('supplement-report-kpis', false)->assertSee('Định nghĩa số liệu')->assertSee('Tổng không trùng');
         if ($directory) file_put_contents($directory . '/supplement-report.html', $response->getContent());
+        $emptyResponse = $this->get(route('reports.hard-copy-supplements', ['keyword' => '__khong_co_ket_qua__']))->assertOk()
+            ->assertViewHas('summary', fn ($summary) => $summary['requests'] === 0);
+        if ($directory) file_put_contents($directory . '/supplement-report-empty.html', $emptyResponse->getContent());
+        $this->center->givePermissionTo('report.view');
+        $centerReport = $this->actingAs($this->center)->get(route('reports.hard-copy-supplements'))->assertOk()
+            ->assertDontSee('id="supplement-center"', false);
+        if ($directory) file_put_contents($directory . '/supplement-report-center.html', $centerReport->getContent());
     }
 
     public function test_menu_badge_and_work_queue_follow_permissions_and_certificate_eligibility(): void

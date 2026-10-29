@@ -1,3 +1,15 @@
+## 2026-10-29 - Dong bo giao dien bao cao bo sung ban ky tuoi
+
+Chuan hoa tieu de/nut quay lai/Xuat Excel; bon KPI chinh va dai so lieu phu giu du chin chi tieu. Bo loc dung giao dien danh sach, mo nang cao san tren bao cao va khong bao Dang ap dung neu chua co loc. Them pham vi loai ngay, bang Trung tam/thang co can phai va dong tong, phan dinh nghia luon hien, bang chi tiet/pham vi phan trang dong bo. Tong phieu theo thang dung so khong trung toan ket qua, khong cong so phieu cac thang. CSS gioi han trong supplement-report; khong doi truy van/cong thuc/quyen/Excel, khong migration/seed.
+
+File da sua: `resources/views/hard_copy_supplements/report.blade.php`, `resources/views/hard_copy_supplements/filters.blade.php`, `public/css/hard-copy-supplements.css`, `tests/Feature/HardCopySupplementTest.php`, `scripts/check-workflow-ui.cjs`, `docs/BO_SUNG_BAN_KY_TUOI.md`, `CHANGELOG_CNCL.md`.
+
+## 2026-10-29 - Huong dan su dung quy trinh bo sung ky tuoi
+
+Tao tai lieu rieng cho Trung tam, DVKH, PTN theo nut/trang thai hien tai: gui/sua/tra lai/duyet/in ca hai mau/hoan tat/huy, quy tac quyen va tinh huong thuong gap, cach doc hai bao cao va vi du so lieu. Khong thay doi code hay du lieu.
+
+File da sua/them: `docs/HUONG_DAN_YEU_CAU_BO_SUNG_KY_TUOI.md`, `docs/BO_SUNG_BAN_KY_TUOI.md`, `CHANGELOG_CNCL.md`.
+
 ## 2026-10-29 - Nhan KPI to in du kien
 
 Doi nhan hai o tong quan thanh To In don du kien va To In bo du kien de dung y nghia so lieu. Giu bon KPI va cong thuc gom ban dau + bo sung hoan tat, khong doi du lieu.
