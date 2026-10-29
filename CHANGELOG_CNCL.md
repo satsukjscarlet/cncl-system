@@ -1,3 +1,37 @@
+## 2026-10-29 - Nhan KPI to in du kien
+
+Doi nhan hai o tong quan thanh To In don du kien va To In bo du kien de dung y nghia so lieu. Giu bon KPI va cong thuc gom ban dau + bo sung hoan tat, khong doi du lieu.
+
+File da sua: `resources/views/reports/hard_copy.blade.php`, `tests/Feature/RoleWorkspaceAccessTest.php`, `scripts/check-workflow-ui.cjs`, `CHANGELOG_CNCL.md`.
+
+## 2026-10-29 - Khoi phuc chi tiet va dinh nghia bao cao ky tuoi
+
+Giu bon KPI tong quan, khoi phuc bang chi tiet day du (so phieu/yeu cau, ngay ky, Trung tam/DVBH/khach hang, ban dau/bo sung hoan tat/tong ban, trang va to du kien tung mau, luot mo file ban dau). Bang Trung tam/thang/DVBH va Excel them lai Trang In don, To In don du kien, Trang In bo, To In bo du kien. Phuc hoi phan Dinh nghia so lieu, giai thich cot Trang tong hop khong phai so to, khong nhan tong cot Trang voi tong ban. Khong doi cong thuc/tap phieu/bo loc/quyen, khong migration/seed.
+
+File da sua: `resources/views/reports/hard_copy.blade.php`, `resources/views/reports/partials/hard_copy_compact_stats.blade.php`, `app/Exports/HardCopyReportExport.php`, `tests/Feature/HardCopySupplementTest.php`, `scripts/check-workflow-ui.cjs`, `docs/BO_SUNG_BAN_KY_TUOI.md`, `CHANGELOG_CNCL.md`.
+
+## 2026-10-29 - Rut gon bao cao ky tuoi con bon chi tieu
+
+Chi hien so yeu cau can ky tuoi, tong so ban (ban dau + bo sung COMPLETED), tong trang In don va In bo du kien. Tong trang tinh tong tung phieu (tong ban cua phieu x trang mau), gom bo sung hoan tat, khong cong hai phuong an. Bang Trung tam/thang/DVBH va Excel dung bon chi tieu; thang/DVBH thu gon; chi tiet giu dinh danh va tong ban/trang, bo cac cot luot in va tach nho. Giu bo loc, pham vi Trung tam va ngay ky so. Khong migration/seed.
+
+File da sua/them: `app/Http/Controllers/ReportController.php`, `app/Exports/HardCopyReportExport.php`, `resources/views/reports/hard_copy.blade.php`, `resources/views/reports/partials/hard_copy_compact_stats.blade.php`, `tests/Feature/HardCopySupplementTest.php`, `tests/Feature/RoleWorkspaceAccessTest.php`, `scripts/check-workflow-ui.cjs`, `docs/BO_SUNG_BAN_KY_TUOI.md`, `CHANGELOG_CNCL.md`.
+
+## 2026-10-29 - Tong hop ban bo sung da hoan tat trong bao cao ky tuoi
+
+Bao cao chinh/Excel them so ban bo sung COMPLETED va tong so ban (ban dau + bo sung hoan tat), dong bo KPI, thang ky so, Trung tam, DVBH va chi tiet. Lay ca phieu chi co bo sung hoan tat; khong cong cho/tra lai/huy, loai phieu thu hoi/thay the. Bo sung chi tinh khi phieu du dieu kien, lay luy ke den luc xem/xuat; khoang ngay van la ngay ky so. To du kien chi la phan ban dau. Scope initialNormal tach luot mo file ban dau khoi bo sung trong bo loc/trang thai/dem/chi tiet/Excel. Lien ket so ban bo sung loc dung certificate ID va COMPLETED, giu pham vi Trung tam. Khong migration/seed, khong sua so ban goc hay PDF da ky.
+
+File da sua:
+- `app/Models/PrintLog.php`
+- `app/Http/Controllers/ReportController.php`
+- `app/Http/Controllers/HardCopySupplementController.php`
+- `app/Exports/HardCopyReportExport.php`
+- `resources/views/reports/hard_copy.blade.php`
+- `resources/views/hard_copy_supplements/filters.blade.php`
+- `tests/Feature/HardCopySupplementTest.php`
+- `scripts/check-workflow-ui.cjs`
+- `docs/BO_SUNG_BAN_KY_TUOI.md`
+- `CHANGELOG_CNCL.md`
+
 ## 2026-10-28 - Cho phep mo ca In don va In bo trong cung yeu cau bo sung
 
 Bo khoa doi mau; PTN duoc mo ca hai mau khi WAIT_PTN, van giu dieu kien phieu hop le va khoa giao dich. Ghi dung mau/so trang tung luot vao event va print log; doi chieu so trang rieng tung mau de chan thay doi bat thuong. Truong print_template/page_count hien tai luu mau mo gan nhat cho bao cao/bo loc, khong cong doi so ban khi mo hai mau. Cap nhat nhan giao dien, dinh nghia bao cao/Excel va tai lieu. Khong migration/seed hay sua phieu da ky.

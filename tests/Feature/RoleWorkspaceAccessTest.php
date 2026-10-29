@@ -638,10 +638,11 @@ class RoleWorkspaceAccessTest extends TestCase
             ->assertSee('CNCL-HC-BOTH')
             ->assertSee('CNCL-HC-EMERGENCY')
             ->assertSee('CNCL-HC-TP')
-            ->assertSee('Định nghĩa số liệu')
-            ->assertSee('Thống kê ký tươi theo Đơn vị bán hàng')
-            ->assertSee('Thống kê ký tươi theo tháng ký số')
-            ->assertSee('Lượt bấm in ghi nhận');
+            ->assertSee('Tổng số bản in')
+            ->assertSee('Theo đơn vị bán hàng')
+            ->assertSee('Theo tháng ký số')
+            ->assertSee('Tờ In đơn dự kiến')
+            ->assertSee('Tờ In bộ dự kiến');
 
         $this->actingAs($admin)
             ->get(route('reports.hard-copy', [

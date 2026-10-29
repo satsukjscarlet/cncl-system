@@ -257,13 +257,17 @@ class ReportController extends Controller
             'request.customer',
             'request.salesUnit',
             'details.product',
-            'printLogs.user',
+            'printLogs' => fn ($q) => $q->initialNormal()->with('user'),
         ])
+            ->withSum(['hardCopySupplements as completed_supplement_quantity' => fn ($q) => $q->where('status', 'COMPLETED')
+                ->whereHas('certificate', fn ($c) => $c->hardCopySupplementEligible())], 'quantity')
             ->where('status', QualityCertificate::STATUS_ISSUED)
             ->whereNotNull('signed_at')
-            ->whereHas('request', function ($q) {
-                $q->where('require_hard_copy', true)
-                    ->where('hard_copy_quantity', '>', 0);
+            ->whereNull('revoked_at')->whereNull('replaced_by_certificate_id')
+            ->where(function ($q) {
+                $q->whereHas('request', fn ($r) => $r->where('require_hard_copy', true)->where('hard_copy_quantity', '>', 0))
+                    ->orWhereHas('hardCopySupplements', fn ($s) => $s->where('status', 'COMPLETED')
+                        ->whereHas('certificate', fn ($c) => $c->hardCopySupplementEligible()));
             });
 
         if (!$canViewAllCenters) {
@@ -294,7 +298,7 @@ class ReportController extends Controller
 
         if (in_array($request->input('print_template'), ['single', 'batch'], true)) {
             $query->whereHas('printLogs', function ($q) use ($request) {
-                $q->where('print_mode', 'normal')
+                $q->initialNormal()
                     ->where('print_template', $request->input('print_template'));
             });
         }
@@ -303,22 +307,22 @@ class ReportController extends Controller
             $printStatus = $request->input('print_status');
 
             if ($printStatus === 'not_printed') {
-                $query->whereDoesntHave('printLogs', fn ($q) => $q->where('print_mode', 'normal'));
+                $query->whereDoesntHave('printLogs', fn ($q) => $q->initialNormal());
             }
 
             if ($printStatus === 'printed_single') {
-                $query->whereHas('printLogs', fn ($q) => $q->where('print_mode', 'normal')->where('print_template', 'single'))
-                    ->whereDoesntHave('printLogs', fn ($q) => $q->where('print_mode', 'normal')->where('print_template', 'batch'));
+                $query->whereHas('printLogs', fn ($q) => $q->initialNormal()->where('print_template', 'single'))
+                    ->whereDoesntHave('printLogs', fn ($q) => $q->initialNormal()->where('print_template', 'batch'));
             }
 
             if ($printStatus === 'printed_batch') {
-                $query->whereHas('printLogs', fn ($q) => $q->where('print_mode', 'normal')->where('print_template', 'batch'))
-                    ->whereDoesntHave('printLogs', fn ($q) => $q->where('print_mode', 'normal')->where('print_template', 'single'));
+                $query->whereHas('printLogs', fn ($q) => $q->initialNormal()->where('print_template', 'batch'))
+                    ->whereDoesntHave('printLogs', fn ($q) => $q->initialNormal()->where('print_template', 'single'));
             }
 
             if ($printStatus === 'printed_both') {
-                $query->whereHas('printLogs', fn ($q) => $q->where('print_mode', 'normal')->where('print_template', 'single'))
-                    ->whereHas('printLogs', fn ($q) => $q->where('print_mode', 'normal')->where('print_template', 'batch'));
+                $query->whereHas('printLogs', fn ($q) => $q->initialNormal()->where('print_template', 'single'))
+                    ->whereHas('printLogs', fn ($q) => $q->initialNormal()->where('print_template', 'batch'));
             }
         }
 
@@ -405,6 +409,7 @@ class ReportController extends Controller
             ],
             ['label' => 'Trung tâm', 'value' => $centerText],
             ['label' => 'Đơn vị bán hàng', 'value' => $salesUnitText],
+            ['label' => 'Bổ sung', 'value' => 'Chỉ yêu cầu đã hoàn tất đến thời điểm xem/xuất; không lọc theo ngày hoàn tất. Tổng số bản = ban đầu + bổ sung hoàn tất. Tổng trang In đơn/In bộ dự kiến tính tổng số bản × số trang từng mẫu theo từng phiếu; không cộng hai phương án. Lượt mở file chỉ tính phần ban đầu.'],
             [
                 'label' => 'Kiểu in',
                 'value' => match ($request->input('print_template')) {
@@ -469,11 +474,11 @@ class ReportController extends Controller
 
         foreach ($certificates as $certificate) {
             $request = $certificate->request;
-            $quantity = max(0, (int) ($request?->hard_copy_quantity ?? 0));
+            $quantity = $request?->require_hard_copy ? max(0, (int) $request->hard_copy_quantity) : 0;
             $singlePages = max(1, (int) $certificate->hard_copy_single_page_count);
             $batchPages = max(1, (int) $certificate->hard_copy_batch_page_count);
 
-            if (!$request || !$quantity) {
+            if (!$request || (!$quantity && !$certificate->completed_supplement_quantity)) {
                 continue;
             }
 
@@ -481,15 +486,17 @@ class ReportController extends Controller
             $certificateCount++;
             $copyCount += $quantity;
             $singlePageCount += $singlePages;
-            $singleSheetCount += $quantity * $singlePages;
+            $singleSheetCount += ($quantity + (int) $certificate->completed_supplement_quantity) * $singlePages;
             $batchPageCount += $batchPages;
-            $batchSheetCount += $quantity * $batchPages;
+            $batchSheetCount += ($quantity + (int) $certificate->completed_supplement_quantity) * $batchPages;
         }
 
         return [
             'request_count' => count($requestIds),
             'certificate_count' => $certificateCount,
             'copy_count' => $copyCount,
+            'supplement_copy_count' => (int) $certificates->sum('completed_supplement_quantity'),
+            'total_copy_count' => $copyCount + (int) $certificates->sum('completed_supplement_quantity'),
             'single_page_count' => $singlePageCount,
             'single_sheet_count' => $singleSheetCount,
             'batch_page_count' => $batchPageCount,
@@ -508,7 +515,7 @@ class ReportController extends Controller
 
         $counts = PrintLog::query()
             ->whereIn('quality_certificate_id', $certificateIds)
-            ->where('print_mode', 'normal')
+            ->initialNormal()
             ->selectRaw('print_template, COUNT(*) as total')
             ->groupBy('print_template')
             ->pluck('total', 'print_template');
@@ -527,9 +534,9 @@ class ReportController extends Controller
             $request = $certificate->request;
             $center = $request?->distributionCenter;
             $centerId = (int) ($center?->id ?? 0);
-            $quantity = max(0, (int) ($request?->hard_copy_quantity ?? 0));
+            $quantity = $request?->require_hard_copy ? max(0, (int) $request->hard_copy_quantity) : 0;
 
-            if (!$request || !$centerId || !$quantity) {
+            if (!$request || !$centerId || (!$quantity && !$certificate->completed_supplement_quantity)) {
                 continue;
             }
 
@@ -538,6 +545,8 @@ class ReportController extends Controller
                 'request_ids' => [],
                 'certificate_count' => 0,
                 'copy_count' => 0,
+                'supplement_copy_count' => 0,
+                'total_copy_count' => 0,
                 'single_page_count' => 0,
                 'single_sheet_count' => 0,
                 'batch_page_count' => 0,
@@ -549,12 +558,14 @@ class ReportController extends Controller
             $rows[$centerId]['request_ids'][$request->id] = true;
             $rows[$centerId]['certificate_count']++;
             $rows[$centerId]['copy_count'] += $quantity;
+            $rows[$centerId]['supplement_copy_count'] += (int) $certificate->completed_supplement_quantity;
+            $rows[$centerId]['total_copy_count'] += $quantity + (int) $certificate->completed_supplement_quantity;
             $singlePages = max(1, (int) $certificate->hard_copy_single_page_count);
             $batchPages = max(1, (int) $certificate->hard_copy_batch_page_count);
             $rows[$centerId]['single_page_count'] += $singlePages;
-            $rows[$centerId]['single_sheet_count'] += $quantity * $singlePages;
+            $rows[$centerId]['single_sheet_count'] += ($quantity + (int) $certificate->completed_supplement_quantity) * $singlePages;
             $rows[$centerId]['batch_page_count'] += $batchPages;
-            $rows[$centerId]['batch_sheet_count'] += $quantity * $batchPages;
+            $rows[$centerId]['batch_sheet_count'] += ($quantity + (int) $certificate->completed_supplement_quantity) * $batchPages;
         }
 
         foreach ($rows as &$row) {
@@ -580,9 +591,9 @@ class ReportController extends Controller
             $salesUnit = $request?->salesUnit;
             $center = $request?->distributionCenter;
             $key = $salesUnit?->id ? 'sales_unit_' . $salesUnit->id : 'none_' . ($center?->id ?? 0);
-            $quantity = max(0, (int) ($request?->hard_copy_quantity ?? 0));
+            $quantity = $request?->require_hard_copy ? max(0, (int) $request->hard_copy_quantity) : 0;
 
-            if (!$request || !$quantity) {
+            if (!$request || (!$quantity && !$certificate->completed_supplement_quantity)) {
                 continue;
             }
 
@@ -592,6 +603,8 @@ class ReportController extends Controller
                 'request_ids' => [],
                 'certificate_count' => 0,
                 'copy_count' => 0,
+                'supplement_copy_count' => 0,
+                'total_copy_count' => 0,
                 'single_page_count' => 0,
                 'single_sheet_count' => 0,
                 'batch_page_count' => 0,
@@ -601,12 +614,14 @@ class ReportController extends Controller
             $rows[$key]['request_ids'][$request->id] = true;
             $rows[$key]['certificate_count']++;
             $rows[$key]['copy_count'] += $quantity;
+            $rows[$key]['supplement_copy_count'] += (int) $certificate->completed_supplement_quantity;
+            $rows[$key]['total_copy_count'] += $quantity + (int) $certificate->completed_supplement_quantity;
             $singlePages = max(1, (int) $certificate->hard_copy_single_page_count);
             $batchPages = max(1, (int) $certificate->hard_copy_batch_page_count);
             $rows[$key]['single_page_count'] += $singlePages;
-            $rows[$key]['single_sheet_count'] += $quantity * $singlePages;
+            $rows[$key]['single_sheet_count'] += ($quantity + (int) $certificate->completed_supplement_quantity) * $singlePages;
             $rows[$key]['batch_page_count'] += $batchPages;
-            $rows[$key]['batch_sheet_count'] += $quantity * $batchPages;
+            $rows[$key]['batch_sheet_count'] += ($quantity + (int) $certificate->completed_supplement_quantity) * $batchPages;
         }
 
         foreach ($rows as &$row) {
@@ -640,9 +655,9 @@ class ReportController extends Controller
 
         foreach ($certificates as $certificate) {
             $request = $certificate->request;
-            $quantity = max(0, (int) ($request?->hard_copy_quantity ?? 0));
+            $quantity = $request?->require_hard_copy ? max(0, (int) $request->hard_copy_quantity) : 0;
 
-            if (!$request || !$quantity || !$certificate->signed_at) {
+            if (!$request || (!$quantity && !$certificate->completed_supplement_quantity) || !$certificate->signed_at) {
                 continue;
             }
 
@@ -653,6 +668,8 @@ class ReportController extends Controller
                 'request_ids' => [],
                 'certificate_count' => 0,
                 'copy_count' => 0,
+                'supplement_copy_count' => 0,
+                'total_copy_count' => 0,
                 'single_page_count' => 0,
                 'single_sheet_count' => 0,
                 'batch_page_count' => 0,
@@ -662,12 +679,14 @@ class ReportController extends Controller
             $rows[$monthKey]['request_ids'][$request->id] = true;
             $rows[$monthKey]['certificate_count']++;
             $rows[$monthKey]['copy_count'] += $quantity;
+            $rows[$monthKey]['supplement_copy_count'] += (int) $certificate->completed_supplement_quantity;
+            $rows[$monthKey]['total_copy_count'] += $quantity + (int) $certificate->completed_supplement_quantity;
             $singlePages = max(1, (int) $certificate->hard_copy_single_page_count);
             $batchPages = max(1, (int) $certificate->hard_copy_batch_page_count);
             $rows[$monthKey]['single_page_count'] += $singlePages;
-            $rows[$monthKey]['single_sheet_count'] += $quantity * $singlePages;
+            $rows[$monthKey]['single_sheet_count'] += ($quantity + (int) $certificate->completed_supplement_quantity) * $singlePages;
             $rows[$monthKey]['batch_page_count'] += $batchPages;
-            $rows[$monthKey]['batch_sheet_count'] += $quantity * $batchPages;
+            $rows[$monthKey]['batch_sheet_count'] += ($quantity + (int) $certificate->completed_supplement_quantity) * $batchPages;
         }
 
         foreach ($rows as &$row) {
@@ -691,7 +710,7 @@ class ReportController extends Controller
             ->join('quality_certificates', 'quality_certificates.id', '=', 'print_logs.quality_certificate_id')
             ->join('certificate_requests', 'certificate_requests.id', '=', 'quality_certificates.certificate_request_id')
             ->whereIn('print_logs.quality_certificate_id', $certificateIds)
-            ->where('print_logs.print_mode', 'normal')
+            ->initialNormal()
             ->selectRaw('certificate_requests.distribution_center_id as center_id')
             ->selectRaw('print_logs.print_template as print_template')
             ->selectRaw('COUNT(*) as total')

@@ -28,6 +28,7 @@ class HardCopySupplementController extends Controller
         $request->validate([
             'status' => ['nullable', Rule::in(array_keys(HardCopySupplement::LABELS))],
             'work_queue' => ['nullable', 'boolean'],
+            'quality_certificate_id' => ['nullable', 'integer', 'min:1'],
             'date_basis' => ['nullable', 'in:submitted_at,approved_at,completed_at,signed_at'],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => array_filter(['nullable', 'date_format:Y-m-d', $request->filled('date_from') ? 'after_or_equal:date_from' : null]),
@@ -43,6 +44,7 @@ class HardCopySupplementController extends Controller
             $query->whereIn('hard_copy_supplements.id', $this->service->pendingQuery($request->user())->select('hard_copy_supplements.id'));
         }
         if ($request->filled('status')) $query->where('status', $request->status);
+        if ($request->filled('quality_certificate_id')) $query->where('quality_certificate_id', $request->quality_certificate_id);
         if ($request->filled('print_template')) $query->where('print_template', $request->print_template);
         if (!$request->user()->hasRole('TrungTam') && $request->filled('distribution_center_id')) {
             $query->whereHas('certificate.request', fn ($q) => $q->where('distribution_center_id', $request->distribution_center_id));

@@ -6,6 +6,7 @@ use App\Models\CertificateRequest;
 use App\Models\Customer;
 use App\Models\HardCopySupplement;
 use App\Models\QualityCertificate;
+use App\Models\PrintLog;
 use App\Models\SalesUnit;
 use App\Models\User;
 use App\Models\UserNotification;
@@ -138,6 +139,82 @@ class HardCopySupplementTest extends TestCase
         $this->assertSame(2, $item->fresh()->page_count);
         $this->assertSame(2, $item->printLogs()->count());
         $this->assertSame(2, $item->events()->where('action', 'printed')->count());
+    }
+
+    public function test_main_report_includes_only_completed_supplements_and_separates_initial_prints(): void
+    {
+        $first = $this->create(quantity: 5);
+        $first->update(['status' => 'COMPLETED', 'completed_at' => now(), 'active_certificate_id' => null]);
+        $second = $this->create(quantity: 3);
+        $second->update(['status' => 'COMPLETED', 'completed_at' => now(), 'active_certificate_id' => null]);
+        $pending = $this->create(quantity: 20);
+        $pending->update(['status' => 'WAIT_PTN']);
+        $onlySupplement = $this->certificate($this->center, 0);
+        $onlySupplement->update(['hard_copy_single_page_count' => 5, 'hard_copy_batch_page_count' => 3]);
+        $extra = $this->create($onlySupplement, 4);
+        $extra->update(['status' => 'COMPLETED', 'completed_at' => now(), 'active_certificate_id' => null]);
+        $cancelled = $this->create($onlySupplement, 13);
+        $cancelled->update(['status' => 'CANCELLED', 'active_certificate_id' => null]);
+        $returned = $this->create($onlySupplement, 7);
+        $returned->update(['status' => 'RETURNED']);
+        $notFinished = $this->certificate($this->center, 0);
+        $this->create($notFinished, 9);
+        $revoked = $this->certificate($this->center, 10);
+        $revokedExtra = $this->create($revoked, 7);
+        $revokedExtra->update(['status' => 'COMPLETED', 'active_certificate_id' => null]);
+        $revoked->update(['revoked_at' => now()]);
+        PrintLog::create(['quality_certificate_id' => $this->certificate->id, 'user_id' => $this->ptn->id,
+            'print_no' => 1, 'print_template' => 'single', 'print_mode' => 'normal', 'reason' => 'In ban đầu']);
+        foreach ([[$this->certificate, $first, 'batch'], [$onlySupplement, $extra, 'single']] as [$certificate, $supplement, $template]) {
+            PrintLog::create(['quality_certificate_id' => $certificate->id, 'hard_copy_supplement_id' => $supplement->id,
+                'user_id' => $this->ptn->id, 'print_no' => 2, 'print_template' => $template, 'print_mode' => 'normal', 'reason' => 'In bổ sung']);
+        }
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $response = $this->actingAs($admin)->get(route('reports.hard-copy', ['date_from' => '2026-09-01', 'date_to' => '2026-09-30']))->assertOk();
+        $summary = $response->viewData('summary');
+        $this->assertSame(2, $summary['certificate_count']);
+        $this->assertSame(10, $summary['copy_count']);
+        $this->assertSame(12, $summary['supplement_copy_count']);
+        $this->assertSame(22, $summary['total_copy_count']);
+        $this->assertSame(92, $summary['single_sheet_count']);
+        $this->assertSame(48, $summary['batch_sheet_count']);
+        $this->assertSame(['single_print_count' => 1, 'batch_print_count' => 0], $response->viewData('printSummary'));
+        foreach (['centerStats', 'salesUnitStats', 'monthlyStats'] as $key) {
+            $this->assertSame(12, collect($response->viewData($key))->sum('supplement_copy_count'));
+            $this->assertSame(22, collect($response->viewData($key))->sum('total_copy_count'));
+            $this->assertSame(92, collect($response->viewData($key))->sum('single_sheet_count'));
+            $this->assertSame(48, collect($response->viewData($key))->sum('batch_sheet_count'));
+        }
+        $this->assertCount(1, $response->viewData('certificates')->getCollection()->firstWhere('id', $this->certificate->id)->printLogs);
+        $this->get(route('reports.hard-copy', ['print_status' => 'printed_single']))->assertOk()->assertViewHas('certificates', fn ($p) => $p->total() === 1);
+        $this->get(route('reports.hard-copy', ['print_template' => 'batch']))->assertOk()->assertViewHas('certificates', fn ($p) => $p->total() === 0);
+        $this->get(route('reports.hard-copy', ['print_status' => 'not_printed']))->assertOk()->assertViewHas('certificates', fn ($p) => $p->total() === 1 && $p->first()->id === $onlySupplement->id);
+        $this->get(route('reports.hard-copy', ['sales_unit_id' => $onlySupplement->request->sales_unit_id]))->assertOk()->assertViewHas('summary', fn ($s) => $s['copy_count'] === 0 && $s['total_copy_count'] === 4);
+        $export = new \App\Exports\HardCopyReportExport($response->viewData('certificates')->getCollection(), $response->viewData('centerStats'),
+            $response->viewData('salesUnitStats'), $response->viewData('monthlyStats'), $response->viewData('filterSummary'));
+        foreach ($export->sheets() as $sheet) {
+            foreach ($sheet->collection() as $row) $this->assertCount(count($sheet->headings()), $row);
+        }
+        $detail = $export->sheets()[4]->collection();
+        $this->assertSame(10, $detail->sum('so_ban_ban_dau'));
+        $this->assertSame(12, $detail->sum('bo_sung_da_hoan_tat'));
+        $this->assertSame(9, $detail->sum('trang_in_don'));
+        $this->assertSame(5, $detail->sum('trang_in_bo'));
+        $response->assertSee('Định nghĩa số liệu')->assertSee('Tờ In đơn dự kiến')->assertSee('Trang In bộ')->assertSee('Ghi nhận bấm in ban đầu');
+        $this->assertSame(22, $detail->sum('tong_so_ban'));
+        $this->assertSame(92, $detail->sum('to_in_don_du_kien'));
+        $this->assertSame(48, $detail->sum('to_in_bo_du_kien'));
+        $this->get(route('reports.hard-copy.export'))->assertOk()->assertDownload();
+        $this->get(route('hard-copy-supplements.index', ['quality_certificate_id' => $onlySupplement->id, 'status' => 'COMPLETED']))
+            ->assertOk()->assertViewHas('items', fn ($p) => $p->total() === 1 && $p->first()->id === $extra->id);
+        $other = User::where('username', 'trungtam_tp')->firstOrFail();
+        $other->givePermissionTo('report.view');
+        $this->actingAs($other)->get(route('reports.hard-copy', ['distribution_center_id' => $this->center->distribution_center_id]))
+            ->assertOk()->assertViewHas('certificates', fn ($p) => $p->total() === 0);
+        if ($directory = getenv('CNCL_SUPPLEMENT_UI_SNAPSHOT_DIR')) {
+            if (!is_dir($directory)) mkdir($directory, 0770, true);
+            file_put_contents($directory . '/hard-copy-completed-report.html', $response->getContent());
+        }
     }
 
     public function test_return_edit_resubmit_and_cancellation_rules(): void

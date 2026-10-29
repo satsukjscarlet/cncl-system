@@ -6,6 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class PrintLog extends Model
 {
+    public function scopeInitialNormal($query)
+    {
+        return $query->where('print_logs.print_mode', 'normal')->whereNull('print_logs.hard_copy_supplement_id');
+    }
+
     protected $fillable = [
         'quality_certificate_id',
         'user_id',

@@ -46,6 +46,10 @@
             font-weight: 700;
         }
 
+        .hard-copy-active-filters .badge { max-width:100%; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
+        .hard-copy-center-card .card-header { flex-wrap:wrap; gap:8px; }
+        .hard-copy-center-card .card-header > div { min-width:0; }
+
         .hard-copy-center-card .table th,
         .hard-copy-center-card .table td {
             vertical-align: middle;
@@ -73,7 +77,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-start">
     <div>
         <h1 class="m-0">Báo cáo ký tươi</h1>
-        <small class="text-muted">Thống kê yêu cầu ký tươi theo phiếu đã ký số, số bản in yêu cầu và số trang trong phiếu</small>
+        <small class="text-muted">Số yêu cầu, tổng số bản và tổng trang theo hai phương án in</small>
     </div>
 
     @can('report.export')
@@ -89,81 +93,18 @@
 
 @section('content')
 <div class="mb-3 d-flex flex-wrap" style="gap:8px">
-    <span class="font-weight-bold align-self-center">Nhu cầu ban đầu theo ngày ký số</span>
+    <span class="font-weight-bold align-self-center">Nhu cầu ký tươi theo ngày ký số</span>
     <a href="{{ route('reports.hard-copy-supplements') }}" class="btn btn-outline-primary"><i class="fas fa-copy"></i> Báo cáo bổ sung bản ký tươi</a>
 </div>
 <div class="row hard-copy-kpi">
-    <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="small-box bg-primary">
-            <div class="inner">
-                <h3>{{ number_format($summary['request_count']) }}</h3>
-                <p>Yêu cầu ký tươi</p>
-            </div>
-            <div class="icon"><i class="fas fa-file-alt"></i></div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="small-box bg-info">
-            <div class="inner">
-                <h3>{{ number_format($summary['certificate_count']) }}</h3>
-                <p>Phiếu đã ký số cần ký tươi</p>
-            </div>
-            <div class="icon"><i class="fas fa-certificate"></i></div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="small-box bg-warning">
-            <div class="inner">
-                <h3>{{ number_format($summary['copy_count']) }}</h3>
-                <p>Số bản in yêu cầu ban đầu</p>
-            </div>
-            <div class="icon"><i class="fas fa-copy"></i></div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="small-box bg-success">
-            <div class="inner">
-                <h3>{{ number_format($summary['single_sheet_count']) }}</h3>
-                <p>Tờ In đơn dự kiến</p>
-            </div>
-            <div class="icon"><i class="fas fa-layer-group"></i></div>
-        </div>
-    </div>
-</div>
-
-<div class="row hard-copy-kpi">
-    <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="small-box bg-success">
-            <div class="inner">
-                <h3>{{ number_format($summary['batch_sheet_count']) }}</h3>
-                <p>Tờ In bộ dự kiến</p>
-            </div>
-            <div class="icon"><i class="fas fa-file-contract"></i></div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="small-box bg-light">
-            <div class="inner">
-                <h3>{{ number_format($printSummary['single_print_count']) }}</h3>
-                <p>Lượt bấm In đơn ghi nhận</p>
-            </div>
-            <div class="icon"><i class="fas fa-print"></i></div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="small-box bg-light">
-            <div class="inner">
-                <h3>{{ number_format($printSummary['batch_print_count']) }}</h3>
-                <p>Lượt bấm In bộ ghi nhận</p>
-            </div>
-            <div class="icon"><i class="fas fa-print"></i></div>
-        </div>
-    </div>
+    @foreach([
+        'request_count' => ['Yêu cầu cần cung cấp ký tươi', 'bg-primary', 'fa-file-alt'],
+        'total_copy_count' => ['Tổng số bản in', 'bg-info', 'fa-copy'],
+        'single_sheet_count' => ['Tờ In đơn dự kiến', 'bg-success', 'fa-layer-group'],
+        'batch_sheet_count' => ['Tờ In bộ dự kiến', 'bg-warning', 'fa-file-contract'],
+    ] as $key => $metric)
+    <div class="col-xl-3 col-md-6"><div class="small-box {{ $metric[1] }}"><div class="inner"><h3>{{ number_format($summary[$key]) }}</h3><p>{{ $metric[0] }}</p></div><div class="icon"><i class="fas {{ $metric[2] }}"></i></div></div></div>
+    @endforeach
 </div>
 
 <div class="card card-primary card-outline">
@@ -303,7 +244,7 @@
     $availableTo = $availableDateRange['to'] ?? null;
     $salesUnitDisplayLimit = 20;
     $salesUnitRows = collect($salesUnitStats)
-        ->sortByDesc(fn ($row) => ($row['single_sheet_count'] ?? 0) + ($row['batch_sheet_count'] ?? 0))
+        ->sortByDesc('total_copy_count')
         ->values();
     $visibleSalesUnitRows = $salesUnitRows->take($salesUnitDisplayLimit);
     $hiddenSalesUnitCount = max(0, $salesUnitRows->count() - $visibleSalesUnitRows->count());
@@ -315,7 +256,7 @@
             <h3 class="card-title mb-0"><i class="fas fa-sliders-h"></i> Bộ lọc đang áp dụng</h3>
         </div>
         <div class="card-body py-2">
-            <div class="d-flex flex-wrap" style="gap: 8px;">
+            <div class="d-flex flex-wrap hard-copy-active-filters" style="gap: 8px;">
                 @foreach($filterSummary as $filterItem)
                     <span class="badge badge-light border p-2 text-left">
                         <span class="text-muted">{{ $filterItem['label'] }}:</span>
@@ -345,371 +286,90 @@
     </div>
 @endif
 
-<div class="alert alert-info">
-    <i class="fas fa-info-circle"></i>
-    Báo cáo này tính nhu cầu ký tươi ban đầu theo ngày ký số; yêu cầu bổ sung nằm trong Báo cáo bổ sung bản ký tươi. Số tờ dự kiến = số bản in yêu cầu ban đầu x số trang của từng mẫu in. Lượt bấm in (gồm cả bổ sung) không xác nhận số bản thực tế từ máy in.
-</div>
+<p class="text-muted small mb-3">
+    Tổng số bản = ban đầu + bổ sung đã hoàn tất. Tổng trang dự kiến = tổng số bản × số trang từng mẫu, tính riêng từng phiếu; không cộng In đơn và In bộ.
+    Lọc theo ngày ký số; bổ sung tính đến lúc xem báo cáo, không phải số đã in thực tế.
+</p>
 
-<div class="card hard-copy-center-card">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h3 class="card-title mb-0">
-            <i class="fas fa-calendar-check"></i> Thống kê ký tươi theo tháng ký số
-        </h3>
-        <span class="badge badge-primary">{{ number_format(count($monthlyStats)) }} tháng</span>
+<section class="card">
+    <div class="card-header bg-white"><h2 class="card-title"><i class="fas fa-book-open mr-1"></i> Định nghĩa số liệu</h2></div>
+    <div class="card-body small">
+        <dl class="row mb-0">
+            <dt class="col-md-3">Yêu cầu cần ký tươi</dt><dd class="col-md-9">Số yêu cầu gốc không trùng có phiếu đã ký số, có bản ký tươi ban đầu hoặc bổ sung đã hoàn tất.</dd>
+            <dt class="col-md-3">Tổng số bản in</dt><dd class="col-md-9">Số bản yêu cầu ban đầu + số bản bổ sung PTN đã xác nhận hoàn tất. Không gồm bổ sung đang chờ, trả lại hoặc đã hủy.</dd>
+            <dt class="col-md-3">Trang In đơn / In bộ</dt><dd class="col-md-9">Số trang của một bản theo từng mẫu. Tại bảng tổng hợp, đây là tổng số trang một bản của từng phiếu, không phải số tờ cần in.</dd>
+            <dt class="col-md-3">Tờ In đơn / In bộ dự kiến</dt><dd class="col-md-9">Cộng (tổng số bản của từng phiếu × số trang mẫu tương ứng). Không lấy tổng số bản nhân tổng cột Trang; không cộng hai phương án với nhau.</dd>
+            <dt class="col-md-3">Khoảng thời gian</dt><dd class="col-md-9">Lọc theo ngày ký số phiếu; bổ sung là phần đã hoàn tất đến thời điểm xem hoặc xuất, không phải phát sinh theo ngày hoàn tất trong kỳ.</dd>
+            <dt class="col-md-3">Ghi nhận mở file</dt><dd class="col-md-9 mb-0">Lượt mở file in ban đầu, không gồm bổ sung hoặc in khẩn cấp; không xác nhận số bản thực tế đã in.</dd>
+        </dl>
     </div>
+</section>
 
-    <div class="card-body table-responsive p-0">
-        <table class="table table-bordered table-hover mb-0">
-            <thead class="thead-light">
-                <tr>
-                    <th>Tháng ký số</th>
-                    <th class="text-right">Yêu cầu ký tươi</th>
-                    <th class="text-right">Phiếu đã ký số</th>
-                    <th class="text-right">Số bản in yêu cầu</th>
-                    <th class="text-right">Trang In đơn</th>
-                    <th class="text-right">Tờ In đơn dự kiến</th>
-                    <th class="text-right">Trang In bộ</th>
-                    <th class="text-right">Tờ In bộ dự kiến</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($monthlyStats as $row)
-                    <tr>
-                        <td><strong>{{ $row['month_label'] }}</strong></td>
-                        <td class="hard-copy-number">{{ number_format($row['request_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['certificate_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['copy_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['single_page_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['single_sheet_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['batch_page_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['batch_sheet_count']) }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="8" class="text-center text-muted py-4">
-                            <i class="fas fa-database fa-2x mb-2"></i><br>
-                            Không có dữ liệu thống kê theo tháng.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-            @if($monthlyStats)
-                <tfoot>
-                    <tr>
-                        <th>Tổng</th>
-                        <th class="hard-copy-number">{{ number_format(collect($monthlyStats)->sum('request_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($monthlyStats)->sum('certificate_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($monthlyStats)->sum('copy_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($monthlyStats)->sum('single_page_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($monthlyStats)->sum('single_sheet_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($monthlyStats)->sum('batch_page_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($monthlyStats)->sum('batch_sheet_count')) }}</th>
-                    </tr>
-                </tfoot>
-            @endif
-        </table>
-    </div>
-</div>
+<section class="card hard-copy-center-card">
+    <div class="card-header bg-white"><h2 class="card-title"><i class="fas fa-building mr-1"></i> Theo Trung tâm</h2></div>
+    @include('reports.partials.hard_copy_compact_stats', ['rows' => $centerStats, 'groupLabel' => 'Trung tâm', 'groupType' => 'center'])
+</section>
 
-<div class="card hard-copy-center-card">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <div>
-            <h3 class="card-title mb-0">
-                <i class="fas fa-store"></i> Thống kê ký tươi theo Đơn vị bán hàng
-            </h3>
-            @if($hiddenSalesUnitCount > 0)
-                <div class="text-muted small mt-1">
-                    Đang hiển thị Top {{ number_format($visibleSalesUnitRows->count()) }}/{{ number_format($salesUnitRows->count()) }} đơn vị theo tổng tờ dự kiến. Xuất Excel để xem đầy đủ.
-                </div>
-            @endif
-        </div>
-        <span class="badge badge-primary">{{ number_format($salesUnitRows->count()) }} đơn vị</span>
-    </div>
+<details class="mb-3 border rounded bg-white">
+    <summary class="p-3 font-weight-bold">Theo tháng ký số</summary>
+    @include('reports.partials.hard_copy_compact_stats', ['rows' => $monthlyStats, 'groupLabel' => 'Tháng ký số', 'groupType' => 'month'])
+</details>
 
-    <div class="card-body table-responsive p-0">
-        <table class="table table-bordered table-hover mb-0">
-            <thead class="thead-light">
-                <tr>
-                    <th class="center-name">Trung tâm</th>
-                    <th class="center-name">Đơn vị bán hàng</th>
-                    <th class="text-right">Yêu cầu ký tươi</th>
-                    <th class="text-right">Phiếu đã ký số</th>
-                    <th class="text-right">Số bản in yêu cầu</th>
-                    <th class="text-right">Trang In đơn</th>
-                    <th class="text-right">Tờ In đơn dự kiến</th>
-                    <th class="text-right">Trang In bộ</th>
-                    <th class="text-right">Tờ In bộ dự kiến</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($visibleSalesUnitRows as $row)
-                    <tr>
-                        <td class="center-name">
-                            @if($row['center'])
-                                <strong>{{ $row['center']->code }}</strong> - {{ $row['center']->name }}
-                            @else
-                                <span class="text-muted">-</span>
-                            @endif
-                        </td>
-                        <td class="center-name">
-                            @if($row['sales_unit'])
-                                <strong>{{ $row['sales_unit']->code }}</strong> - {{ $row['sales_unit']->name }}
-                            @else
-                                <span class="text-muted">Chưa gắn đơn vị bán hàng</span>
-                            @endif
-                        </td>
-                        <td class="hard-copy-number">{{ number_format($row['request_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['certificate_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['copy_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['single_page_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['single_sheet_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['batch_page_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['batch_sheet_count']) }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="9" class="text-center text-muted py-4">
-                            <i class="fas fa-database fa-2x mb-2"></i><br>
-                            Không có dữ liệu thống kê theo Đơn vị bán hàng.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-            @if($salesUnitRows->isNotEmpty())
-                <tfoot>
-                    <tr>
-                        <th colspan="2">Tổng</th>
-                        <th class="hard-copy-number">{{ number_format($salesUnitRows->sum('request_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format($salesUnitRows->sum('certificate_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format($salesUnitRows->sum('copy_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format($salesUnitRows->sum('single_page_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format($salesUnitRows->sum('single_sheet_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format($salesUnitRows->sum('batch_page_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format($salesUnitRows->sum('batch_sheet_count')) }}</th>
-                    </tr>
-                </tfoot>
-            @endif
-        </table>
-    </div>
-</div>
+<details class="mb-3 border rounded bg-white">
+    <summary class="p-3 font-weight-bold">Theo đơn vị bán hàng <span class="badge badge-light border">{{ $salesUnitRows->count() }}</span></summary>
+    @if($hiddenSalesUnitCount > 0)<p class="text-muted small px-3">Hiển thị {{ $visibleSalesUnitRows->count() }}/{{ $salesUnitRows->count() }} đơn vị theo tổng số bản; dòng tổng tính tất cả. Xuất Excel để xem đầy đủ.</p>@endif
+    @include('reports.partials.hard_copy_compact_stats', ['rows' => $visibleSalesUnitRows, 'totalRows' => $salesUnitRows, 'groupLabel' => 'Đơn vị bán hàng', 'groupType' => 'sales'])
+</details>
 
-<div class="card">
-    <div class="card-header bg-white">
-        <h3 class="card-title mb-0"><i class="fas fa-book-open"></i> Định nghĩa số liệu</h3>
+<section class="card">
+    <div class="card-header bg-white"><h2 class="card-title"><i class="fas fa-list mr-1"></i> Chi tiết theo phiếu</h2></div>
+    <div class="table-responsive"><table class="table table-bordered table-hover hard-copy-table mb-0">
+        <thead class="thead-light"><tr><th>STT</th><th>Số phiếu</th><th>Số yêu cầu</th><th>Ngày ký số</th><th>Trung tâm</th><th>Khách hàng / Công trình</th><th>Đơn vị bán hàng</th><th class="text-right">Số bản ban đầu</th><th class="text-right">Bổ sung đã hoàn tất</th><th class="text-right">Tổng số bản in</th><th class="text-right">Trang In đơn</th><th class="text-right">Tờ In đơn dự kiến</th><th class="text-right">Trang In bộ</th><th class="text-right">Tờ In bộ dự kiến</th><th>Ghi nhận bấm in ban đầu</th><th>Mở file ban đầu gần nhất</th></tr></thead>
+        <tbody>
+        @forelse($certificates as $certificate)
+            @php
+                $requestModel = $certificate->request;
+                $originalCopies = $requestModel?->require_hard_copy ? max(0, (int) $requestModel->hard_copy_quantity) : 0;
+                $extraCopies = (int) $certificate->completed_supplement_quantity;
+                $totalCopies = $originalCopies + $extraCopies;
+                $singlePages = max(1, (int) $certificate->hard_copy_single_page_count);
+                $batchPages = max(1, (int) $certificate->hard_copy_batch_page_count);
+                $logs = $certificate->printLogs->where('print_mode', 'normal')->whereNull('hard_copy_supplement_id')
+                    ->sortByDesc(fn ($log) => $log->created_at?->timestamp ?? 0);
+                $singleOpens = $logs->where('print_template', 'single')->count();
+                $batchOpens = $logs->where('print_template', 'batch')->count();
+                $latestOpen = $logs->first();
+                $printLabel = match (true) {
+                    $singleOpens > 0 && $batchOpens > 0 => 'Đã mở cả hai',
+                    $singleOpens > 0 => 'Đã mở In đơn',
+                    $batchOpens > 0 => 'Đã mở In bộ',
+                    default => 'Chưa ghi nhận',
+                };
+            @endphp
+            <tr>
+                <td>{{ $certificates->firstItem() + $loop->index }}</td>
+                <td><a class="hard-copy-no" href="{{ route('quality-certificates.show', $certificate) }}">{{ $certificate->certificate_no }}</a></td>
+                <td>@if($requestModel)<a class="hard-copy-no" href="{{ route('certificate-requests.show', $requestModel) }}">{{ $requestModel->request_no }}</a>@else - @endif</td>
+                <td class="text-nowrap">{{ $certificate->signed_at?->format('d/m/Y H:i') }}</td>
+                <td>{{ $requestModel?->distributionCenter?->name ?: '-' }}</td>
+                <td class="hard-copy-customer"><strong>{{ $requestModel?->customer?->customer_name ?: '-' }}</strong><div class="small text-muted">{{ $requestModel?->customer?->project_name }}</div></td>
+                <td><strong>{{ $requestModel?->salesUnit?->code }}</strong><div>{{ $requestModel?->salesUnit?->name ?: '-' }}</div></td>
+                <td class="hard-copy-number">{{ number_format($originalCopies) }}</td>
+                <td class="hard-copy-number">@if($extraCopies)<a href="{{ route('hard-copy-supplements.index', ['quality_certificate_id' => $certificate->id, 'status' => 'COMPLETED']) }}" title="Xem bổ sung đã hoàn tất">{{ number_format($extraCopies) }}</a>@else 0 @endif</td>
+                <td class="hard-copy-number">{{ number_format($totalCopies) }}</td>
+                <td class="hard-copy-number">{{ number_format($singlePages) }}</td>
+                <td class="hard-copy-number">{{ number_format($totalCopies * $singlePages) }}</td>
+                <td class="hard-copy-number">{{ number_format($batchPages) }}</td>
+                <td class="hard-copy-number">{{ number_format($totalCopies * $batchPages) }}</td>
+                <td><span class="badge {{ $singleOpens || $batchOpens ? 'badge-info' : 'badge-secondary' }}">{{ $printLabel }}</span><div class="small text-muted text-nowrap">In đơn: {{ $singleOpens }} · In bộ: {{ $batchOpens }}</div></td>
+                <td>@if($latestOpen)<strong>{{ $latestOpen->user?->name ?: '-' }}</strong><div class="small text-muted text-nowrap">{{ $latestOpen->created_at?->format('d/m/Y H:i') }}</div><div class="small">{{ $latestOpen->print_template === 'batch' ? 'In bộ' : 'In đơn' }}</div>@else - @endif</td>
+            </tr>
+        @empty<tr><td colspan="16" class="text-center text-muted py-4">Không có dữ liệu ký tươi phù hợp bộ lọc.</td></tr>@endforelse
+        </tbody>
+    </table></div>
+    <div class="card-footer d-flex flex-wrap justify-content-between align-items-center">
+        <span class="small text-muted">{{ $certificates->firstItem() ?? 0 }}–{{ $certificates->lastItem() ?? 0 }} / {{ number_format($certificates->total()) }} phiếu</span>
+        {{ $certificates->links() }}
     </div>
-    <div class="card-body py-2">
-        <div class="row">
-            <div class="col-lg-3 col-md-6 mb-2">
-                <strong>Yêu cầu ký tươi</strong>
-                <div class="text-muted small">Số yêu cầu có tích yêu cầu ký tươi và có ít nhất 1 phiếu đã ký số.</div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-2">
-                <strong>Phiếu đã ký số</strong>
-                <div class="text-muted small">Chỉ tính phiếu trạng thái phát hành, đã có thời gian ký số.</div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-2">
-                <strong>Tờ dự kiến</strong>
-                <div class="text-muted small">Số bản in yêu cầu nhân với số trang của từng mẫu In đơn/In bộ.</div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-2">
-                <strong>Lượt bấm in ghi nhận</strong>
-                <div class="text-muted small">Số lần người dùng bấm nút in trên hệ thống; không xác nhận số bản thực tế từ máy in.</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card hard-copy-center-card">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h3 class="card-title mb-0">
-            <i class="fas fa-chart-bar"></i> Thống kê ký tươi theo Trung tâm
-        </h3>
-        <span class="badge badge-primary">{{ number_format(count($centerStats)) }} trung tâm</span>
-    </div>
-
-    <div class="card-body table-responsive p-0">
-        <table class="table table-bordered table-hover mb-0">
-            <thead class="thead-light">
-                <tr>
-                    <th class="center-name">Trung tâm</th>
-                    <th class="text-right">Yêu cầu ký tươi</th>
-                    <th class="text-right">Phiếu đã ký số</th>
-                    <th class="text-right">Số bản in yêu cầu</th>
-                    <th class="text-right">Tờ In đơn dự kiến</th>
-                    <th class="text-right">Tờ In bộ dự kiến</th>
-                    <th class="text-right">Lượt bấm In đơn</th>
-                    <th class="text-right">Lượt bấm In bộ</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($centerStats as $row)
-                    <tr>
-                        <td class="center-name">
-                            <strong>{{ $row['center']->code }}</strong> - {{ $row['center']->name }}
-                        </td>
-                        <td class="hard-copy-number">{{ number_format($row['request_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['certificate_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['copy_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['single_sheet_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['batch_sheet_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['single_print_count']) }}</td>
-                        <td class="hard-copy-number">{{ number_format($row['batch_print_count']) }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="8" class="text-center text-muted py-4">
-                            <i class="fas fa-database fa-2x mb-2"></i><br>
-                            Không có dữ liệu thống kê theo Trung tâm.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-            @if($centerStats)
-                <tfoot>
-                    <tr>
-                        <th class="center-name">Tổng</th>
-                        <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('request_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('certificate_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('copy_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('single_sheet_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('batch_sheet_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('single_print_count')) }}</th>
-                        <th class="hard-copy-number">{{ number_format(collect($centerStats)->sum('batch_print_count')) }}</th>
-                    </tr>
-                </tfoot>
-            @endif
-        </table>
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h3 class="card-title mb-0"><i class="fas fa-table"></i> Chi tiết phiếu ký tươi</h3>
-        <span class="badge badge-info">Tổng số: {{ number_format($certificates->total()) }}</span>
-    </div>
-
-    <div class="card-body table-responsive p-0">
-        <table class="table table-bordered table-hover mb-0 hard-copy-table">
-            <thead class="thead-light">
-                <tr>
-                    <th style="width:60px">STT</th>
-                    <th>Số phiếu</th>
-                    <th>Số yêu cầu</th>
-                    <th>Ngày ký số</th>
-                    <th>Trung tâm</th>
-                    <th>Khách hàng / Công trình</th>
-                    <th>Đơn vị bán hàng</th>
-                    <th class="text-right">Số bản in yêu cầu</th>
-                    <th class="text-right">Trang In đơn</th>
-                    <th class="text-right">Tờ In đơn dự kiến</th>
-                    <th class="text-right">Trang In bộ</th>
-                    <th class="text-right">Tờ In bộ dự kiến</th>
-                    <th>Ghi nhận bấm in</th>
-                    <th>Bấm in gần nhất</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                @forelse($certificates as $certificate)
-                    @php
-                        $requestModel = $certificate->request;
-                        $copyQuantity = max(0, (int) ($requestModel?->hard_copy_quantity ?? 0));
-                        $singlePages = max(1, (int) $certificate->hard_copy_single_page_count);
-                        $batchPages = max(1, (int) $certificate->hard_copy_batch_page_count);
-                        $normalPrintLogs = $certificate->printLogs
-                            ->where('print_mode', 'normal')
-                            ->sortByDesc(fn ($log) => optional($log->created_at)->timestamp ?? 0);
-                        $singlePrintCount = $normalPrintLogs->where('print_template', 'single')->count();
-                        $batchPrintCount = $normalPrintLogs->where('print_template', 'batch')->count();
-                        $latestNormalPrint = $normalPrintLogs->first();
-                        $printStatusLabel = match (true) {
-                            $singlePrintCount > 0 && $batchPrintCount > 0 => 'Đã bấm cả hai',
-                            $singlePrintCount > 0 => 'Đã bấm In đơn',
-                            $batchPrintCount > 0 => 'Đã bấm In bộ',
-                            default => 'Chưa ghi nhận',
-                        };
-                        $printStatusClass = match (true) {
-                            $singlePrintCount > 0 && $batchPrintCount > 0 => 'badge-success',
-                            $singlePrintCount > 0 || $batchPrintCount > 0 => 'badge-info',
-                            default => 'badge-secondary',
-                        };
-                    @endphp
-                    <tr>
-                        <td>{{ $certificates->firstItem() + $loop->index }}</td>
-                        <td>
-                            <a href="{{ route('quality-certificates.show', $certificate) }}" class="hard-copy-no">
-                                {{ $certificate->certificate_no }}
-                            </a>
-                        </td>
-                        <td>
-                            @if($requestModel)
-                                <a href="{{ route('certificate-requests.show', $requestModel) }}" class="hard-copy-no">
-                                    {{ $requestModel->request_no }}
-                                </a>
-                            @else
-                                <span class="text-muted">-</span>
-                            @endif
-                        </td>
-                        <td>{{ optional($certificate->signed_at)->format('d/m/Y H:i') }}</td>
-                        <td>{{ $requestModel?->distributionCenter?->name ?? '-' }}</td>
-                        <td class="hard-copy-customer">
-                            <strong>{{ $requestModel?->customer?->customer_name ?? '-' }}</strong>
-                            @if($requestModel?->customer?->project_name)
-                                <div class="text-muted small">{{ $requestModel->customer->project_name }}</div>
-                            @endif
-                        </td>
-                        <td>
-                            @if($requestModel?->salesUnit)
-                                <strong>{{ $requestModel->salesUnit->code }}</strong>
-                                <div class="text-muted small">{{ $requestModel->salesUnit->name }}</div>
-                            @else
-                                <span class="text-muted">-</span>
-                            @endif
-                        </td>
-                        <td class="hard-copy-number">{{ number_format($copyQuantity) }}</td>
-                        <td class="hard-copy-number">{{ number_format($singlePages) }}</td>
-                        <td class="hard-copy-number">{{ number_format($copyQuantity * $singlePages) }}</td>
-                        <td class="hard-copy-number">{{ number_format($batchPages) }}</td>
-                        <td class="hard-copy-number">{{ number_format($copyQuantity * $batchPages) }}</td>
-                        <td>
-                            <span class="badge {{ $printStatusClass }}">{{ $printStatusLabel }}</span>
-                            @if($singlePrintCount || $batchPrintCount)
-                                <div class="text-muted small">
-                                    Bấm In đơn: {{ $singlePrintCount }} | Bấm In bộ: {{ $batchPrintCount }}
-                                </div>
-                            @endif
-                        </td>
-                        <td>
-                            @if($latestNormalPrint)
-                                <strong>{{ $latestNormalPrint->user->name ?? '-' }}</strong>
-                                <div class="text-muted small">{{ optional($latestNormalPrint->created_at)->format('d/m/Y H:i') }}</div>
-                                <div class="text-muted small">{{ $latestNormalPrint->print_template === 'batch' ? 'In bộ' : 'In đơn' }}</div>
-                            @else
-                                <span class="text-muted">-</span>
-                            @endif
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="14" class="text-center text-muted py-4">
-                            <i class="fas fa-database fa-2x mb-2"></i><br>
-                            Không có dữ liệu ký tươi phù hợp bộ lọc.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-
-    <div class="card-footer">
-        <div class="row align-items-center">
-            <div class="col-md-6 text-muted small mb-2 mb-md-0">
-                Hiển thị {{ $certificates->firstItem() ?? 0 }} - {{ $certificates->lastItem() ?? 0 }} / {{ number_format($certificates->total()) }} bản ghi
-            </div>
-            <div class="col-md-6">
-                <div class="float-md-right">{{ $certificates->links() }}</div>
-            </div>
-        </div>
-    </div>
-</div>
+</section>
 @stop

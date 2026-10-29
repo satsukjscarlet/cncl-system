@@ -29,7 +29,9 @@ Chi tiết hiển thị tiến trình ba bước, thông tin phiếu/khách hàn
 
 ## Báo cáo
 
-Trong **Báo cáo ký tươi** có liên kết **Báo cáo bổ sung bản ký tươi**. Báo cáo cũ tiếp tục phản ánh nhu cầu ban đầu theo ngày ký số, không tự cộng bổ sung vào tháng ký số cũ. Báo cáo tổng hợp phát hành không tăng số phiếu.
+**Báo cáo ký tươi** rút gọn còn bốn chỉ tiêu: số yêu cầu gốc không trùng cần ký tươi, tổng số bản in, tổng trang In đơn dự kiến, tổng trang In bộ dự kiến. Tổng số bản = ban đầu + bổ sung COMPLETED của phiếu còn đủ điều kiện. Tổng trang từng phương án = cộng (tổng số bản của mỗi phiếu × số trang mẫu tương ứng của phiếu đó), không nhân tổng số bản với tổng số trang/phiếu. Không cộng In đơn với In bộ. Phiếu chỉ có bổ sung hoàn tất vẫn xuất hiện. Khoảng ngày/tháng căn cứ ngày ký số; bổ sung là lũy kế hoàn tất đến lúc xem/xuất, không phải phát sinh theo ngày hoàn tất trong kỳ.
+
+Màn hình giữ bốn chỉ tiêu tổng quan. Bảng Trung tâm/tháng/ĐVBH hiển thị Trang In đơn, Tờ In đơn dự kiến, Trang In bộ, Tờ In bộ dự kiến; cột Trang ở bảng tổng hợp là tổng số trang một bản của từng phiếu, không phải số tờ và không nhân với tổng số bản. Chi tiết phiếu và Excel hiển thị đầy đủ số bản ban đầu/bổ sung hoàn tất/tổng bản, số trang một bản, số tờ dự kiến từng mẫu và lượt mở file ban đầu. Phần Định nghĩa số liệu luôn có trên màn hình. Lượt mở file không phải số bản thực in. Chưa hoàn tất không thống kê ở đây; tra cứu tại danh sách hoặc **Báo cáo bổ sung bản ký tươi**. Báo cáo tổng hợp phát hành không tăng số phiếu.
 
 Báo cáo bổ sung có bộ lọc Trung tâm (ẩn với tài khoản Trung tâm), đơn vị bán hàng, trạng thái, mẫu in, từ khóa và khoảng ngày theo Ngày gửi bổ sung / Ngày DVKH duyệt / Ngày PTN hoàn tất / Ngày ký số. Có thống kê theo Trung tâm, tháng của loại ngày đã chọn, chi tiết phân trang và Excel cùng bộ lọc.
 

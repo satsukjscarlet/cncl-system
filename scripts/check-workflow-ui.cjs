@@ -61,6 +61,23 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                     const bar = page.locator('.workflow-action-bar');
                     const detail = await bar.count() > 0;
                     const deliveryDate = page.locator('#delivery_date');
+                    if (name === 'hard-copy-completed-report') {
+                        assert.equal(await page.locator('.hard-copy-kpi .small-box').count(), 4);
+                        assert(await page.locator('.hard-copy-kpi').getByText('Tờ In đơn dự kiến', {exact: true}).isVisible());
+                        assert(await page.locator('.hard-copy-kpi').getByText('Tờ In bộ dự kiến', {exact: true}).isVisible());
+                        const detailTable = page.locator('.hard-copy-table');
+                        assert.equal(await detailTable.locator('tbody tr').count(), 2);
+                        const headers = await detailTable.locator('thead th').count();
+                        for (const row of await detailTable.locator('tbody tr').all()) {
+                            assert.equal(await row.locator('td').count(), headers, 'Report column mismatch');
+                        }
+                        assert.equal(headers, 16);
+                        assert(await page.getByText('Định nghĩa số liệu', {exact: true}).isVisible());
+                        assert.equal(await detailTable.locator('a[href*="quality_certificate_id="]').count(), 2);
+                        await detailTable.scrollIntoViewIfNeeded();
+                        await page.screenshot({path: path.join(output, `${name}-${viewport.width}-detail.png`)});
+                        await page.evaluate(() => scrollTo(0, 0));
+                    }
                     if (name.startsWith('supplement-list-')) {
                         assert.equal(await page.locator('.supplement-filter-panel').count(), 1);
                         assert.equal(await page.locator('.supplement-list-heading').count(), 1);

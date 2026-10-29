@@ -2,6 +2,10 @@
     $advancedOpen = request()->filled('distribution_center_id') || request()->filled('sales_unit_id') || request()->filled('print_template') || request()->filled('date_from') || request()->filled('date_to') || (request('date_basis') && request('date_basis') !== 'submitted_at');
 @endphp
 <form method="GET" class="supplement-filter cncl-form">
+    @if(request()->filled('quality_certificate_id'))
+        <input type="hidden" name="quality_certificate_id" value="{{ request('quality_certificate_id') }}">
+        <div class="alert alert-info py-2">Đang lọc yêu cầu bổ sung của phiếu CNCL #{{ request('quality_certificate_id') }}. <a href="{{ url()->current() }}">Xem tất cả phiếu</a></div>
+    @endif
     @if(request()->filled('sort'))<input type="hidden" name="sort" value="{{ request('sort') }}"><input type="hidden" name="direction" value="{{ request('direction', 'desc') }}">@endif
     <div class="row align-items-end">
         <div class="col-lg-6 col-md-6 form-group"><label for="supplement-keyword">Từ khóa</label><div class="input-group"><div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-search" aria-hidden="true"></i></span></div><input id="supplement-keyword" name="keyword" value="{{ request('keyword') }}" class="form-control" placeholder="Mã bổ sung, số phiếu, khách hàng, công trình, ĐVBH"></div></div>
