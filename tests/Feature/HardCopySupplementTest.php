@@ -338,6 +338,26 @@ class HardCopySupplementTest extends TestCase
         if ($directory) file_put_contents($directory . '/supplement-report-center.html', $centerReport->getContent());
     }
 
+    public function test_detail_back_links_use_the_same_role_filters_as_the_menu(): void
+    {
+        $item = $this->create();
+        $filter = new \App\AdminLte\Menu\PendingSupplementBadgeFilter;
+        foreach ([$this->center, $this->dvkh, $this->ptn, User::where('username', 'admin')->firstOrFail(),
+            User::where('username', 'viewer')->firstOrFail()] as $user) {
+            $response = $this->actingAs($user)->get(route('hard-copy-supplements.show', $item))->assertOk();
+            $menu = $filter->transform(['url' => 'hard-copy-supplements']);
+            $expected = url($menu['url']);
+            $dom = new \DOMDocument;
+            @$dom->loadHTML($response->getContent());
+            $xpath = new \DOMXPath($dom);
+            foreach (['supplement-links', 'workflow-action-buttons'] as $class) {
+                $links = $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " ' . $class . ' ")]/a');
+                $this->assertGreaterThan(0, $links->length);
+                $this->assertSame($expected, $links->item(0)->getAttribute('href'));
+            }
+        }
+    }
+
     public function test_menu_badge_and_work_queue_follow_permissions_and_certificate_eligibility(): void
     {
         $first = $this->create();

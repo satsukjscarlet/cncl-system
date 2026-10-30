@@ -104,6 +104,7 @@ class HardCopySupplementController extends Controller
         abort_unless(HardCopySupplement::visibleTo($request->user())->whereKey($supplement->id)->exists(), 403);
         $supplement->load(['certificate.request.customer', 'certificate.request.salesUnit', 'certificate.request.distributionCenter', 'requester', 'approver', 'completer', 'events.user'])->loadCount('printLogs');
         return view('hard_copy_supplements.show', ['item' => $supplement, 'service' => $this->service,
+            'supplementListUrl' => route('hard-copy-supplements.index', $this->service->defaultListFilters($request->user())),
             'validCertificate' => $supplement->certificate->allowsHardCopySupplement()]);
     }
 

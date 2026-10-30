@@ -6,7 +6,7 @@
 @stop
 @section('content_header')
 <div class="supplement-header"><div><h1>{{ $item->number }}</h1><small class="text-muted">Chi tiết yêu cầu bổ sung bản ký tươi</small></div>
-<div class="supplement-links"><a href="{{ route('hard-copy-supplements.index') }}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Danh sách yêu cầu</a></div></div>
+<div class="supplement-links"><a href="{{ $supplementListUrl }}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Danh sách yêu cầu</a></div></div>
 @stop
 @section('content')
 @php
@@ -104,7 +104,7 @@
 </tr>@empty<tr><td colspan="4" class="text-center text-muted py-3">Chưa có lịch sử xử lý.</td></tr>@endforelse
 </tbody></table></div></section>
 
-<x-workflow_action_bar :number="$item->number" :status="$item->status_meta" :backUrl="route('hard-copy-supplements.index')">
+<x-workflow_action_bar :number="$item->number" :status="$item->status_meta" :backUrl="$supplementListUrl">
     @if($canEdit)<button type="submit" form="resubmitSupplementForm" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Lưu và gửi DVKH</button>@endif
     @if($canPrint)<button type="submit" form="completeSupplementForm" class="btn btn-success"><i class="fas fa-check"></i> Xác nhận hoàn tất bản ký tươi</button>@endif
     @if($canApprove)<form method="POST" action="{{ route('hard-copy-supplements.action', [$item, 'approve']) }}" data-loading-lock onsubmit="return confirm('Xác nhận số bản bổ sung và chuyển PTN?')">@csrf<button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Xác nhận chuyển PTN</button></form>@endif

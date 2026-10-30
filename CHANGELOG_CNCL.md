@@ -1,3 +1,9 @@
+## 2026-10-30 - Dong bo nut quay lai danh sach bo sung theo tai khoan
+
+Hai nut Danh sach yeu cau va Quay lai o chi tiet dung cung bo loc mac dinh voi menu. DVKH/PTN/Admin mo work_queue=1 theo quyen, Trung tam/chi xem khong ep loc cho xu ly. Tach helper chung de menu va nut quay lai khong lech nhau. Khong doi quyen/trang thai/du lieu, khong migration/seed.
+
+File da sua: `app/Services/HardCopySupplementService.php`, `app/AdminLte/Menu/PendingSupplementBadgeFilter.php`, `app/Http/Controllers/HardCopySupplementController.php`, `resources/views/hard_copy_supplements/show.blade.php`, `tests/Feature/HardCopySupplementTest.php`, `CHANGELOG_CNCL.md`.
+
 ## 2026-10-29 - Dong bo giao dien bao cao bo sung ban ky tuoi
 
 Chuan hoa tieu de/nut quay lai/Xuat Excel; bon KPI chinh va dai so lieu phu giu du chin chi tieu. Bo loc dung giao dien danh sach, mo nang cao san tren bao cao va khong bao Dang ap dung neu chua co loc. Them pham vi loai ngay, bang Trung tam/thang co can phai va dong tong, phan dinh nghia luon hien, bang chi tiet/pham vi phan trang dong bo. Tong phieu theo thang dung so khong trung toan ket qua, khong cong so phieu cac thang. CSS gioi han trong supplement-report; khong doi truy van/cong thuc/quyen/Excel, khong migration/seed.

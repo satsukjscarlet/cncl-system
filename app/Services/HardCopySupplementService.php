@@ -11,6 +11,12 @@ use Illuminate\Validation\ValidationException;
 
 class HardCopySupplementService
 {
+    public function defaultListFilters(User $user): array
+    {
+        return !$user->hasRole('TrungTam') && ($user->hasRole('Admin') || $this->dvkh($user) || $this->ptn($user))
+            ? ['work_queue' => 1] : [];
+    }
+
     public function pendingQuery(User $user)
     {
         $statuses = [];

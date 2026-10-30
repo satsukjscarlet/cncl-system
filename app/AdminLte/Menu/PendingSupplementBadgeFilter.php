@@ -15,11 +15,12 @@ class PendingSupplementBadgeFilter implements FilterInterface
         $user = Auth::user();
         if (!$user || $user->hasRole('TrungTam')) return $item;
         $service = app(HardCopySupplementService::class);
-        if (!$user->hasRole('Admin') && !$service->dvkh($user) && !$service->ptn($user)) return $item;
+        $filters = $service->defaultListFilters($user);
+        if (!$filters) return $item;
         // Deploying code before the additive migration must not break unrelated pages.
         if (!Schema::hasTable('hard_copy_supplements')) return $item;
         $count = $service->pendingQuery($user)->count();
-        $item['url'] = 'hard-copy-supplements?work_queue=1';
+        $item['url'] = 'hard-copy-supplements?' . http_build_query($filters);
         if ($count > 0) {
             $item['label'] = $count > 99 ? '99+' : (string) $count;
             $item['label_color'] = 'warning';
