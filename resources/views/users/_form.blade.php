@@ -112,6 +112,44 @@
     </div>
 </div>
 
+@role('Admin')
+    <hr>
+    <h3 class="h6 font-weight-bold">Phạm vi báo cáo công việc</h3>
+    <div class="row">
+        <div class="col-md-6 form-group">
+            <label for="work_department">Phòng ban trực thuộc</label>
+            <select id="work_department" name="work_department" class="form-control select2">
+                <option value="">Theo vai trò DVKH / PTN hiện có</option>
+                @foreach(\App\Services\WorkReportAccess::DEPARTMENTS as $value => $label)
+                    <option value="{{ $value }}" @selected(old('work_department', $user->work_department ?? '') === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+            @error('work_department')<span class="text-danger small">{{ $message }}</span>@enderror
+        </div>
+        <div class="col-md-6 form-group">
+            <label for="work_report_scope">Quyền xem công việc</label>
+            <select id="work_report_scope" name="work_report_scope" class="form-control select2">
+                @foreach(['' => 'Mặc định theo vai trò', 'self' => 'Chỉ bản thân trong phòng trực thuộc', 'team' => 'Các phòng được chỉ định', 'all' => 'Toàn hệ thống (nội bộ)'] as $value => $label)
+                    <option value="{{ $value }}" @selected((old('work_report_scope', $user->work_report_scope ?? '') ?? '') === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+            @error('work_report_scope')<span class="text-danger small">{{ $message }}</span>@enderror
+        </div>
+    </div>
+    <fieldset class="form-group">
+        <legend class="h6 font-weight-bold">Phòng được quản lý báo cáo</legend>
+        <input type="hidden" name="work_report_departments" value="">
+        @foreach(\App\Services\WorkReportAccess::DEPARTMENTS as $value => $label)
+            <div class="form-check form-check-inline">
+                <input type="checkbox" class="form-check-input" id="work-manage-{{ $value }}" name="work_report_departments[]" value="{{ $value }}" @checked(in_array($value, (array) old('work_report_departments', $user->work_report_departments ?? []), true))>
+                <label class="form-check-label" for="work-manage-{{ $value }}">{{ $label }}</label>
+            </div>
+        @endforeach
+        @error('work_report_departments')<div class="text-danger small">{{ $message }}</div>@enderror
+    </fieldset>
+    <p class="text-muted small">Chỉ Admin được sửa cấu hình này. Danh sách phòng quản lý chỉ áp dụng khi chọn “Các phòng được chỉ định”. Trung tâm vẫn bị chặn; Admin luôn xem toàn hệ thống. Vai trò khác chưa có phòng phải được gán phòng trước khi xem cá nhân.</p>
+@endrole
+
 @if(!isset($user))
     <hr>
 

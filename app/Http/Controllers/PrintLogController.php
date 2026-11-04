@@ -12,7 +12,7 @@ class PrintLogController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = auth()->user();
-        $canViewAllCenters = $user->hasAnyRole(['Admin', 'LanhDao', 'TruongPTN']);
+        $canViewAllCenters = !$user->hasRole('TrungTam') && $user->can('certificate.print');
 
         if (!$canViewAllCenters && !$user->hasRole('TrungTam')) {
             abort(403, 'Tai khoan nay khong duoc xem lich su in.');

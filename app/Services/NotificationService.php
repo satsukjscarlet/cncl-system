@@ -60,6 +60,9 @@ class NotificationService
 
         $ids = User::permission($permission)
             ->where('is_active', true)
+            ->with(['permissions', 'roles.permissions'])
+            ->get()
+            ->filter(fn (User $user) => $user->can($permission))
             ->pluck('id');
 
         $this->insert($ids, $payload);

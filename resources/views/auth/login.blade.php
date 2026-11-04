@@ -448,7 +448,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('login') }}" novalidate>
+                <form method="POST" action="{{ route('login', [], false) }}" novalidate>
                     @csrf
 
                     <div class="form-group">
@@ -484,6 +484,11 @@
             </div>
         </section>
     </main>
+    <script>
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) window.location.reload();
+        });
+    </script>
 </body>
 
 </html>

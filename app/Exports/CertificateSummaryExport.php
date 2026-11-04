@@ -2,8 +2,6 @@
 
 namespace App\Exports;
 
-use App\Models\CertificateRequest;
-use App\Models\QualityCertificate;
 use App\Models\SlaConfig;
 use App\Services\SlaClockService;
 use Illuminate\Support\Collection;
@@ -17,38 +15,24 @@ class CertificateSummaryExport implements FromCollection, WithHeadings
         private readonly ?string $dateTo = null,
         private readonly ?string $status = null,
         private readonly ?int $distributionCenterId = null,
-        private readonly ?string $certificateStatus = null
+        private readonly ?string $certificateStatus = null,
+        private readonly string $dateBasis = 'request_created_at',
+        private readonly ?\App\Models\User $user = null
     ) {
     }
 
     public function collection(): Collection
     {
-        $query = CertificateRequest::with([
-            'distributionCenter',
-            'customer',
-            'creator',
-            'qualityCertificates',
-        ]);
-
-        if ($this->dateFrom) {
-            $query->whereDate('created_at', '>=', $this->dateFrom);
-        }
-
-        if ($this->dateTo) {
-            $query->whereDate('created_at', '<=', $this->dateTo);
-        }
-
-        if ($this->status) {
-            $query->where('status', $this->status);
-        }
-
-        if ($this->distributionCenterId) {
-            $query->where('distribution_center_id', $this->distributionCenterId);
-        }
-
-        if ($this->certificateStatus) {
-            $this->applyCertificateStatusFilter($query, $this->certificateStatus);
-        }
+        $user = $this->user ?? auth()->user();
+        abort_unless($user, 403);
+        $filters = \Illuminate\Http\Request::create('/reports/summary', 'GET', array_filter([
+            'date_from' => $this->dateFrom, 'date_to' => $this->dateTo, 'date_basis' => $this->dateBasis,
+            'request_status' => $this->status, 'distribution_center_id' => $this->distributionCenterId,
+            'certificate_status' => $this->certificateStatus,
+        ], fn ($value) => $value !== null && $value !== ''));
+        $service = app(\App\Services\CertificateReportQuery::class);
+        $query = $service->requestBase($filters, $user)->with(['distributionCenter', 'customer', 'creator', 'reportCertificate']);
+        if ($this->certificateStatus) $service->requestStatus($query, $this->certificateStatus);
 
         $slaDvkh = SlaConfig::where('code', 'SLA_DVKH')->where('is_active', true)->first();
         $slaPtn = SlaConfig::where('code', 'SLA_PTN')->where('is_active', true)->first();
@@ -57,12 +41,10 @@ class CertificateSummaryExport implements FromCollection, WithHeadings
         return $query->latest()
             ->get()
             ->map(function ($item) use ($slaDvkh, $slaPtn, $slaClock) {
-                $certificate = $item->qualityCertificates
-                    ->sortByDesc(fn ($certificate) => optional($certificate->created_at)->timestamp ?? 0)
-                    ->first();
+                $certificate = $item->reportCertificate;
                 $step = $item->status === 'WAIT_DVKH' ? 'DVKH' : (in_array($item->status, ['WAIT_PTN', 'PTN_PROCESSING'], true) ? 'PTN' : null);
                 $minutes = $step ? $slaClock->elapsedMinutes($item, $step) : null;
-                $slaStatus = 'Bình thường';
+                $slaStatus = $step && !($step === 'DVKH' ? $slaDvkh : $slaPtn) ? 'Chưa bật SLA ' . $step : ($step ? 'Bình thường' : 'Không ở bước theo dõi SLA');
 
                 if ($item->status === 'WAIT_DVKH' && $slaDvkh && $minutes !== null) {
                     if ($minutes >= $slaDvkh->limit_minutes) {
@@ -139,95 +121,4 @@ class CertificateSummaryExport implements FromCollection, WithHeadings
         };
     }
 
-    private function applyCertificateStatusFilter($query, string $status): void
-    {
-        if ($status === 'NO_CERTIFICATE') {
-            $query->whereDoesntHave('qualityCertificates');
-
-            return;
-        }
-
-        $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
-
-        if ($status === 'WAIT_PTN_MANAGER_APPROVAL') {
-            $query->whereHas('qualityCertificates', function ($certificate) {
-                $certificate
-                    ->whereNull('signed_at')
-                    ->whereIn('status', [
-                        QualityCertificate::STATUS_DRAFT,
-                        QualityCertificate::STATUS_WAIT_PTN_MANAGER_APPROVAL,
-                    ])
-                    ->where(function ($q) {
-                        $q->whereNull('smartca_status')
-                            ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
-                    });
-            });
-
-            return;
-        }
-
-        if ($status === 'READY_TO_SIGN') {
-            $query->whereHas('qualityCertificates', function ($certificate) {
-                $certificate
-                    ->whereNull('signed_at')
-                    ->where('status', QualityCertificate::STATUS_READY_TO_SIGN)
-                    ->where(function ($q) {
-                        $q->whereNull('smartca_status')
-                            ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
-                    });
-            });
-
-            return;
-        }
-
-        if ($status === 'SIGN_PENDING') {
-            $query->whereHas('qualityCertificates', function ($certificate) use ($expiredBefore) {
-                $certificate
-                    ->whereNull('signed_at')
-                    ->where('smartca_status', 'PENDING')
-                    ->where('smartca_requested_at', '>', $expiredBefore);
-            });
-
-            return;
-        }
-
-        if ($status === 'SIGN_EXPIRED') {
-            $query->whereHas('qualityCertificates', function ($certificate) use ($expiredBefore) {
-                $certificate
-                    ->whereNull('signed_at')
-                    ->where(function ($q) use ($expiredBefore) {
-                        $q->where('status', QualityCertificate::STATUS_SIGN_EXPIRED)
-                            ->orWhere('smartca_status', 'EXPIRED')
-                            ->orWhere(function ($pending) use ($expiredBefore) {
-                                $pending->where('smartca_status', 'PENDING')
-                                    ->where('smartca_requested_at', '<=', $expiredBefore);
-                            });
-                    });
-            });
-
-            return;
-        }
-
-        if ($status === 'ISSUED') {
-            $query->whereHas('qualityCertificates', function ($certificate) {
-                $certificate
-                    ->where('status', QualityCertificate::STATUS_ISSUED)
-                    ->whereNotNull('signed_at');
-            });
-
-            return;
-        }
-
-        if (in_array($status, [
-            QualityCertificate::STATUS_REJECTED,
-            QualityCertificate::STATUS_REVOKED,
-        ], true)) {
-            $query->whereHas('qualityCertificates', fn ($certificate) => $certificate->where('status', $status));
-        }
-    }
-
-    private function smartCaPendingTtlMinutes(): int
-    {
-        return max(1, (int) config('services.smartca.pending_ttl_minutes', 5));
-    }
 }

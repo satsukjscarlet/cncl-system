@@ -94,8 +94,12 @@ class DashboardController extends Controller
         ];
 
         $cards = $this->cardsForRole($role, $metrics);
+        $navigation = app(\App\Services\NavigationAccess::class);
+        $cards = array_values(array_filter($cards, fn ($card) => $navigation->allows($user, $card['url'])));
         $primaryList = $this->primaryListForRole($role, $user, $expiredBefore);
         $secondaryList = $this->secondaryListForRole($role, $user);
+        $primaryList['items'] = $primaryList['items']->filter(fn ($item) => $navigation->allows($user, $item['url']))->values();
+        $secondaryList['items'] = $secondaryList['items']->filter(fn ($item) => $navigation->allows($user, $item['url']))->values();
         $slaAlerts = $this->slaAlerts($user);
 
         $monthExpression = $this->monthExpression('created_at');
@@ -128,9 +132,15 @@ class DashboardController extends Controller
     private function primaryRole($user): string
     {
         foreach (['Admin', 'LanhDao', 'TrungTam', 'DVKH', 'PTN', 'TruongPTN'] as $role) {
+            $permission = ['DVKH' => 'dvkh.process', 'PTN' => 'ptn.process', 'TruongPTN' => 'certificate.sign'][$role] ?? null;
+            if ($permission && !$user->can($permission)) continue;
             if ($user->hasRole($role)) {
                 return $role;
             }
+        }
+
+        foreach (['dvkh.process' => 'DVKH', 'ptn.process' => 'PTN', 'certificate.sign' => 'TruongPTN'] as $permission => $role) {
+            if ($user->can($permission)) return $role;
         }
 
         return 'Viewer';
@@ -139,6 +149,7 @@ class DashboardController extends Controller
     private function requestScope($user): Builder
     {
         $query = CertificateRequest::query();
+        if (!$user->canAny(['request.view', 'dvkh.process', 'ptn.process'])) $query->whereRaw('1 = 0');
 
         if ($user->hasRole('TrungTam')) {
             $query->where('distribution_center_id', $user->distribution_center_id);
@@ -150,6 +161,7 @@ class DashboardController extends Controller
     private function certificateScope($user): Builder
     {
         $query = QualityCertificate::query();
+        if (!$user->canAny(['certificate.view', 'certificate.sign'])) $query->whereRaw('1 = 0');
 
         if ($user->hasRole('TrungTam')) {
             $query->whereHas('request', function ($q) use ($user) {

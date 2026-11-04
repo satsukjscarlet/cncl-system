@@ -1,3 +1,65 @@
+## 2026-11-04 - Rà soát kiểm thử toàn hệ thống
+
+Chạy 152 tests / 1964 assertions: 144 đạt, 8 thất bại do kiểm thử cũ vẫn kỳ vọng tự đăng ký, quên mật khẩu công khai và tự xóa tài khoản trong khi các route này đã tắt. Không mở lại route hoặc thay đổi nghiệp vụ. Kiểm tra cú pháp 143 file PHP đạt; chạy lại 58 tests / 1153 assertions để tạo giao diện kiểm thử đạt; Playwright đạt 38 tổ hợp desktop/mobile. Không ghi MySQL, không gửi ký hoặc email thật. Giới hạn và các ca cần cập nhật được ghi trong biên bản.
+
+File sửa/thêm: `docs/KIEM_TRA_HE_THONG_2026_11_04.md`, `CHANGELOG_CNCL.md`.
+
+## 2026-11-03 - Ngoại lệ quyền chức năng theo từng tài khoản
+
+Thêm màn hình Phân quyền riêng từ danh sách/sửa tài khoản, dùng chung danh mục và nhãn tiếng Việt với phân quyền nhóm; ba trạng thái kế thừa/cấp riêng/chặn riêng, hiển thị nguồn nhóm và quyền hiệu lực, tìm kiếm và đếm thay đổi. Cấp riêng dùng model_has_permissions có sẵn; chặn lưu JSON permission_denials. Chặn ưu tiên hơn cấp riêng/quyền nhóm trên Gate, middleware, API quyền và menu; bảo vệ nghiệp vụ Trung tâm, trạng thái và thao tác chỉ Admin. Bảo vệ tài khoản Admin khỏi ngoại lệ gây khóa quản trị; chỉ Admin có role_permission.manage được sửa, không tự nâng quyền qua profile/form tài khoản chung. Transaction, kiểm tra phiên bản/danh sách đầy đủ và log trước/sau. Giữ guard khác, không sửa vai trò/quyền nhóm; seeder nhóm không xóa ngoại lệ. Dashboard/work queue lọc theo quyền thực tế, nhận diện công việc cấp riêng, lịch sử in không khóa cứng theo nhóm; thông báo theo quyền bỏ người bị chặn. Chặn dashboard.view đăng nhập mặc định chuyển profile.
+
+Migration nullable chỉ thêm permission_denials, đã sao lưu bảng tài khoản và quyền rồi chạy riêng trên local; hash các trường tài khoản cũ, quyền, nhóm và liên kết trước/sau không đổi, không đặt ngoại lệ cho tài khoản thật, số liệu nghiệp vụ giữ nguyên. Backup private/backups/user-permissions-20261103-160414-0f3062/users-permissions-and-migrations.sql. VPS cần migration mới, không cần seeder.
+
+File sửa/thêm: `app/Models/User.php`, `app/Services/UserPermissionService.php`, `app/Services/PermissionCatalog.php`, `app/Services/NavigationAccess.php`, `app/Http/Controllers/UserPermissionController.php`, `app/Http/Controllers/RolePermissionController.php`, `app/Providers/AppServiceProvider.php`, `app/Services/WorkReportAccess.php`, `app/Services/NotificationService.php`, `app/Services/WorkQueueService.php`, `app/Http/Controllers/DashboardController.php`, `app/Http/Controllers/PrintLogController.php`, `app/Http/Controllers/Auth/AuthenticatedSessionController.php`, `routes/web.php`, `resources/views/users/permissions.blade.php`, `resources/views/users/index.blade.php`, `resources/views/users/edit.blade.php`, `resources/views/role_permissions/index.blade.php`, `database/migrations/2026_11_03_000002_add_permission_denials_to_users.php`, `tests/Feature/UserPermissionTest.php`, `scripts/check-workflow-ui.cjs`, `docs/PHAN_QUYEN_THEO_TAI_KHOAN.md`, `CHANGELOG_CNCL.md`.
+
+Kiểm thử đạt 104 tests / 1708 assertions trên SQLite bộ nhớ: cấp/chặn mọi mã quyền, API/Gate/menu/route, khôi phục kế thừa, giữ quyền nhóm/guard khác khi seed, chống sửa ngoài Admin, form cũ/thiếu/mã lạ, thông báo, Trung tâm và quy trình ký/bổ sung. Playwright desktop 1440/mobile 390 đạt cả giao diện và thao tác tìm/chuyển quyền; không gửi request ghi dữ liệu thật trong kiểm tra trình duyệt. MySQL local chỉ thêm cột nullable sau backup, 0 ngoại lệ được gán cho người dùng thật.
+
+## 2026-11-03 - Giới hạn báo cáo công việc theo cá nhân và phòng quản lý
+
+DVKH/PTN mặc định chỉ nhận công việc của bản thân trong phòng trực thuộc; ẩn bộ chọn tài khoản/phòng và các bảng phòng khác, không gán kết quả ký tự động vào cá nhân. Trưởng PTN mặc định xem PTN, không xem DVKH; Admin xem tất cả. Người quản lý DVKH/lãnh đạo phải được Admin cấu hình phạm vi riêng tại sửa tài khoản (phòng trực thuộc, cá nhân/các phòng/toàn hệ thống, danh sách phòng quản lý). Chặn TrungTam bất kể cấu hình, chặn giả mạo bộ lọc/ô chi tiết/Excel vượt phạm vi, bảo vệ trường cấu hình khỏi tự nâng quyền qua profile hoặc tài khoản không phải Admin. Gom bước Trưởng PTN vào phòng PTN; giữ tương thích link MANAGER. Không mở rộng quyền các báo cáo khác. Giới hạn đọc lịch sử theo loại công việc/tài khoản trước khi tổng hợp; sửa lỗi merge collection rỗng khi lịch sử chỉ có phiếu mà không có yêu cầu.
+
+Migration chỉ thêm ba cột nullable users, đã chạy riêng trên local sau backup bảng users/migrations tại private/backups/work-report-scope-20261103-144242-856272. Dữ liệu tài khoản cũ có hash trước/sau giống nhau, số tài khoản/yêu cầu/phiếu/bổ sung không đổi; không chạy seed, không thay cấu hình tài khoản thật. Trên VPS cần chạy migration mới, không cần seeder.
+
+File sửa/thêm: `app/Services/WorkReportAccess.php`, `app/Services/WorkReportService.php`, `app/Http/Controllers/WorkReportController.php`, `app/Http/Controllers/UserController.php`, `app/Models/User.php`, `app/Providers/AppServiceProvider.php`, `app/Exports/WorkReportExport.php`, `config/adminlte.php`, `resources/views/reports/work.blade.php`, `resources/views/users/_form.blade.php`, `database/migrations/2026_11_03_000001_add_work_report_scope_to_users.php`, `tests/Feature/WorkReportTest.php`, `scripts/check-workflow-ui.cjs`, `docs/BAO_CAO_CONG_VIEC.md`, `CHANGELOG_CNCL.md`.
+
+Kiểm thử đạt 85 tests / 1386 assertions trên SQLite bộ nhớ; gồm giả mạo URL/Excel, quản lý phòng, không tự nâng quyền qua profile, giữ cấu hình khi cập nhật một phần, chạy lại migration không ghi đè tài khoản. Playwright đạt 8 tổ hợp desktop/mobile cho báo cáo cá nhân/cấp phòng/toàn hệ thống và form người dùng. Đối chiếu MySQL chỉ đọc: báo cáo cá nhân PTN/DVKH không có lượt của tài khoản khác, Trưởng PTN chỉ có nhóm PTN; truy vấn cá nhân khoảng 0,05s/0,02s trong lần đo trên bản dữ liệu local.
+
+## 2026-11-03 - Báo cáo công việc theo ngày, phòng ban và tài khoản
+
+Thêm báo cáo tháng dạng ma trận ngày như mẫu, chọn phòng ban phụ trách, tài khoản, công việc, Trung tâm; nhóm dòng theo Trung tâm/tài khoản, tô Chủ nhật, tổng dòng/ngày/tháng, chi tiết theo ô và phân trang. Excel gồm ba sheet bảng ngày/chi tiết/định nghĩa, giữ giá trị chuỗi an toàn không diễn giải thành công thức. Tài khoản nội bộ dùng report.view/report.export; chặn cứng TrungTam cả xem/xuất và ẩn menu, không tự gán quyền mới. Dữ liệu lấy lịch sử có cấu trúc và mốc nghiệp vụ, chống trùng hồ sơ/tài khoản/ngày; không gán kết quả ký tự động cho người kiểm tra. Bổ sung properties.work và event=work_report cho log mới, không thay đổi quy trình hay phiếu cũ; không thêm bảng, migration, seeder, job hoặc render PDF. Giữ công việc lịch sử kể cả phiếu về sau bị thu hồi.
+
+File sửa/thêm: `app/Services/WorkReportService.php`, `app/Http/Controllers/WorkReportController.php`, `app/Exports/WorkReportExport.php`, `app/Helpers/ActivityLogger.php`, `app/Providers/AppServiceProvider.php`, `routes/web.php`, `config/adminlte.php`, `resources/views/reports/work.blade.php`, `tests/Feature/WorkReportTest.php`, `scripts/check-workflow-ui.cjs`, `docs/BAO_CAO_CONG_VIEC.md`, `CHANGELOG_CNCL.md`.
+
+Kiểm thử: 76 tests / 1306 assertions trên SQLite bộ nhớ, gồm quy trình phiếu/bổ sung/phân quyền. Playwright desktop 1440 và mobile 390 đạt, không tràn ngang toàn trang. Đối chiếu tháng 10/2026 bằng transaction MySQL chỉ đọc: gửi yêu cầu 1754 lượt, DVKH 1737, PTN lập phiếu 1729, duyệt/gửi ký 1729, kết quả ký 1729, duyệt bổ sung 23, hoàn tất bổ sung 23. Không thay dữ liệu cũ; số lượt công việc không đồng nghĩa số phiếu hiện tại.
+
+## 2026-11-03 - Xử lý phiên đăng nhập cũ gây lỗi 419
+
+Login đặt no-store và tải lại khi trở về từ Back/Forward cache; form dùng URL tương đối cùng host. POST login hết CSRF chuyển về form bằng 303 với thông báo, chỉ giữ username, không flash/tự gửi lại mật khẩu. JSON vẫn 419, các màn hình khác không thay đổi, không miễn CSRF. Thêm log chẩn đoán không chứa thông tin bí mật và hướng dẫn phân biệt session hết hạn, cookie xung đột, host/HTTPS/proxy. Người dùng xác nhận localhost; nhiều dự án lân cận cùng dùng cookie mặc định laravel-session. Đặt cookie CNCL riêng trong env local và env example (cần đăng nhập local lại một lần); không đổi APP_KEY, thời hạn session, dữ liệu hay cấu hình VPS.
+
+File sửa/thêm: `.env` (local, không đưa lên Git), `.env.example`, `app/Http/Controllers/Auth/AuthenticatedSessionController.php`, `resources/views/auth/login.blade.php`, `bootstrap/app.php`, `tests/Feature/Auth/AuthenticationTest.php`, `docs/XU_LY_LOGIN_419.md`, `CHANGELOG_CNCL.md`.
+
+Kiểm thử login/session/đổi mật khẩu/phân quyền đạt 36 tests / 422 assertions trên SQLite bộ nhớ. Chạy mở rộng Auth phát hiện 6 test cũ đăng ký/quên mật khẩu không khớp các route đã bị tắt từ trước; không mở lại các route đó trong bản sửa 419.
+
+## 2026-11-03 - Đồng bộ phạm vi danh sách phiếu và báo cáo tổng hợp
+
+Danh sách mặc định lấy phiếu mới nhất của từng yêu cầu (kể cả trả lại/hủy), có tùy chọn xem phiếu lịch sử và dẫn đến phiên bản hiện tại. Báo cáo, danh sách và Excel dùng chung quy tắc ngày tạo yêu cầu/ngày lập phiếu/ngày ký số; mặc định theo ngày tạo yêu cầu. Bộ lọc trạng thái xét phiếu hiện tại thay vì bất kỳ phiếu cũ nào. KPI phát hành/hủy áp dụng đủ bộ lọc, có liên kết đối chiếu danh sách. Phân biệt số yêu cầu, chưa lập phiếu và số phiếu hiện tại; SLA chưa cấu hình hiển thị Chưa bật. Bảng tháng/năm theo ngày ký, độc lập khoảng ngày/trạng thái, chỉ phiếu hiện tại và có liên kết theo tháng/Trung tâm. Chặn tài khoản Trung tâm chưa gắn Trung tâm khi truy vấn/xuất Excel. Không migration, seed hoặc thay đổi dữ liệu nghiệp vụ.
+
+File sửa/thêm: `app/Services/CertificateReportQuery.php`, `app/Models/CertificateRequest.php`, `app/Models/QualityCertificate.php`, `app/Http/Controllers/QualityCertificateController.php`, `app/Http/Controllers/ReportController.php`, `app/Exports/CertificateSummaryExport.php`, `resources/views/quality_certificates/index.blade.php`, `resources/views/reports/summary.blade.php`, `tests/Feature/RoleWorkspaceAccessTest.php`, `docs/BAO_CAO_TONG_HOP_DOI_CHIEU.md`, `CHANGELOG_CNCL.md`.
+
+Kiểm tra: 70 tests / 1262 assertions trên SQLite bộ nhớ, không dùng MySQL nghiệp vụ. Playwright desktop 1440 và mobile 390 đạt cả hai màn hình. Đối chiếu MySQL trong transaction chỉ đọc tháng 10/2026: 1739 yêu cầu, 1729 phiếu hiện tại, 2 phiếu lịch sử; phát hành 1673 và hủy/thu hồi 56 khớp báo cáo/danh sách. Đã chỉnh lưới bộ lọc tránh tràn ngang desktop.
+
+## 2026-11-02 - Nhap ban sao luu vao dung cncl_system theo xac nhan
+
+Theo yeu cau ghi de ro rang, da bao tri ung dung, sao luu lai cncl_system vao private/backups/cncl-system-replace-20261102-164652, nhap SQL da giai nen vao cncl_system va doi chieu voi DB nhap thu: 37 bang, so ban ghi chinh khop, 0 job. Kiem tra migration deu Ran, reset cache phan quyen, mo lai ung dung. Khong sua env, khong seed hay khoi dong scheduler/queue. Giu DB nhap thu va cac backup; cap nhat tai lieu huong dan nhap dung DB bang CMD.
+
+File da sua: `docs/HUONG_DAN_KHOI_PHUC_DATABASE_TEST.md`, `CHANGELOG_CNCL.md`. Thao tac database duoc thuc hien bang MySQL client, khong thay code nghiep vu.
+
+## 2026-11-02 - Cong cu khoi phuc database test an toan
+
+Them script local-only de sao luu DB hien tai va nhap dump SQL/GZIP vao DB MOI cncl_restore_*, tu choi DB da ton tai, khong DROP/ghi de DB cu, khong sua env. Dung MySQL client, mat khau khong in ra; kiem tra dau ket thuc dump, so bang va luu ket qua/log private. Da khoi phuc file cncl_20261102_023001.sql (GZIP) vao cncl_restore_20261102, 37 bang; giu nguyen cncl_system va cau hinh ung dung. Them huong dan tu thuc hien va luu y PDF/mail/SmartCA khi chuyen DB test.
+
+File da sua/them: `scripts/restore-test-database.php`, `docs/HUONG_DAN_KHOI_PHUC_DATABASE_TEST.md`, `CHANGELOG_CNCL.md`.
+
 ## 2026-10-30 - Dong bo nut quay lai danh sach bo sung theo tai khoan
 
 Hai nut Danh sach yeu cau va Quay lai o chi tiet dung cung bo loc mac dinh voi menu. DVKH/PTN/Admin mo work_queue=1 theo quyen, Trung tam/chi xem khong ep loc cho xu ly. Tach helper chung de menu va nut quay lai khong lech nhau. Khong doi quyen/trang thai/du lieu, khong migration/seed.

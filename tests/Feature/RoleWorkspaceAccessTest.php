@@ -384,7 +384,7 @@ class RoleWorkspaceAccessTest extends TestCase
             ->assertSee('Thống kê số lượng phiếu đã phát hành theo trung tâm - 2026')
             ->assertSee('NP - ' . $npCenter->name)
             ->assertSee('TP - ' . $tpCenter->name)
-            ->assertSee('Tổng năm: 3');
+            ->assertSee('Tổng năm: 2');
 
         $this->actingAs($admin)
             ->get(route('reports.summary', [
@@ -394,7 +394,62 @@ class RoleWorkspaceAccessTest extends TestCase
             ->assertOk()
             ->assertSee('NP - ' . $npCenter->name)
             ->assertDontSee('<strong>TP</strong> - ' . $tpCenter->name, false)
-            ->assertSee('Tổng năm: 2');
+            ->assertSee('Tổng năm: 1');
+    }
+
+    public function test_summary_and_certificate_list_share_current_version_and_date_scope(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $center = DistributionCenter::where('code', 'NP')->firstOrFail();
+        $request = $this->createRequestForCenter($center, $admin, 'YC-SCOPE', 'COMPLETED');
+        $request->forceFill(['created_at' => '2026-09-30 10:00:00'])->save();
+        $old = $this->createCertificateForRequest($request, 'CNCL-SCOPE-OLD', 'REJECTED');
+        $old->forceFill(['created_at' => '2026-10-01 10:00:00'])->save();
+        $current = $this->createIssuedCertificateForRequest($request, 'CNCL-SCOPE-NEW', '2026-11-01 10:00:00');
+        $current->forceFill(['created_at' => '2026-10-02 10:00:00'])->save();
+
+        $this->actingAs($admin);
+        $filters = ['date_from' => '2026-10-01', 'date_to' => '2026-10-31'];
+        $this->get(route('reports.summary', $filters))->assertOk()->assertViewHas('totalRequests', 0);
+        $this->get(route('quality-certificates.index', $filters))->assertOk()
+            ->assertViewHas('certificates', fn ($rows) => $rows->total() === 0);
+
+        $filters['date_basis'] = 'certificate_created_at';
+        $this->get(route('reports.summary', $filters))->assertOk()
+            ->assertViewHas('totalRequests', 1)->assertViewHas('certificateCount', 1)
+            ->assertViewHas('revokedCertificateCount', 0)->assertSee('CNCL-SCOPE-NEW')->assertDontSee('CNCL-SCOPE-OLD');
+        $this->get(route('quality-certificates.index', $filters))->assertOk()
+            ->assertViewHas('certificates', fn ($rows) => $rows->total() === 1)
+            ->assertViewHas('historicalVersionCount', 1);
+        $this->get(route('quality-certificates.index', $filters + ['include_history' => 1]))->assertOk()
+            ->assertViewHas('certificates', fn ($rows) => $rows->total() === 2)->assertSee('Phiếu lịch sử');
+        $this->get(route('reports.summary', $filters + ['certificate_status' => 'REJECTED']))->assertOk()
+            ->assertViewHas('totalRequests', 0);
+        $this->get(route('quality-certificates.index', $filters + ['status' => 'ISSUED']))->assertOk()
+            ->assertViewHas('certificates', fn ($rows) => $rows->total() === 1);
+        if ($directory = getenv('CNCL_SUPPLEMENT_UI_SNAPSHOT_DIR')) {
+            if (!is_dir($directory)) mkdir($directory, 0777, true);
+            file_put_contents($directory . '/summary-scope.html', $this->get(route('reports.summary', $filters))->getContent());
+            file_put_contents($directory . '/certificate-scope.html', $this->get(route('quality-certificates.index', $filters + ['include_history' => 1]))->getContent());
+        }
+        $this->get(route('reports.summary', array_merge($filters, ['date_basis' => 'signed_at'])))->assertOk()
+            ->assertViewHas('totalRequests', 0);
+
+        $export = new \App\Exports\CertificateSummaryExport('2026-10-01', '2026-10-31', null, null, 'ISSUED', 'certificate_created_at', $admin);
+        $this->assertCount(1, $export->collection());
+        $export = new \App\Exports\CertificateSummaryExport('2026-10-01', '2026-10-31', null, null, 'REJECTED', 'certificate_created_at', $admin);
+        $this->assertCount(0, $export->collection());
+
+        // Date filtering must not promote an older certificate into the current version.
+        $current->forceFill(['created_at' => '2026-11-02 10:00:00'])->save();
+        $this->get(route('reports.summary', $filters))->assertOk()->assertViewHas('totalRequests', 0);
+        $this->get(route('quality-certificates.index', $filters))->assertOk()
+            ->assertViewHas('certificates', fn ($rows) => $rows->total() === 0);
+        $current->delete();
+        $this->get(route('reports.summary', $filters + ['certificate_status' => 'REJECTED']))->assertOk()
+            ->assertViewHas('totalRequests', 1)->assertViewHas('certificateCount', 0);
+        $this->get(route('quality-certificates.index', $filters))->assertOk()
+            ->assertViewHas('certificates', fn ($rows) => $rows->total() === 1);
     }
 
     public function test_summary_report_can_filter_by_certificate_status(): void
@@ -412,6 +467,7 @@ class RoleWorkspaceAccessTest extends TestCase
         $this->actingAs($admin)
             ->get(route('reports.summary', ['certificate_status' => 'READY_TO_SIGN']))
             ->assertOk()
+            ->assertViewHas('revokedCertificateCount', 0)
             ->assertSee('Trạng thái phiếu CNCL')
             ->assertSee('CNCL-REPORT-READY')
             ->assertSee('Chờ gửi ký số')
@@ -423,6 +479,29 @@ class RoleWorkspaceAccessTest extends TestCase
             ->assertSee('CNCL-REPORT-REVOKED')
             ->assertSee('Đã hủy / thu hồi')
             ->assertDontSee('CNCL-REPORT-READY');
+    }
+
+    public function test_report_query_and_export_always_restrict_center_accounts(): void
+    {
+        $user = User::where('username', 'trungtam_np')->firstOrFail();
+        $ownCenter = DistributionCenter::where('code', 'NP')->firstOrFail();
+        $otherCenter = DistributionCenter::where('code', 'TP')->firstOrFail();
+        foreach ([$ownCenter, $otherCenter] as $center) {
+            $request = $this->createRequestForCenter($center, $user, 'YC-REPORT-SCOPE-' . $center->code, 'COMPLETED');
+            $this->createIssuedCertificateForRequest($request, 'CNCL-REPORT-SCOPE-' . $center->code, now()->toDateTimeString());
+        }
+        $filters = \Illuminate\Http\Request::create('/', 'GET', ['distribution_center_id' => $otherCenter->id]);
+        $service = app(\App\Services\CertificateReportQuery::class);
+        $this->assertSame(1, $service->requestBase($filters, $user)->count());
+        $this->assertSame($ownCenter->id, $service->requestBase($filters, $user)->first()->distribution_center_id);
+        $this->assertSame(1, $service->certificateBase($filters, $user)->currentVersion()->count());
+        $export = new \App\Exports\CertificateSummaryExport(null, null, null, $otherCenter->id, null, 'request_created_at', $user);
+        $this->assertCount(1, $export->collection());
+        $this->assertSame('YC-REPORT-SCOPE-NP', $export->collection()->first()['so_yeu_cau']);
+
+        $user->distribution_center_id = null;
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $service->requestBase($filters, $user);
     }
 
     public function test_request_and_certificate_lists_can_filter_and_search_by_sales_unit(): void

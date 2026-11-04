@@ -37,12 +37,15 @@
             align-items: end;
             display: grid;
             gap: 14px;
-            grid-template-columns: minmax(260px, 1.35fr) repeat(5, minmax(150px, .78fr)) minmax(190px, 1fr) auto;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         }
 
         .certificate-filter-grid.is-center-user {
-            grid-template-columns: minmax(280px, 1.4fr) repeat(4, minmax(160px, .8fr)) minmax(200px, 1fr) auto;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         }
+
+        .certificate-filter-field { min-width: 0; }
+        .certificate-filter-field .select2-container { max-width: 100%; }
 
         .certificate-filter-field label {
             color: #111827;
@@ -59,8 +62,10 @@
 
         .certificate-filter-actions {
             display: flex;
+            flex-wrap: wrap;
+            grid-column: 1 / -1;
             gap: 8px;
-            justify-content: flex-end;
+            justify-content: flex-start;
             white-space: nowrap;
         }
 
@@ -237,7 +242,8 @@
 
 @section('content')
 @php
-    $selectedStatus = request('status', 'ALL') ?: 'ALL';
+    $selectedStatus = request('certificate_status') ?: (request('status', 'ALL') ?: 'ALL');
+    $selectedStatus = ['ISSUED' => 'SIGNED', 'SIGN_PENDING' => 'SMARTCA_PENDING', 'SIGN_EXPIRED' => 'SMARTCA_EXPIRED'][$selectedStatus] ?? $selectedStatus;
     $statusOptions = [
         'ALL' => 'Tất cả trạng thái',
         'SIGN_READY' => 'Chờ duyệt / chờ gửi ký',
@@ -247,6 +253,9 @@
         'SMARTCA_EXPIRED' => 'Yêu cầu ký hết hạn',
         'REVOKED' => 'Đã hủy/thu hồi',
         'REJECTED' => 'Đã trả lại',
+        'WAIT_PTN_MANAGER_APPROVAL' => 'Chờ Trưởng PTN duyệt',
+        'READY_TO_SIGN' => 'Chờ gửi ký số',
+        'NO_CERTIFICATE' => 'Chưa lập phiếu (không có trong danh sách phiếu)',
     ];
     $selectedCenter = !$isCenterUser && request('distribution_center_id')
         ? $centers->firstWhere('id', (int) request('distribution_center_id'))
@@ -268,6 +277,10 @@
         || filled(request('date_to'))
         || $selectedStatus !== 'ALL';
 @endphp
+
+@if($errors->any())
+    <div class="alert alert-danger">{{ $errors->first() }}</div>
+@endif
 
 @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show">
@@ -295,6 +308,17 @@
 
     <div class="card-body">
         <form method="GET" class="certificate-filter-grid {{ $isCenterUser ? 'is-center-user' : '' }}">
+            @if(request('request_status'))
+                <input type="hidden" name="request_status" value="{{ request('request_status') }}">
+            @endif
+            <div class="certificate-filter-field">
+                <label>Lọc theo ngày</label>
+                <select name="date_basis" class="form-control select2">
+                    @foreach(\App\Services\CertificateReportQuery::DATE_OPTIONS as $value => $label)
+                        <option value="{{ $value }}" @selected((request('date_basis') ?: 'request_created_at') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="certificate-filter-field">
                 <label>Từ khóa</label>
                 <input type="text"
@@ -334,7 +358,7 @@
             </div>
 
             <div class="certificate-filter-field">
-                <label>Từ ngày lập phiếu</label>
+                <label>Từ ngày</label>
                 <input type="date"
                        name="date_from"
                        class="form-control"
@@ -342,7 +366,7 @@
             </div>
 
             <div class="certificate-filter-field">
-                <label>Đến ngày lập phiếu</label>
+                <label>Đến ngày</label>
                 <input type="date"
                        name="date_to"
                        class="form-control"
@@ -372,6 +396,7 @@
             </div>
 
             <div class="certificate-filter-actions">
+                <label class="mb-0 mr-2"><input type="checkbox" name="include_history" value="1" @checked(request()->boolean('include_history'))> Gồm phiếu lịch sử</label>
                 <button class="btn btn-primary">
                     <i class="fas fa-search mr-1"></i> Tìm
                 </button>
@@ -380,6 +405,12 @@
                 </a>
             </div>
         </form>
+        <p class="text-muted small mt-3 mb-0">
+            {{ \App\Services\CertificateReportQuery::DATE_OPTIONS[request('date_basis') ?: 'request_created_at'] }}.
+            {{ number_format($currentVersionCount) }} phiếu hiện tại; {{ number_format($historicalVersionCount) }} phiếu lịch sử khớp bộ lọc.
+            Mặc định chỉ hiển thị phiếu mới nhất của mỗi yêu cầu, kể cả phiếu trả lại/hủy.
+            @if(request('request_status')) Trạng thái yêu cầu: {{ request('request_status') }}. @endif
+        </p>
 
         @if($hasActiveFilters)
             <div class="certificate-active-filters">
@@ -499,6 +530,12 @@
 
                         <td>
                             <div class="certificate-no">{{ $certificate->certificate_no }}</div>
+                            @if($certificate->request?->reportCertificate?->id !== $certificate->id)
+                                <span class="badge badge-secondary">Phiếu lịch sử</span>
+                                @if($certificate->request?->reportCertificate)
+                                    <a class="small d-block" href="{{ route('quality-certificates.show', $certificate->request->reportCertificate) }}">Xem phiếu hiện tại</a>
+                                @endif
+                            @endif
                             <div class="certificate-subline">
                                 Lập: {{ optional($certificate->created_at)->format('d/m/Y H:i') }}
                             </div>

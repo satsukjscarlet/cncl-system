@@ -108,6 +108,15 @@
 @stop
 
 @section('content')
+@if($errors->any())
+    <div class="alert alert-danger">{{ $errors->first() }}</div>
+@endif
+<div class="alert alert-light border">
+    <strong>Phạm vi:</strong> {{ \App\Services\CertificateReportQuery::DATE_OPTIONS[request('date_basis') ?: 'request_created_at'] }};
+    mỗi yêu cầu chỉ lấy phiếu mới nhất, không cộng phiếu lịch sử.
+    <div>{{ number_format($totalRequests) }} yêu cầu = {{ number_format($noCertificateCount) }} chưa lập phiếu + {{ number_format($currentCertificateCount) }} có phiếu hiện tại.</div>
+    <div>Phiếu hiện tại: {{ number_format($certificateCount) }} đã phát hành + {{ number_format($revokedCertificateCount) }} đã hủy/thu hồi + {{ number_format($processingCertificateCount) }} trạng thái khác.</div>
+</div>
 <div class="row report-kpi">
     <div class="col-xl-3 col-lg-4 col-md-6">
         <div class="small-box bg-primary">
@@ -134,6 +143,9 @@
             <div class="inner">
                 <h3>{{ number_format($certificateCount) }}</h3>
                 <p>Phiếu đã phát hành</p>
+                @if($certificateCount)
+                    <a class="text-white" href="{{ $certificateListUrls['ISSUED'] }}">Xem danh sách <i class="fas fa-arrow-right"></i></a>
+                @endif
             </div>
             <div class="icon"><i class="fas fa-certificate"></i></div>
         </div>
@@ -144,6 +156,9 @@
             <div class="inner">
                 <h3>{{ number_format($revokedCertificateCount) }}</h3>
                 <p>Phiếu đã hủy / thu hồi</p>
+                @if($revokedCertificateCount)
+                    <a class="text-white" href="{{ $certificateListUrls['REVOKED'] }}">Xem danh sách <i class="fas fa-arrow-right"></i></a>
+                @endif
             </div>
             <div class="icon"><i class="fas fa-file-alt"></i></div>
         </div>
@@ -162,7 +177,7 @@
     <div class="col-xl-3 col-lg-4 col-md-6">
         <div class="small-box bg-warning">
             <div class="inner">
-                <h3>{{ number_format($warningCount) }}</h3>
+                <h3>{{ $slaDvkh || $slaPtn ? number_format($warningCount) : 'Chưa bật' }}</h3>
                 <p>Gần quá hạn SLA</p>
             </div>
             <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
@@ -172,7 +187,7 @@
     <div class="col-xl-3 col-lg-4 col-md-6">
         <div class="small-box bg-danger">
             <div class="inner">
-                <h3>{{ number_format($overdueCount) }}</h3>
+                <h3>{{ $slaDvkh || $slaPtn ? number_format($overdueCount) : 'Chưa bật' }}</h3>
                 <p>Quá hạn SLA</p>
             </div>
             <div class="icon"><i class="fas fa-fire"></i></div>
@@ -182,7 +197,7 @@
 
 <div class="card">
     <div class="card-header bg-white">
-        <h3 class="card-title mb-0"><i class="fas fa-certificate"></i> Trạng thái phiếu CNCL</h3>
+        <h3 class="card-title mb-0"><i class="fas fa-certificate"></i> Trạng thái phiếu CNCL hiện tại</h3>
     </div>
     <div class="card-body">
         <div class="certificate-status-grid">
@@ -194,6 +209,7 @@
                 </a>
             @endforeach
         </div>
+        <p class="text-muted small mb-0 mt-2">Các nhóm trạng thái giữ nguyên các bộ lọc khác, chưa áp dụng bộ lọc trạng thái phiếu đang chọn. SLA chỉ tính bước đã bật cấu hình: DVKH {{ $slaDvkh ? 'đã bật' : 'chưa bật' }}, PTN {{ $slaPtn ? 'đã bật' : 'chưa bật' }}.</p>
     </div>
 </div>
 
@@ -204,16 +220,24 @@
 
     <div class="card-body">
         <form method="GET" class="row align-items-end">
+            <div class="col-xl-2 col-md-6 form-group">
+                <label>Lọc theo ngày</label>
+                <select name="date_basis" class="form-control select2">
+                    @foreach(\App\Services\CertificateReportQuery::DATE_OPTIONS as $value => $label)
+                        <option value="{{ $value }}" @selected((request('date_basis') ?: 'request_created_at') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="col-xl-2 col-md-6">
                 <div class="form-group">
-                    <label>Từ ngày tạo</label>
+                    <label>Từ ngày</label>
                     <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
                 </div>
             </div>
 
             <div class="col-xl-2 col-md-6">
                 <div class="form-group">
-                    <label>Đến ngày tạo</label>
+                    <label>Đến ngày</label>
                     <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
                 </div>
             </div>
@@ -297,6 +321,7 @@
         <span class="badge badge-primary">Tổng năm: {{ number_format($monthlyCertificateGrandTotal) }}</span>
     </div>
 
+    <p class="px-3 pt-3 text-muted small mb-2">Bảng năm độc lập với khoảng ngày và trạng thái phía trên: tính cả năm theo ngày ký số, chỉ phiếu hiện tại đã phát hành; áp dụng Trung tâm đang chọn.</p>
     <div class="card-body table-responsive p-0">
         <table class="table table-bordered table-hover mb-0">
             <thead class="thead-light">
@@ -314,8 +339,14 @@
                         <td class="center-name">
                             <strong>{{ $row['center']->code }}</strong> - {{ $row['center']->name }}
                         </td>
-                        @foreach($row['months'] as $count)
-                            <td>{{ $count ? number_format($count) : '-' }}</td>
+                        @foreach($row['months'] as $month => $count)
+                            <td>
+                                @if($count)
+                                    <a href="{{ route('quality-certificates.index', ['certificate_status' => 'ISSUED', 'date_basis' => 'signed_at', 'date_from' => \Carbon\Carbon::create($reportYear, $month, 1)->toDateString(), 'date_to' => \Carbon\Carbon::create($reportYear, $month, 1)->endOfMonth()->toDateString(), 'distribution_center_id' => $row['center']->id]) }}">{{ number_format($count) }}</a>
+                                @else
+                                    -
+                                @endif
+                            </td>
                         @endforeach
                         <td class="total-cell">{{ number_format($row['total']) }}</td>
                     </tr>
@@ -369,9 +400,7 @@
             <tbody>
                 @forelse($requests as $item)
                     @php
-                        $reportCertificate = $item->qualityCertificates
-                            ->sortByDesc(fn ($certificate) => optional($certificate->created_at)->timestamp ?? 0)
-                            ->first();
+                        $reportCertificate = $item->reportCertificate;
                     @endphp
                     <tr>
                         <td>{{ $requests->firstItem() + $loop->index }}</td>

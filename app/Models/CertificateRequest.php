@@ -91,6 +91,12 @@ class CertificateRequest extends Model
         return $this->hasMany(QualityCertificate::class, 'certificate_request_id');
     }
 
+    public function reportCertificate()
+    {
+        // Unlike the operational relation, retain a latest REJECTED/REVOKED certificate for reporting.
+        return $this->hasOne(QualityCertificate::class, 'certificate_request_id')->latestOfMany();
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');

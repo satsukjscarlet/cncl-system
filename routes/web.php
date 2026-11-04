@@ -475,6 +475,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('reports/storage-usage/scan', [\App\Http\Controllers\StorageUsageController::class, 'scan'])
         ->middleware('role:Admin')->name('reports.storage-usage.scan');
 
+    Route::get('reports/work', [\App\Http\Controllers\WorkReportController::class, 'index'])
+        ->middleware('can:work-report.view')->name('reports.work');
+    Route::get('reports/work/export', [\App\Http\Controllers\WorkReportController::class, 'export'])
+        ->middleware(['can:work-report.view', 'permission:report.export'])->name('reports.work.export');
+
     Route::get('reports/summary', [ReportController::class, 'summary'])
         ->middleware('permission:report.view')
         ->name('reports.summary');
@@ -506,6 +511,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('system-settings/test-data/clear', [SystemSettingController::class, 'clearTestData'])
         ->middleware('permission:setting.update')
         ->name('system-settings.test-data.clear');
+
+    Route::get('users/{user}/permissions', [\App\Http\Controllers\UserPermissionController::class, 'edit'])
+        ->middleware(['role:Admin', 'permission:role_permission.manage'])->name('users.permissions.edit');
+    Route::put('users/{user}/permissions', [\App\Http\Controllers\UserPermissionController::class, 'update'])
+        ->middleware(['role:Admin', 'permission:role_permission.manage'])->name('users.permissions.update');
 
     Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])
         ->middleware('permission:user.reset_password')

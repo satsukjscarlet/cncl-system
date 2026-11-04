@@ -22,7 +22,13 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrap();
+        \Illuminate\Support\Facades\Gate::before(function ($user, string $ability) {
+            if ($user instanceof \App\Models\User && ($user->isPermissionDenied($ability) || $user->isPermissionRestricted($ability))) return false;
+            return null;
+        });
         \Illuminate\Support\Facades\Gate::define('storage-usage.view', fn ($user) => $user->hasRole('Admin'));
+        \Illuminate\Support\Facades\Gate::define('work-report.view', fn ($user) => app(\App\Services\WorkReportAccess::class)->canView($user));
+        \Illuminate\Support\Facades\Gate::define('reports-menu.view', fn ($user) => $user->can('report.view') || app(\App\Services\WorkReportAccess::class)->canView($user));
 
         // TLS may terminate at the proxy while PHP receives an HTTP request.
         // Keep generated links HTTPS when the configured public URL uses HTTPS.

@@ -14,13 +14,17 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
-use Illuminate\View\View;
+use Illuminate\Http\Response;
 
 class AuthenticatedSessionController extends Controller
 {
-    public function create(): View
+    public function create(): Response
     {
-        return view('auth.login');
+        return response()->view('auth.login')->withHeaders([
+            'Cache-Control' => 'no-store, private, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
     }
 
     public function store(LoginRequest $request): RedirectResponse
@@ -65,7 +69,8 @@ class AuthenticatedSessionController extends Controller
 
             $this->logLogin($request, $user, 'success', 'Đăng nhập thành công');
 
-            return redirect()->intended(route('dashboard', absolute: false));
+            $landingRoute = $user->isPermissionDenied('dashboard.view') ? 'profile.edit' : 'dashboard';
+            return redirect()->intended(route($landingRoute, absolute: false));
         } catch (\Throwable $e) {
             $user = User::where('username', $username)->first();
 

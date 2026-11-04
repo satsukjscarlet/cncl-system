@@ -447,7 +447,13 @@ return [
             'can' => 'certificate.view',
         ],
 
-        ['header' => 'BÁO CÁO', 'can' => 'report.view'],
+        ['header' => 'BÁO CÁO', 'can' => 'reports-menu.view'],
+        [
+            'text' => 'Báo cáo công việc',
+            'url' => 'reports/work',
+            'icon' => 'fas fa-calendar-check',
+            'can' => 'work-report.view',
+        ],
         [
             'text' => 'Báo cáo tổng hợp',
             'url'  => 'reports/summary',

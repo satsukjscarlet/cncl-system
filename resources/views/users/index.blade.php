@@ -168,6 +168,11 @@
                                 </form>
                             @endcan
 
+                            @role('Admin')
+                                @can('role_permission.manage')
+                                    <a href="{{ route('users.permissions.edit', $user) }}" class="btn btn-outline-primary btn-sm" title="Phân quyền riêng" aria-label="Phân quyền riêng"><i class="fas fa-user-shield"></i></a>
+                                @endcan
+                            @endrole
                             @can('user.delete')
                                 <form action="{{ route('users.destroy', $user) }}" method="POST" class="d-inline">
                                     @csrf

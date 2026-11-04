@@ -22,6 +22,12 @@ class ActivityLogger
             $logger->performedOn($subject);
         }
 
+        $work = \App\Services\WorkReportService::snapshot($module, $action, $oldData, $newData, $subject);
+        if ($work) {
+            $extraProperties['work'] = $work;
+            $logger->event('work_report');
+        }
+
         $logger
             ->withProperties(array_merge([
                 'action' => $action,

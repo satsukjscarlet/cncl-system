@@ -33,26 +33,11 @@ class QualityCertificateController extends Controller
     {
         $user = Auth::user();
 
-        $query = QualityCertificate::with([
-            'request.distributionCenter',
-            'request.customer',
-            'request.salesUnit',
-            'creator',
-            'replacesCertificate',
-            'replacedByCertificate',
+        $reportQuery = app(\App\Services\CertificateReportQuery::class);
+        $query = $reportQuery->certificateBase($request, $user)->with([
+            'request.distributionCenter', 'request.customer', 'request.salesUnit', 'request.reportCertificate',
+            'creator', 'replacesCertificate', 'replacedByCertificate',
         ]);
-
-        if ($user->hasRole('TrungTam')) {
-            $query->whereHas('request', function ($q) use ($user) {
-                $q->where('distribution_center_id', $user->distribution_center_id);
-            });
-        }
-
-        if ($request->filled('distribution_center_id') && !$user->hasRole('TrungTam')) {
-            $query->whereHas('request', function ($q) use ($request) {
-                $q->where('distribution_center_id', $request->distribution_center_id);
-            });
-        }
 
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
@@ -73,68 +58,14 @@ class QualityCertificateController extends Controller
             });
         }
 
-        $statusFilter = $request->input('status');
-        if ($statusFilter === 'ALL') {
-            $statusFilter = null;
-        }
-
-        if (filled($statusFilter)) {
-            if ($statusFilter === 'SIGNED') {
-                $query->whereNotNull('signed_at')
-                    ->where('status', 'ISSUED');
-            }
-
-            if ($statusFilter === 'UNSIGNED') {
-                $query->whereNull('signed_at')
-                    ->whereNotIn('status', ['REJECTED', 'REVOKED']);
-            }
-
-            if ($statusFilter === 'SIGN_READY') {
-                $query->whereNull('signed_at')
-                    ->whereIn('status', ['DRAFT', 'WAIT_PTN_MANAGER_APPROVAL', 'READY_TO_SIGN'])
-                    ->where(function ($q) {
-                        $q->whereNull('smartca_status')
-                            ->orWhereNotIn('smartca_status', ['PENDING', 'SIGNED', 'EXPIRED']);
-                    });
-            }
-
-            if ($statusFilter === 'SMARTCA_PENDING') {
-                $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
-
-                $query->whereNull('signed_at')
-                    ->where('smartca_status', 'PENDING')
-                    ->where('smartca_requested_at', '>', $expiredBefore);
-            }
-
-            if ($statusFilter === 'REVOKED') {
-                $query->where('status', 'REVOKED');
-            }
-
-            if ($statusFilter === 'REJECTED') {
-                $query->where('status', 'REJECTED');
-            }
-
-            if ($statusFilter === 'SMARTCA_EXPIRED') {
-                $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
-
-                $query->whereNull('signed_at')
-                    ->where(function ($q) use ($expiredBefore) {
-                        $q->where('smartca_status', 'EXPIRED')
-                            ->orWhere(function ($pending) use ($expiredBefore) {
-                                $pending->where('smartca_status', 'PENDING')
-                                    ->where('smartca_requested_at', '<=', $expiredBefore);
-                            });
-                    });
-            }
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('quality_certificates.created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('quality_certificates.created_at', '<=', $request->date_to);
-        }
+        $status = $request->input('certificate_status') ?: match ($request->input('status')) {
+            'SIGNED' => 'ISSUED', 'UNSIGNED' => 'UNSIGNED', 'SIGN_READY' => 'SIGN_READY',
+            'SMARTCA_PENDING' => 'SIGN_PENDING', 'SMARTCA_EXPIRED' => 'SIGN_EXPIRED',
+            'REVOKED' => 'REVOKED', 'REJECTED' => 'REJECTED',
+            'ISSUED', 'SIGN_PENDING', 'SIGN_EXPIRED', 'WAIT_PTN_MANAGER_APPROVAL', 'READY_TO_SIGN', 'NO_CERTIFICATE' => $request->input('status'),
+            default => null,
+        };
+        if ($status) $reportQuery->certificateStatus($query, $status);
 
         if ($request->filled('sales_unit_id')) {
             $query->whereHas('request', function ($q) use ($request) {
@@ -147,6 +78,10 @@ class QualityCertificateController extends Controller
                 $q->where('require_hard_copy', $request->hard_copy === '1');
             });
         }
+
+        $currentVersionCount = (clone $query)->currentVersion()->count();
+        $historicalVersionCount = (clone $query)->currentVersion(false)->count();
+        if (!$request->boolean('include_history')) $query->currentVersion();
 
         [$sort, $direction] = $this->sortInput($request, [
             'certificate_no',
@@ -178,7 +113,7 @@ class QualityCertificateController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('quality_certificates.index', compact('certificates', 'centers', 'salesUnits', 'isCenterUser'));
+        return view('quality_certificates.index', compact('certificates', 'centers', 'salesUnits', 'isCenterUser', 'currentVersionCount', 'historicalVersionCount'));
     }
 
     private function applyIndexSort($query, string $sort, string $direction): void

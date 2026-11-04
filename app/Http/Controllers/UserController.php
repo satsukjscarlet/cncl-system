@@ -6,9 +6,13 @@ use App\Helpers\ActivityLogger;
 use App\Models\DistributionCenter;
 use App\Models\User;
 use App\Services\SessionSecurityService;
+use App\Services\WorkReportAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -119,6 +123,7 @@ class UserController extends Controller
         ]);
 
         $user->syncRoles([$data['role']]);
+        $this->saveWorkReportSettings($user, $data);
 
         ActivityLogger::log(
             'Người dùng',
@@ -163,6 +168,7 @@ class UserController extends Controller
         ]);
 
         $user->syncRoles([$data['role']]);
+        $this->saveWorkReportSettings($user, $data);
 
         if ($wasActive && !$user->is_active) {
             app(SessionSecurityService::class)->revokeUserSessions($user);
@@ -265,6 +271,13 @@ class UserController extends Controller
 
     private function validatedUserData(Request $request, ?User $user = null, bool $creating = false): array
     {
+        $workFields = ['work_department', 'work_report_scope', 'work_report_departments'];
+        if ($request->hasAny($workFields)) {
+            abort_unless($request->user()->hasRole('Admin'), 403);
+            if (! Schema::hasColumns('users', $workFields)) {
+                throw ValidationException::withMessages(['work_report_scope' => 'Cần chạy migration bổ sung phạm vi báo cáo công việc trước khi lưu cấu hình.']);
+            }
+        }
         $data = $request->validate([
             'name' => 'required|max:255',
             'username' => 'required|max:100|unique:users,username' . ($user ? ',' . $user->id : ''),
@@ -273,7 +286,20 @@ class UserController extends Controller
             'distribution_center_id' => 'nullable|exists:distribution_centers,id',
             'role' => 'required|exists:roles,name',
             'password' => $creating ? ['required', Password::min(8), 'confirmed'] : ['nullable'],
+            'work_department' => ['nullable', Rule::in(array_keys(WorkReportAccess::DEPARTMENTS))],
+            'work_report_scope' => ['nullable', Rule::in(['self', 'team', 'all'])],
+            'work_report_departments' => ['nullable', 'array'],
+            'work_report_departments.*' => ['required', 'distinct', Rule::in(array_keys(WorkReportAccess::DEPARTMENTS))],
         ]);
+
+        $effectiveScope = array_key_exists('work_report_scope', $data) ? $data['work_report_scope'] : $user?->work_report_scope;
+        $effectiveDepartments = array_key_exists('work_report_departments', $data) ? $data['work_report_departments'] : $user?->work_report_departments;
+        if ($request->hasAny($workFields) && $effectiveScope === 'team' && empty($effectiveDepartments)) {
+            throw ValidationException::withMessages(['work_report_departments' => 'Chọn ít nhất một phòng được quản lý báo cáo.']);
+        }
+        if ($request->hasAny(['work_report_scope', 'work_report_departments'])) {
+            $data['work_report_departments'] = $effectiveScope === 'team' ? $effectiveDepartments : null;
+        }
 
         if ($data['role'] === 'TrungTam' && empty($data['distribution_center_id'])) {
             validator([], [])->after(function ($validator) {
@@ -286,6 +312,14 @@ class UserController extends Controller
         }
 
         return $data;
+    }
+
+    private function saveWorkReportSettings(User $user, array $data): void
+    {
+        $settings = array_intersect_key($data, array_flip(['work_department', 'work_report_scope', 'work_report_departments']));
+        if ($settings) {
+            $user->forceFill($settings)->save();
+        }
     }
 
     private function userOptionText(User $user): string
@@ -312,6 +346,9 @@ class UserController extends Controller
             'role' => $user->roles->pluck('name')->implode(', '),
             'distribution_center' => $user->distributionCenter?->code,
             'is_active' => $user->is_active,
+            'work_department' => $user->work_department,
+            'work_report_scope' => $user->work_report_scope,
+            'work_report_departments' => $user->work_report_departments,
         ];
     }
 }

@@ -61,6 +61,49 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                     const bar = page.locator('.workflow-action-bar');
                     const detail = await bar.count() > 0;
                     const deliveryDate = page.locator('#delivery_date');
+                    if (name === 'user-permissions') {
+                        assert(await page.locator('.permission-row').count() > 50);
+                        const select = page.locator('select[name="overrides[product.view]"]');
+                        assert.equal(await select.inputValue(), 'deny');
+                        await select.selectOption('allow');
+                        assert.equal((await select.locator('xpath=ancestor::tr').locator('.permission-result').textContent()).trim(), 'Được phép');
+                        assert.equal((await page.locator('#permission-change-count').textContent()).trim(), '1 quyền thay đổi');
+                        await select.selectOption('deny');
+                        await page.locator('#permission-search').fill('quan ly thiet bi');
+                        assert.equal(await page.locator('.permission-row:visible').count(), 1);
+                        assert(await page.locator('#account-permission-form').evaluate(form => new FormData(form).has('overrides[product.view]')));
+                        await page.locator('#permission-search').fill('');
+                    }
+                    if (name.startsWith('work-report')) {
+                        const expectedSections = name.endsWith('-self') ? 3 : name.endsWith('-team') ? 4 : 7;
+                        assert.equal(await page.locator('.work-section').count(), expectedSections);
+                        assert(await page.getByText('Định nghĩa số liệu', { exact: true }).isVisible());
+                        if (name.endsWith('-self')) {
+                            assert.equal(await page.locator('#work-user').count(), 0);
+                            assert.equal(await page.locator('select[name="department"]').count(), 0);
+                            assert.equal(await page.locator('.work-section[data-kind="signed"]').count(), 0);
+                        }
+                        if (name.endsWith('-team')) {
+                            assert.equal(await page.locator('#work-user').count(), 1);
+                            assert.equal(await page.locator('select[name="department"]').count(), 0);
+                            assert.equal(await page.locator('.work-section[data-kind="dvkh_approve"]').count(), 0);
+                        }
+                        for (const table of await page.locator('.work-matrix table').all()) {
+                            const columns = await table.locator('thead th').count();
+                            assert.equal(columns, 31, 'Leap-year February must have 29 day columns plus label and total');
+                            let sectionTotal = 0;
+                            for (const row of await table.locator('tbody tr').all()) {
+                                const cells = await row.locator('td').allTextContents();
+                                assert.equal(cells.length, 30);
+                                const daily = cells.slice(0, -1).map(value => Number(value.trim()));
+                                const total = Number(cells.at(-1).trim());
+                                assert.equal(daily.reduce((sum, value) => sum + value, 0), total);
+                                sectionTotal += total;
+                            }
+                            const footer = await table.locator('tfoot th').allTextContents();
+                            assert.equal(Number(footer.at(-1).trim()), sectionTotal);
+                        }
+                    }
                     if (name.startsWith('supplement-report')) {
                         assert.equal(await page.locator('.supplement-report-kpis .small-box').count(), 4);
                         assert.equal(await page.locator('.supplement-report-secondary > div').count(), 5);

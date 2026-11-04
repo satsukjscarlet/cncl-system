@@ -25,7 +25,8 @@ class WorkQueueService
                     'fas fa-copy', 'info', route('hard-copy-supplements.index', ['status' => $status]));
             }
         }
-        $items = array_values(array_filter($items, fn ($item) => $item['count'] > 0));
+        $navigation = app(NavigationAccess::class);
+        $items = array_values(array_filter($items, fn ($item) => $item['count'] > 0 && $navigation->allows($user, $item['url'])));
         $total = collect($items)->sum('count');
 
         return [
@@ -165,9 +166,15 @@ class WorkQueueService
     private function primaryRole(User $user): string
     {
         foreach (['Admin', 'LanhDao', 'TrungTam', 'DVKH', 'PTN', 'TruongPTN'] as $role) {
+            $permission = ['DVKH' => 'dvkh.process', 'PTN' => 'ptn.process', 'TruongPTN' => 'certificate.sign'][$role] ?? null;
+            if ($permission && !$user->can($permission)) continue;
             if ($user->hasRole($role)) {
                 return $role;
             }
+        }
+
+        foreach (['dvkh.process' => 'DVKH', 'ptn.process' => 'PTN', 'certificate.sign' => 'TruongPTN'] as $permission => $role) {
+            if ($user->can($permission)) return $role;
         }
 
         return 'Viewer';

@@ -9,6 +9,16 @@ class QualityCertificate extends Model
 {
     use SoftDeletes;
 
+    public function scopeCurrentVersion($query, bool $current = true)
+    {
+        return $query->whereExists(function ($newer) {
+            $newer->selectRaw('1')->from('quality_certificates as newer_certificate')
+                ->whereColumn('newer_certificate.certificate_request_id', 'quality_certificates.certificate_request_id')
+                ->whereColumn('newer_certificate.id', '>', 'quality_certificates.id')
+                ->whereNull('newer_certificate.deleted_at');
+        }, 'and', $current);
+    }
+
     public const STATUS_DRAFT = 'DRAFT';
     public const STATUS_WAIT_PTN_MANAGER_APPROVAL = 'WAIT_PTN_MANAGER_APPROVAL';
     public const STATUS_READY_TO_SIGN = 'READY_TO_SIGN';

@@ -23,6 +23,9 @@
     <div>
         <h1 class="m-0">Phân quyền</h1>
         <small class="text-muted">Cấu hình quyền truy cập chức năng theo từng vai trò</small>
+        @role('Admin')
+            <a href="{{ route('users.index') }}" class="btn btn-outline-primary btn-sm mt-2"><i class="fas fa-user-shield mr-1"></i> Phân quyền theo tài khoản</a>
+        @endrole
     </div>
 </div>
 @stop
