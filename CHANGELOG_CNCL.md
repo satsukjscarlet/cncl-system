@@ -1,3 +1,11 @@
+## 2026-11-06 - Nhận IP public khách hàng qua Cloudflare
+
+Thay middleware TrustProxies mặc định bằng TrustCloudflareClientIp: chỉ dùng CF-Connecting-IP hợp lệ khi peer trực tiếp thuộc dải Cloudflare IPv4/IPv6 chính thức, bỏ chuỗi X-Forwarded-For gửi kèm. Hỗ trợ IPv6 và Pseudo IPv4; header thiếu/sai giữ IP peer, kết nối trực tiếp không tin header giả. Giữ cách xử lý host/HTTPS, áp dụng chung cho request->ip() ở thiết bị/đăng nhập/nhật ký/rate limit. Không đổi nhận diện thiết bị bằng cookie hoặc dữ liệu cũ. Có công tắc CLOUDFLARE_CLIENT_IP_ENABLED mặc định true; không gọi mạng lúc xử lý request. Dải IP đã đối chiếu nguồn Cloudflare ngày 06/11/2026.
+
+Kiểm thử đạt 20 tests / 78 assertions cho middleware, đăng nhập, thu hồi phiên; kiểm tra cú pháp 4 file PHP và diff check đạt. Không sửa MySQL, không migration/seeder. Chưa kiểm tra trực tiếp cấu hình mạng VPS; nếu có proxy trung gian/Tunnel phải cấu hình riêng, không tin mọi proxy. Hướng dẫn triển khai và xác minh trong docs/IP_KHACH_HANG_CLOUDFLARE.md.
+
+File sửa/thêm: `app/Http/Middleware/TrustCloudflareClientIp.php`, `config/cloudflare.php`, `bootstrap/app.php`, `.env.example`, `tests/Feature/CloudflareClientIpTest.php`, `docs/IP_KHACH_HANG_CLOUDFLARE.md`, `CHANGELOG_CNCL.md`.
+
 ## 2026-11-04 - Rà soát kiểm thử toàn hệ thống
 
 Chạy 152 tests / 1964 assertions: 144 đạt, 8 thất bại do kiểm thử cũ vẫn kỳ vọng tự đăng ký, quên mật khẩu công khai và tự xóa tài khoản trong khi các route này đã tắt. Không mở lại route hoặc thay đổi nghiệp vụ. Kiểm tra cú pháp 143 file PHP đạt; chạy lại 58 tests / 1153 assertions để tạo giao diện kiểm thử đạt; Playwright đạt 38 tổ hợp desktop/mobile. Không ghi MySQL, không gửi ký hoặc email thật. Giới hạn và các ca cần cập nhật được ghi trong biên bản.

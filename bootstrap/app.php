@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->replace(
+            \Illuminate\Http\Middleware\TrustProxies::class,
+            \App\Http\Middleware\TrustCloudflareClientIp::class,
+        );
+
         $middleware->appendToGroup('web', [
             \Illuminate\Session\Middleware\AuthenticateSession::class,
             EnsureLoginDeviceIsApproved::class,
