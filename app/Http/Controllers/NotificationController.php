@@ -146,6 +146,8 @@ class NotificationController extends Controller
 
     private function canOpenCertificate($user, QualityCertificate $certificate): bool
     {
+        if ($user->isSalesUnit()) return $certificate->status === 'ISSUED' && $certificate->signed_at
+            && CertificateRequest::visibleTo($user)->whereKey($certificate->certificate_request_id)->exists();
         if (!$user->can('certificate.view')) {
             return false;
         }
@@ -156,6 +158,7 @@ class NotificationController extends Controller
 
     private function requestUrlForUser($user, CertificateRequest $certificateRequest): ?string
     {
+        if ($user->isSalesUnit() && ! CertificateRequest::visibleTo($user)->whereKey($certificateRequest->id)->exists()) return null;
         if (
             $user->can('dvkh.process')
             && in_array($certificateRequest->status, ['WAIT_DVKH', 'WAIT_PTN', 'CANCELLED'], true)

@@ -61,6 +61,25 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                     const bar = page.locator('.workflow-action-bar');
                     const detail = await bar.count() > 0;
                     const deliveryDate = page.locator('#delivery_date');
+                    if (name === 'sales-unit-create') {
+                        assert(await page.locator('select[name="sales_unit_id"]').isDisabled());
+                        assert(await page.locator('input[type="hidden"][name="sales_unit_id"]').inputValue());
+                        assert((await page.locator('#request-submit-button').textContent()).includes('Gửi Trung tâm'));
+                    }
+                    if (name === 'sales-unit-center-review') {
+                        await page.locator('[data-target="#returnSalesUnitModal"]').click();
+                        await page.locator('#sales_unit_return_reason').waitFor({ state: 'visible' });
+                        assert(await page.locator('#sales_unit_return_reason').evaluate(el => el.required));
+                        await page.locator('#returnSalesUnitModal .modal-footer [data-dismiss="modal"]').click();
+                        await page.locator('#returnSalesUnitModal').waitFor({ state: 'hidden' });
+                        await page.locator('.modal-backdrop').waitFor({ state: 'detached' });
+                    }
+                    if (name === 'sales-unit-certificate') {
+                        assert.equal(await page.locator('#hard-copy-supplement-panel').count(), 0);
+                        assert.equal(await page.locator('[data-target="#reissueModal"]').count(), 0);
+                        assert.equal(await page.locator('.js-print-hard-copy').count(), 0);
+                        assert(await page.locator('a[href$="/pdf"]').count() > 0);
+                    }
                     if (name === 'user-permissions') {
                         assert(await page.locator('.permission-row').count() > 50);
                         const select = page.locator('select[name="overrides[product.view]"]');
@@ -75,7 +94,7 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                         await page.locator('#permission-search').fill('');
                     }
                     if (name.startsWith('work-report')) {
-                        const expectedSections = name.endsWith('-self') ? 3 : name.endsWith('-team') ? 4 : 7;
+                        const expectedSections = name.endsWith('-self') ? 3 : name.endsWith('-team') ? 4 : 8;
                         assert.equal(await page.locator('.work-section').count(), expectedSections);
                         assert(await page.getByText('Định nghĩa số liệu', { exact: true }).isVisible());
                         if (name.endsWith('-self')) {

@@ -444,7 +444,7 @@ return [
             'text' => 'Bổ sung bản ký tươi',
             'url' => 'hard-copy-supplements',
             'icon' => 'fas fa-copy',
-            'can' => 'certificate.view',
+            'can' => 'hard-copy-supplements.view',
         ],
 
         ['header' => 'BÁO CÁO', 'can' => 'reports-menu.view'],

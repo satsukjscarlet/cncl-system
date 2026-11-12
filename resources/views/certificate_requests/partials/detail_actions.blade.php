@@ -6,14 +6,17 @@
     'spacerId' => 'requestDetailActionSpacer',
     'warning' => ($invoiceDuplicates ?? collect())->isNotEmpty() ? 'Trùng số hóa đơn' : null,
 ])
-        @if($certificateRequest->status === 'DRAFT')
+        @if($canEditRequest)
             @can('request.update')
                 <a href="{{ route('certificate-requests.edit', $certificateRequest) }}" class="btn btn-outline-primary">
                     <i class="fas fa-edit"></i> Sửa yêu cầu
                 </a>
                 <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#submitDraftModal">
-                    <i class="fas fa-paper-plane"></i> Gửi DVKH
+                    <i class="fas fa-paper-plane"></i> Gửi {{ $sendTarget }}
                 </button>
+                @if($certificateRequest->request_source === 'SALES_UNIT' && !auth()->user()->isSalesUnit())
+                    <button type="button" class="btn btn-outline-warning" data-toggle="modal" data-target="#returnSalesUnitModal"><i class="fas fa-undo"></i> Trả lại đơn vị</button>
+                @endif
             @endcan
         @elseif(!$isCenterAccount && $certificateRequest->status === 'WAIT_DVKH' && auth()->user()->can('dvkh.process'))
             <a href="{{ route('dvkh.requests.show', $certificateRequest) }}" class="btn btn-primary">

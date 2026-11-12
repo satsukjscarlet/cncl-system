@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\ActivityLogger;
 use App\Models\DistributionCenter;
+use App\Models\SalesUnit;
 use App\Models\User;
 use App\Services\SessionSecurityService;
 use App\Services\WorkReportAccess;
@@ -22,6 +23,7 @@ class UserController extends Controller
         $query = User::with([
             'roles',
             'distributionCenter',
+            'salesUnit',
         ]);
 
         if ($request->filled('keyword')) {
@@ -105,7 +107,8 @@ class UserController extends Controller
         $roles = Role::orderBy('name')->get();
         $centers = DistributionCenter::orderBy('name')->get();
 
-        return view('users.create', compact('roles', 'centers'));
+        $salesUnits = SalesUnit::with('distributionCenter')->where('is_active', true)->orderBy('name')->get();
+        return view('users.create', compact('roles', 'centers', 'salesUnits'));
     }
 
     public function store(Request $request)
@@ -123,6 +126,7 @@ class UserController extends Controller
         ]);
 
         $user->syncRoles([$data['role']]);
+        $user->forceFill(['sales_unit_id' => $data['sales_unit_id'] ?? null])->save();
         $this->saveWorkReportSettings($user, $data);
 
         ActivityLogger::log(
@@ -149,7 +153,8 @@ class UserController extends Controller
         $roles = Role::orderBy('name')->get();
         $centers = DistributionCenter::orderBy('name')->get();
 
-        return view('users.edit', compact('user', 'roles', 'centers'));
+        $salesUnits = SalesUnit::with('distributionCenter')->where('is_active', true)->orderBy('name')->get();
+        return view('users.edit', compact('user', 'roles', 'centers', 'salesUnits'));
     }
 
     public function update(Request $request, User $user)
@@ -157,6 +162,9 @@ class UserController extends Controller
         $oldData = $this->userAuditData($user);
         $wasActive = (bool) $user->is_active;
         $data = $this->validatedUserData($request, $user);
+        $assignmentChanged = (int) $user->sales_unit_id !== (int) ($data['sales_unit_id'] ?? null)
+            || (int) $user->distribution_center_id !== (int) ($data['distribution_center_id'] ?? null)
+            || ! $user->hasRole($data['role']);
 
         $user->update([
             'name' => $data['name'],
@@ -168,9 +176,10 @@ class UserController extends Controller
         ]);
 
         $user->syncRoles([$data['role']]);
+        $user->forceFill(['sales_unit_id' => $data['sales_unit_id'] ?? null])->save();
         $this->saveWorkReportSettings($user, $data);
 
-        if ($wasActive && !$user->is_active) {
+        if (($wasActive && !$user->is_active) || $assignmentChanged) {
             app(SessionSecurityService::class)->revokeUserSessions($user);
         }
 
@@ -284,6 +293,7 @@ class UserController extends Controller
             'email' => 'nullable|email',
             'smartca_user_id' => 'nullable|string|max:100',
             'distribution_center_id' => 'nullable|exists:distribution_centers,id',
+            'sales_unit_id' => ['nullable', 'integer', 'exists:sales_units,id'],
             'role' => 'required|exists:roles,name',
             'password' => $creating ? ['required', Password::min(8), 'confirmed'] : ['nullable'],
             'work_department' => ['nullable', Rule::in(array_keys(WorkReportAccess::DEPARTMENTS))],
@@ -307,7 +317,18 @@ class UserController extends Controller
             })->validate();
         }
 
-        if ($data['role'] !== 'TrungTam') {
+        if ($data['role'] === 'DonViBanHang') {
+            abort_unless($request->user()->hasRole('Admin'), 403);
+            $unit = SalesUnit::whereKey($data['sales_unit_id'] ?? 0)->where('is_active', true)->first();
+            if (! $unit || ! $unit->distributionCenter?->is_active) {
+                throw ValidationException::withMessages(['sales_unit_id' => 'Chọn đơn vị bán hàng đang hoạt động thuộc Trung tâm đang hoạt động.']);
+            }
+            $data['distribution_center_id'] = $unit->distribution_center_id;
+        } else {
+            $data['sales_unit_id'] = null;
+        }
+
+        if (! in_array($data['role'], ['TrungTam', 'DonViBanHang'], true)) {
             $data['distribution_center_id'] = null;
         }
 
@@ -345,6 +366,7 @@ class UserController extends Controller
             'smartca_user_id' => $user->smartca_user_id,
             'role' => $user->roles->pluck('name')->implode(', '),
             'distribution_center' => $user->distributionCenter?->code,
+            'sales_unit_id' => $user->sales_unit_id,
             'is_active' => $user->is_active,
             'work_department' => $user->work_department,
             'work_report_scope' => $user->work_report_scope,

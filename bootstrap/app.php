@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', [
             \Illuminate\Session\Middleware\AuthenticateSession::class,
             EnsureLoginDeviceIsApproved::class,
+            \App\Http\Middleware\EnsureSalesUnitScope::class,
         ]);
 
         $middleware->alias([

@@ -24,6 +24,7 @@ class WorkReportService
     public const DEPARTMENTS = ['CENTER' => 'Trung tâm', 'DVKH' => 'Dịch vụ khách hàng', 'PTN' => 'Phòng thử nghiệm'];
 
     public const KINDS = [
+        'sales_unit_submit' => ['Đơn vị bán hàng gửi Trung tâm', 'CENTER'],
         'request_submit' => ['Trung tâm gửi yêu cầu', 'CENTER'],
         'dvkh_approve' => ['DVKH xác nhận chuyển PTN', 'DVKH'],
         'ptn_create' => ['PTN lập phiếu CNCL', 'PTN'],
@@ -35,6 +36,8 @@ class WorkReportService
 
     public static function kind(string $module, string $action, mixed $old, mixed $new): ?string
     {
+        if ($module === 'Yêu cầu cấp phiếu' && in_array($action, ['create', 'update', 'submit'], true)
+            && data_get($new, 'status') === 'WAIT_CENTER' && data_get($old, 'status') !== 'WAIT_CENTER') return 'sales_unit_submit';
         if ($module === 'Yêu cầu cấp phiếu' && in_array($action, ['create', 'update', 'submit'], true)
             && data_get($new, 'status') === 'WAIT_DVKH'
             && ($action === 'submit' || data_get($old, 'status') !== 'WAIT_DVKH')) {
@@ -199,6 +202,7 @@ class WorkReportService
             && (! $filters['department'] || self::KINDS[$kind][1] === $filters['department'])));
         $actorId = $filters['user_id'] ? (int) $filters['user_id'] : null;
         $modules = [
+            'sales_unit_submit' => ['Yêu cầu cấp phiếu'],
             'request_submit' => ['Yêu cầu cấp phiếu'], 'dvkh_approve' => ['DVKH kiểm tra yêu cầu'],
             'ptn_create' => ['PTN lập phiếu', 'PTN lập phiếu trực tiếp'], 'manager_approve' => ['Phiếu CNCL'],
             'signed' => [], 'supplement_approve' => ['Bổ sung bản ký tươi'], 'supplement_complete' => ['Bổ sung bản ký tươi'],
@@ -264,6 +268,13 @@ class WorkReportService
         }
 
         // Native records fill missing old logs without inventing an approver or the person confirming SmartCA.
+        if (in_array('sales_unit_submit', $allowedKinds, true)) {
+            $unitSubmissions = CertificateRequest::withTrashed()->where('sales_unit_submitted_at', '>=', $start)->where('sales_unit_submitted_at', '<', $end)
+                ->when($actorId, fn ($q) => $q->where('sales_unit_submitted_by', $actorId))
+                ->get(['id', 'request_no', 'distribution_center_id', 'sales_unit_submitted_at', 'sales_unit_submitted_by']);
+            foreach ($unitSubmissions as $item) $this->fallback($events, $this->event('sales_unit_submit', 'request:'.$item->id,
+                $item->sales_unit_submitted_by, $item->distribution_center_id, $item->sales_unit_submitted_at, $item->request_no, $item->request_no, 'Mốc đơn vị gửi Trung tâm'));
+        }
         $submitted = in_array('request_submit', $allowedKinds, true)
             ? CertificateRequest::withTrashed()->where('submitted_at', '>=', $start)->where('submitted_at', '<', $end)
                 ->when($actorId, fn ($query) => $query->where('submitted_by', $actorId))->get(['id', 'request_no', 'distribution_center_id', 'submitted_at', 'submitted_by']) : collect();

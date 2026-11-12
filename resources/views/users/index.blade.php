@@ -141,10 +141,12 @@
                         <td>{{ $user->email ?: '-' }}</td>
                         <td>
                             @foreach($user->roles as $role)
-                                <span class="badge badge-info">{{ $role->name }}</span>
+                                <span class="badge badge-info">{{ app(\App\Services\PermissionCatalog::class)->roleLabels()[$role->name] ?? $role->name }}</span>
                             @endforeach
                         </td>
-                        <td>{{ $user->distributionCenter->name ?? '-' }}</td>
+                        <td>{{ $user->distributionCenter->name ?? '-' }}
+                            @if($user->salesUnit)<div class="text-muted small">{{ $user->salesUnit->code }} - {{ $user->salesUnit->name }}</div>@endif
+                        </td>
                         <td>
                             @if($user->is_active)
                                 <span class="badge badge-success">Hoạt động</span>

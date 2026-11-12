@@ -28,7 +28,9 @@
 @endif
 
 @include('quality_certificates.partials.workflow_steps', ['steps' => $certificateWorkflowSteps])
-@include('hard_copy_supplements.certificate_panel', ['certificate' => $qualityCertificate])
+@unless(auth()->user()->isSalesUnit())
+    @include('hard_copy_supplements.certificate_panel', ['certificate' => $qualityCertificate])
+@endunless
 
 @php
     $smartCaPendingTtlMinutes = max(1, (int) config('services.smartca.pending_ttl_minutes', 5));
@@ -516,7 +518,7 @@
 @endif
 @endcan
 
-@can('request.create')
+@can('request-reissue.view')
 @if($qualityCertificate->canRequestReissue())
 <div class="modal fade" id="reissueModal" tabindex="-1">
     <div class="modal-dialog">
@@ -563,7 +565,13 @@
     'status' => $statusMeta,
     'backUrl' => route('quality-certificates.index'),
 ])
-@include('quality_certificates.partials.detail_actions')
+@if(auth()->user()->isSalesUnit())
+    @if($qualityCertificate->pades_status === 'SIGNED_PDF' && filled($qualityCertificate->pdf_path))
+        <a class="btn btn-info" target="_blank" href="{{ route('quality-certificates.pdf', $qualityCertificate) }}"><i class="fas fa-file-pdf"></i> Xem PDF đã ký</a>
+    @endif
+@else
+    @include('quality_certificates.partials.detail_actions')
+@endif
 @endcomponent
 
 <script>

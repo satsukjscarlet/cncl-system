@@ -29,7 +29,7 @@ class WorkReportAccess
     {
         $department = $this->department($user);
         if ($user->isPermissionDenied('report.view')) return ['mode' => 'none', 'departments' => []];
-        if ($user->hasRole('TrungTam')) {
+        if ($user->isExternalAccount()) {
             return ['mode' => 'none', 'departments' => []];
         }
         if (! $user->can('report.view') && ! $user->hasAnyRole(['DVKH', 'PTN', 'TruongPTN'])) {

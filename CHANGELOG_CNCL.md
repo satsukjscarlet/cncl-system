@@ -1,3 +1,30 @@
+## 2026-11-12 - Kiểm tra lại trước cập nhật VPS
+
+Chạy lại toàn bộ 171 tests / 2124 assertions: 163 đạt, 8 test cũ chưa đồng bộ với các route tự đăng ký/quên mật khẩu/tự xóa tài khoản đã tắt. Không phát hiện ca thất bại mới ở nghiệp vụ. Kiểm tra cú pháp 150 file PHP và 254 Blade đã biên dịch đạt; thử route/view cache ở thư mục riêng đạt, không thay config cache đang dùng. Playwright 52 tổ hợp desktop/mobile đạt; platform requirements non-dev đạt trên local. Đọc MySQL trong transaction READ ONLY xác nhận schema/role mới; không chạy migration/seeder hay sửa dữ liệu MySQL trong lần rà này. Không gửi email/SmartCA thật. Ghi rõ cần commit/push đủ file mới, sao lưu và chạy migration + SalesUnitAccessSeeder trước khi mở code mới trên VPS; môi trường VPS thực tế chưa được kiểm chứng.
+
+File sửa/thêm: `docs/KIEM_TRA_TRUOC_VPS_2026_11_12.md`, `CHANGELOG_CNCL.md`. Không sửa code nghiệp vụ trong lần kiểm tra này.
+
+## 2026-11-11 - Đơn vị bán hàng tạo yêu cầu qua Trung tâm
+
+Thêm vai trò DonViBanHang, Admin gắn tài khoản với đơn vị đang hoạt động và suy ra Trung tâm. Phạm vi hồ sơ theo đơn vị + Trung tâm; nhiều tài khoản cùng đơn vị dùng chung hồ sơ, không xem nháp riêng của Trung tâm. Cố định liên kết ở form/backend, khách hàng tạo từ yêu cầu được gắn đơn vị. Chặn route nội bộ, quyền cấp nhầm, PDF chưa ký, cấp lại/in/bổ sung ký tươi và báo cáo nội bộ cho đơn vị. Thu hồi phiên khi thay liên kết/vai trò; kiểm soát thiết bị áp dụng khi đang kiểm soát Trung tâm.
+
+Luồng mới: nháp → WAIT_CENTER → Trung tâm sửa/gửi DVKH hoặc RETURNED_SALES_UNIT → đơn vị sửa/gửi lại Trung tâm. DVKH trả lại vẫn về Trung tâm, Trung tâm quyết định trả tiếp đơn vị. Nhánh Trung tâm tự tạo và quy trình DVKH/PTN/Trưởng PTN/SmartCA/in giữ nguyên. Thêm tiến trình 6 bước riêng cho nguồn đơn vị, nút cố định và modal trả lại, bộ lọc/tab/dashboard/công việc/menu đếm theo cấp. Khóa dòng và kiểm tra lại phạm vi/trạng thái ở bước chuyển, sửa, xóa. Số yêu cầu/số CNCL không đổi khi duyệt.
+
+Tách mốc đơn vị gửi Trung tâm khỏi submitted_at/by (vẫn là lúc Trung tâm gửi DVKH để tính SLA). Báo cáo công việc thêm riêng Đơn vị bán hàng gửi Trung tâm; không đổi định nghĩa nhóm gửi DVKH cũ. Bộ lọc báo cáo thêm hai trạng thái mới. Bảo vệ xóa hẳn đơn vị có tài khoản/khách hàng liên kết. Không sửa PDF/SmartCA hay nội dung phiếu cũ.
+
+Đã sao lưu bảng liên quan tại `storage/app/private/backups/sales-unit-workflow-20261111-be9938/before.sql` rồi chạy riêng migration thêm cột nullable và SalesUnitAccessSeeder trên MySQL local. Hash các cột/dòng cũ của users, customers, certificate_requests, roles, permissions, model_has_roles, model_has_permissions, role_has_permissions và migrations cũ đều không đổi; giữ 23 tài khoản, 1233 khách hàng, 1758 yêu cầu, 1731 phiếu, 36 bổ sung. Chỉ thêm vai trò với 6 quyền, không tạo tài khoản/hồ sơ test hoặc gán vai trò cho tài khoản thật. Không chạy fresh/refresh/import hay seeder dữ liệu test. VPS cần cập nhật theo `docs/QUY_TRINH_DON_VI_BAN_HANG.md`.
+
+Kiểm thử SQLite bộ nhớ: 12 ca mới / 143 assertions đạt; chạy lại 66 ca liên quan / 989 assertions đạt. Toàn bộ 171 ca: 163 đạt, 8 ca cũ thất bại do route tự đăng ký/quên mật khẩu/tự xóa tài khoản đã tắt, không mở lại các route này. Kiểm tra 150 file PHP không lỗi cú pháp; Playwright 26 màn hình/trạng thái ở desktop/mobile (52 tổ hợp) đạt. Không gửi email/SmartCA thật, không in giấy phôi. Thông báo phát hành gửi đúng tài khoản của đơn vị; cảnh báo trùng hóa đơn ở DVKH không đưa hồ sơ chưa vào quy trình ra ngoài phạm vi.
+
+File sửa/thêm:
+- `app/Models/User.php`, `app/Models/CertificateRequest.php`, `app/Services/SalesUnitRequestAccess.php`, `app/Http/Middleware/EnsureSalesUnitScope.php`, `bootstrap/app.php`.
+- `database/migrations/2026_11_11_000001_add_sales_unit_request_workflow.php`, `database/seeders/SalesUnitAccessSeeder.php`, `database/seeders/PermissionSeeder.php`.
+- `app/Http/Controllers/CertificateRequestController.php`, `app/Http/Controllers/DvkhRequestController.php`, `app/Http/Controllers/UserController.php`, `app/Http/Controllers/DashboardController.php`, `app/Http/Controllers/QualityCertificateController.php`, `app/Http/Controllers/ReportController.php`, `app/Http/Controllers/NotificationController.php`, `app/Http/Controllers/SalesUnitController.php`.
+- `app/Http/Controllers/Auth/AuthenticatedSessionController.php`, `app/Http/Middleware/EnsureLoginDeviceIsApproved.php`, `app/Providers/AppServiceProvider.php`, `app/Services/PermissionCatalog.php`, `app/Services/HardCopySupplementService.php`, `config/adminlte.php`.
+- `app/Services/NotificationService.php`, `app/Services/WorkflowStepService.php`, `app/Services/WorkReportService.php`, `app/Services/WorkReportAccess.php`, `app/Services/WorkQueueService.php`, `app/Services/CertificateReportQuery.php`, `app/AdminLte/Menu/PendingWorkflowBadgeFilter.php`, `routes/web.php`.
+- `resources/views/certificate_requests/_form.blade.php`, `resources/views/certificate_requests/index.blade.php`, `resources/views/certificate_requests/show.blade.php`, `resources/views/certificate_requests/partials/detail_actions.blade.php`, `resources/views/certificate_requests/partials/return_badge.blade.php`, `resources/views/quality_certificates/index.blade.php`, `resources/views/quality_certificates/show.blade.php`, `resources/views/users/_form.blade.php`, `resources/views/users/index.blade.php`.
+- `tests/Feature/SalesUnitWorkflowTest.php`, `scripts/check-workflow-ui.cjs`, `docs/QUY_TRINH_DON_VI_BAN_HANG.md`, `CHANGELOG_CNCL.md`.
+
 ## 2026-11-06 - Nhận IP public khách hàng qua Cloudflare
 
 Thay middleware TrustProxies mặc định bằng TrustCloudflareClientIp: chỉ dùng CF-Connecting-IP hợp lệ khi peer trực tiếp thuộc dải Cloudflare IPv4/IPv6 chính thức, bỏ chuỗi X-Forwarded-For gửi kèm. Hỗ trợ IPv6 và Pseudo IPv4; header thiếu/sai giữ IP peer, kết nối trực tiếp không tin header giả. Giữ cách xử lý host/HTTPS, áp dụng chung cho request->ip() ở thiết bị/đăng nhập/nhật ký/rate limit. Không đổi nhận diện thiết bị bằng cookie hoặc dữ liệu cũ. Có công tắc CLOUDFLARE_CLIENT_IP_ENABLED mặc định true; không gọi mạng lúc xử lý request. Dải IP đã đối chiếu nguồn Cloudflare ngày 06/11/2026.

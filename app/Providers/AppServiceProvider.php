@@ -27,6 +27,8 @@ class AppServiceProvider extends ServiceProvider
             return null;
         });
         \Illuminate\Support\Facades\Gate::define('storage-usage.view', fn ($user) => $user->hasRole('Admin'));
+        \Illuminate\Support\Facades\Gate::define('hard-copy-supplements.view', fn ($user) => app(\App\Services\HardCopySupplementService::class)->canView($user));
+        \Illuminate\Support\Facades\Gate::define('request-reissue.view', fn ($user) => ! $user->isSalesUnit() && $user->can('request.create'));
         \Illuminate\Support\Facades\Gate::define('work-report.view', fn ($user) => app(\App\Services\WorkReportAccess::class)->canView($user));
         \Illuminate\Support\Facades\Gate::define('reports-menu.view', fn ($user) => $user->can('report.view') || app(\App\Services\WorkReportAccess::class)->canView($user));
 

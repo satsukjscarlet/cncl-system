@@ -196,7 +196,7 @@ class AuthenticatedSessionController extends Controller
             return false;
         }
 
-        return $roles->contains(fn ($role) => $user->hasRole($role));
+        return $roles->contains(fn ($role) => $user->hasRole($role) || ($role === 'TrungTam' && $user->isSalesUnit()));
     }
 
     private function defaultDeviceName(Request $request): string

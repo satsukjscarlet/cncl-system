@@ -5,7 +5,9 @@
     $selectedCustomerId = old('customer_id', $certificateRequest->customer_id ?? '');
     $isUrgent = old('is_urgent', $certificateRequest->is_urgent ?? false);
     $selectedUrgentReasonId = old('urgent_reason_id', $certificateRequest->urgent_reason_id ?? '');
-    $selectedSalesUnitId = old('sales_unit_id', $certificateRequest->sales_unit_id ?? '');
+    $selectedSalesUnitId = auth()->user()->isSalesUnit() ? auth()->user()->sales_unit_id : old('sales_unit_id', $certificateRequest->sales_unit_id ?? '');
+    $fixedRequestScope = ($certificateRequest->request_source ?? '') === 'SALES_UNIT';
+    $fixedCenter = $fixedRequestScope ? $certificateRequest->distributionCenter : auth()->user()->distributionCenter;
     $formBackUrl = $formBackUrl ?? route('certificate-requests.index');
     $formSubmitText = $formSubmitText ?? 'Lưu và gửi DVKH';
     $formSubmitIcon = $formSubmitIcon ?? 'fas fa-save';
@@ -20,11 +22,11 @@
         <div class="form-group">
             <label>Trung tâm phân phối <span class="text-danger">*</span></label>
 
-            @if (auth()->user()->hasRole('TrungTam'))
+            @if (auth()->user()->isExternalAccount() || $fixedRequestScope)
                 <input type="text" class="form-control"
-                       value="{{ auth()->user()->distributionCenter->code ?? '' }} - {{ auth()->user()->distributionCenter->name ?? '' }}"
+                       value="{{ $fixedCenter->code ?? '' }} - {{ $fixedCenter->name ?? '' }}"
                        readonly>
-                <input type="hidden" name="distribution_center_id" value="{{ auth()->user()->distribution_center_id }}">
+                <input type="hidden" name="distribution_center_id" value="{{ $fixedCenter->id ?? '' }}">
             @else
                 <select name="distribution_center_id" class="form-control select2" required>
                     <option value="">-- Chọn trung tâm --</option>
@@ -64,10 +66,13 @@
     <div class="col-md-12">
         <div class="form-group">
             <label>Đơn vị bán hàng <span class="text-danger">*</span></label>
+            @if(auth()->user()->isSalesUnit() || ($certificateRequest->request_source ?? '') === 'SALES_UNIT')
+                <input type="hidden" name="sales_unit_id" value="{{ $selectedSalesUnitId }}">
+            @endif
             <select name="sales_unit_id"
                     id="sales_unit_id"
                     class="form-control select2 @error('sales_unit_id') is-invalid @enderror"
-                    required>
+                    @disabled(auth()->user()->isSalesUnit() || ($certificateRequest->request_source ?? '') === 'SALES_UNIT') required>
                 <option value="">-- Chọn đơn vị bán hàng --</option>
                 @foreach($salesUnits as $salesUnit)
                     <option value="{{ $salesUnit->id }}"
@@ -596,12 +601,12 @@
 
     @unless($isDirectPtnForm)
     <button type="submit" name="request_action" value="draft" class="btn btn-outline-secondary mr-2">
-        <i class="fas fa-save"></i> Lưu nháp
+        <i class="fas fa-save"></i> {{ ($certificateRequest->status ?? '') === 'WAIT_CENTER' ? 'Lưu chỉnh sửa' : 'Lưu nháp' }}
     </button>
     @endunless
 
     <button type="submit" name="request_action" value="submit" class="btn btn-primary" id="request-submit-button">
-        <i class="{{ $isDirectPtnForm ? $formSubmitIcon : 'fas fa-paper-plane' }}"></i> {{ $isDirectPtnForm ? $formSubmitText : 'Gửi DVKH' }}
+        <i class="{{ $isDirectPtnForm ? $formSubmitIcon : 'fas fa-paper-plane' }}"></i> {{ $isDirectPtnForm ? $formSubmitText : (auth()->user()->isSalesUnit() ? 'Gửi Trung tâm kiểm tra' : 'Gửi DVKH') }}
     </button>
 </div>
 

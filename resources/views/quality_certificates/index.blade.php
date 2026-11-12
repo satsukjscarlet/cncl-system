@@ -467,7 +467,7 @@
         </h3>
 
         <div class="card-tools">
-            @can('request.create')
+            @can('request-reissue.view')
                 <button type="button"
                         class="btn btn-sm btn-danger"
                         data-toggle="modal"
@@ -487,7 +487,7 @@
         <table class="table table-hover table-bordered mb-0 certificate-table">
             <thead>
                 <tr>
-                    @can('request.create')
+                    @can('request-reissue.view')
                         <th style="width:38px" class="text-center">
                             <input type="checkbox" id="selectAllReissueCertificates">
                         </th>
@@ -513,7 +513,7 @@
                         $statusMeta = $certificate->displayStatusMeta();
                     @endphp
                     <tr>
-                        @can('request.create')
+                        @can('request-reissue.view')
                             <td class="text-center">
                                 @if($certificate->canRequestReissue())
                                     <input type="checkbox"
@@ -622,7 +622,7 @@
                                    title="Xem chi tiết">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                @can('request.create')
+                                @can('request-reissue.view')
                                     @if($certificate->canRequestReissue())
                                         <button type="button"
                                                 class="btn btn-sm btn-danger"
@@ -635,7 +635,7 @@
                                 @endcan
                             </div>
 
-                            @can('request.create')
+                            @can('request-reissue.view')
                                 @if($certificate->canRequestReissue())
                                     <div class="modal fade" id="reissueModal{{ $certificate->id }}" tabindex="-1">
                                         <div class="modal-dialog">
@@ -680,7 +680,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="@can('request.create') 13 @else 12 @endcan">
+                        <td colspan="@can('request-reissue.view') 13 @else 12 @endcan">
                             <div class="certificate-empty-state">
                                 <i class="fas fa-database fa-2x mb-2"></i>
                                 <div>Chưa có phiếu CNCL phù hợp với bộ lọc.</div>
@@ -708,7 +708,7 @@
     </div>
 </div>
 
-@can('request.create')
+@can('request-reissue.view')
     <div class="modal fade" id="bulkReissueModal" tabindex="-1">
         <div class="modal-dialog">
             <form id="bulkReissueForm"

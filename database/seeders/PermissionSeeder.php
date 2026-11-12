@@ -13,6 +13,7 @@ class PermissionSeeder extends Seeder
     public function run(): void
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->call(SalesUnitAccessSeeder::class);
 
         $permissions = [
             'dashboard.view',

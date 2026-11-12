@@ -159,10 +159,12 @@ class SalesUnitController extends Controller
     {
         abort_unless(Auth::user()?->hasRole('Admin'), 403);
 
-        if (CertificateRequest::withTrashed()->where('sales_unit_id', $salesUnit->id)->exists()) {
+        if (CertificateRequest::withTrashed()->where('sales_unit_id', $salesUnit->id)->exists()
+            || \App\Models\User::where('sales_unit_id', $salesUnit->id)->exists()
+            || \App\Models\Customer::withTrashed()->where('sales_unit_id', $salesUnit->id)->exists()) {
             return redirect()
                 ->route('sales-units.index')
-                ->with('error', 'Không thể xóa hẳn đơn vị bán hàng đã được dùng trong yêu cầu cấp phiếu.');
+                ->with('error', 'Không thể xóa hẳn đơn vị bán hàng đã liên kết yêu cầu, tài khoản hoặc khách hàng.');
         }
 
         $oldData = $salesUnit->toArray();

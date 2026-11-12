@@ -89,7 +89,7 @@ class EnsureLoginDeviceIsApproved
             ->filter()
             ->values();
 
-        return $roles->isNotEmpty() && $roles->contains(fn ($role) => $user->hasRole($role));
+        return $roles->isNotEmpty() && $roles->contains(fn ($role) => $user->hasRole($role) || ($role === 'TrungTam' && $user->isSalesUnit()));
     }
 
     private function shouldSkipRoute(Request $request): bool

@@ -16,7 +16,9 @@
 
 @php
     $relatedCertificate = $certificateRequest->qualityCertificate;
-    $isCenterAccount = auth()->user()->hasRole('TrungTam');
+    $isCenterAccount = auth()->user()->isExternalAccount();
+    $canEditRequest = app(\App\Services\SalesUnitRequestAccess::class)->canEdit(auth()->user(), $certificateRequest);
+    $sendTarget = auth()->user()->isSalesUnit() ? 'Trung tâm' : 'DVKH';
     $canOpenCertificate = auth()->user()->can('certificate.view') && $relatedCertificate
         && (!$isCenterAccount || ($relatedCertificate->status === 'ISSUED' && $relatedCertificate->signed_at));
 @endphp
@@ -35,6 +37,16 @@
 @endif
 
 @include('quality_certificates.partials.workflow_steps', ['steps' => $requestWorkflowSteps])
+@if($certificateRequest->status === 'RETURNED_SALES_UNIT')
+    <div class="alert alert-warning"><strong>Trung tâm trả lại đơn vị bán hàng</strong><div>{{ $certificateRequest->last_return_reason }}</div></div>
+@endif
+@if($certificateRequest->request_source === 'SALES_UNIT')
+    <div class="workflow-detail-summary">
+        <span><strong>Nguồn:</strong> Đơn vị bán hàng</span>
+        <span><strong>Gửi Trung tâm:</strong> {{ $certificateRequest->sales_unit_submitted_at?->format('d/m/Y H:i') ?: 'Chưa gửi' }}</span>
+        <span><strong>Trung tâm chuyển DVKH:</strong> {{ $certificateRequest->center_reviewed_at?->format('d/m/Y H:i') ?: 'Chưa chuyển' }}</span>
+    </div>
+@endif
 @if($certificateRequest->status === 'DRAFT' && $certificateRequest->effectiveLastReturnedTo() === 'TRUNG_TAM')
     <div class="alert alert-warning">
         <strong><i class="fas fa-undo"></i> DVKH trả lại yêu cầu</strong>
@@ -246,7 +258,7 @@
 ])
 </details>
 
-@if($certificateRequest->status === 'DRAFT')
+@if($canEditRequest)
     @can('request.update')
         <div class="modal fade" id="submitDraftModal" tabindex="-1" role="dialog" aria-labelledby="submitDraftModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
@@ -255,7 +267,7 @@
                     @csrf
                     <div class="modal-header">
                         <h5 class="modal-title" id="submitDraftModalLabel">
-                            <i class="fas fa-paper-plane"></i> Gửi yêu cầu sang DVKH
+                            <i class="fas fa-paper-plane"></i> Gửi yêu cầu sang {{ $sendTarget }}
                         </h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
                             <span aria-hidden="true">&times;</span>
@@ -268,7 +280,7 @@
                             </div>
                         @endif
                         <p class="text-muted">
-                            Sau khi gửi sang DVKH, yêu cầu sẽ không còn được sửa trực tiếp.
+                            Sau khi gửi sang {{ $sendTarget }}, yêu cầu sẽ không còn được sửa trực tiếp.
                         </p>
                         <div class="alert alert-light border mb-0">
                             <div class="custom-control custom-checkbox">
@@ -291,7 +303,7 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Hủy</button>
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-paper-plane"></i> Xác nhận gửi DVKH
+                            <i class="fas fa-paper-plane"></i> Xác nhận gửi {{ $sendTarget }}
                         </button>
                     </div>
                 </form>
@@ -301,6 +313,17 @@
 @endif
 
 @include('certificate_requests.partials.detail_actions')
+
+@if($canEditRequest && $certificateRequest->request_source === 'SALES_UNIT' && !auth()->user()->isSalesUnit())
+<div class="modal fade" id="returnSalesUnitModal" tabindex="-1" role="dialog" aria-labelledby="returnSalesUnitTitle" aria-hidden="true">
+    <div class="modal-dialog" role="document"><form method="POST" action="{{ route('certificate-requests.return-sales-unit', $certificateRequest) }}" class="modal-content cncl-form" data-loading-lock>
+        @csrf
+        <div class="modal-header"><h5 id="returnSalesUnitTitle" class="modal-title">Trả lại đơn vị bán hàng</h5><button type="button" class="close" data-dismiss="modal" aria-label="Đóng">&times;</button></div>
+        <div class="modal-body"><label for="sales_unit_return_reason">Lý do trả lại</label><textarea id="sales_unit_return_reason" name="reason" class="form-control" rows="4" maxlength="2000" required>{{ old('reason') }}</textarea>@error('reason')<span class="text-danger">{{ $message }}</span>@enderror</div>
+        <div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">Đóng</button><button class="btn btn-warning" type="submit"><i class="fas fa-undo"></i> Trả lại</button></div>
+    </form></div>
+</div>
+@endif
 
 @stop
 

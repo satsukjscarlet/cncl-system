@@ -13,6 +13,18 @@ use Spatie\Permission\Models\Permission;
 
 class NotificationService
 {
+    public function notifySalesUnitRequest(CertificateRequest $request): void
+    {
+        $payload = ['type' => 'sales_unit_request', 'title' => 'Yêu cầu cấp phiếu: '.CertificateRequest::statusMeta($request->status)['text'],
+            'message' => $request->request_no, 'url' => route('certificate-requests.show', $request), 'data' => $this->requestData($request)];
+        if ($request->status === 'WAIT_CENTER') {
+            $this->sendToCenter($request->distribution_center_id, $payload);
+        } else {
+            $this->sendToUsers(User::whereHas('roles', fn ($q) => $q->where('name', 'DonViBanHang')->where('guard_name', 'web'))->where('is_active', true)->where('sales_unit_id', $request->sales_unit_id)
+                ->where('distribution_center_id', $request->distribution_center_id)->pluck('id'), $payload);
+        }
+    }
+
     public function sendToUser(User|int|null $user, array $payload): void
     {
         if (!$user) {
@@ -208,6 +220,16 @@ class NotificationService
     public function notifyCertificateSigned(QualityCertificate $certificate): void
     {
         $certificate->loadMissing('request');
+
+        if ($certificate->request?->sales_unit_id && $certificate->status === 'ISSUED' && $certificate->signed_at) {
+            $this->sendToUsers(User::whereHas('roles', fn ($q) => $q->where('name', 'DonViBanHang')->where('guard_name', 'web'))->where('is_active', true)
+                ->where('sales_unit_id', $certificate->request->sales_unit_id)
+                ->where('distribution_center_id', $certificate->request->distribution_center_id)->pluck('id'), [
+                    'type' => 'certificate_signed', 'title' => 'Phiếu CNCL đã ký',
+                    'message' => 'Phiếu '.$certificate->certificate_no.' đã phát hành.',
+                    'url' => route('quality-certificates.show', $certificate), 'data' => $this->certificateData($certificate),
+                ]);
+        }
 
         if ($certificate->request) {
             $this->sendToCenter($certificate->request->distribution_center_id, [

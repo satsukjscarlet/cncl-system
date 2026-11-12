@@ -48,7 +48,7 @@
                 @foreach($roles as $role)
                     <option value="{{ $role->name }}"
                         {{ old('role', isset($user) ? $user->roles->first()?->name : '') == $role->name ? 'selected' : '' }}>
-                        {{ $role->name }}
+                        {{ app(\App\Services\PermissionCatalog::class)->roleLabels()[$role->name] ?? $role->name }}
                     </option>
                 @endforeach
             </select>
@@ -94,7 +94,7 @@
                 <span class="invalid-feedback d-block">{{ $message }}</span>
             @enderror
             <small class="text-muted">
-                Bắt buộc chọn khi vai trò là Trung tâm phân phối. Vai trò khác sẽ không gán trung tâm.
+                Bắt buộc chọn cho tài khoản Trung tâm. Tài khoản Đơn vị bán hàng lấy Trung tâm theo đơn vị đã chọn.
             </small>
         </div>
     </div>
@@ -113,6 +113,16 @@
 </div>
 
 @role('Admin')
+    <div class="form-group">
+        <label for="user_sales_unit_id">Đơn vị bán hàng (vai trò Đơn vị bán hàng)</label>
+        <select id="user_sales_unit_id" name="sales_unit_id" class="form-control select2">
+            <option value="">-- Chọn đơn vị bán hàng --</option>
+            @foreach(($salesUnits ?? collect()) as $unit)
+                <option value="{{ $unit->id }}" @selected((string) old('sales_unit_id', $user->sales_unit_id ?? '') === (string) $unit->id)>{{ $unit->distributionCenter?->code }} - {{ $unit->code }} - {{ $unit->name }}</option>
+            @endforeach
+        </select>
+        @error('sales_unit_id')<span class="text-danger small">{{ $message }}</span>@enderror
+    </div>
     <hr>
     <h3 class="h6 font-weight-bold">Phạm vi báo cáo công việc</h3>
     <div class="row">

@@ -30,6 +30,7 @@ class HardCopySupplementService
 
     public function canView(User $user): bool
     {
+        if ($user->isSalesUnit()) return false;
         return $user->can('certificate.view') || (!$user->hasRole('TrungTam') && ($user->can('dvkh.process') || $user->can('ptn.process') || $user->can('report.view') || $user->can('report.export')));
     }
     public function center(User $user, QualityCertificate $certificate): bool

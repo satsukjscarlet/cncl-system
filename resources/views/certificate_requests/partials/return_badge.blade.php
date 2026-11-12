@@ -8,6 +8,7 @@
 
     $returnLabel = match ($returnTarget) {
         'TRUNG_TAM' => 'DVKH trả lại',
+        'DON_VI_BAN_HANG' => 'Trung tâm trả lại đơn vị',
         'DVKH' => $returnSource === 'TRUONG_PTN' ? 'Trưởng PTN trả lại DVKH' : 'PTN trả lại DVKH',
         'PTN' => 'Trưởng PTN trả lại PTN',
         default => null,

@@ -732,6 +732,8 @@ class ReportController extends Controller
     {
         return [
             'DRAFT' => 'Nháp',
+            'WAIT_CENTER' => 'Chờ Trung tâm kiểm tra',
+            'RETURNED_SALES_UNIT' => 'Trung tâm trả lại đơn vị bán hàng',
             'WAIT_DVKH' => 'Chờ DVKH kiểm tra',
             'WAIT_PTN' => 'Chờ PTN lập phiếu',
             'PTN_PROCESSING' => 'Đã lập phiếu - Chờ Trưởng PTN ký',

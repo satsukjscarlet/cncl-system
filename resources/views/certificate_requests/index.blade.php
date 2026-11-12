@@ -91,7 +91,7 @@
     $currentDirection = $direction ?? request('direction', 'desc');
     $currentPerPage = $perPage ?? request('per_page', 15);
     $currentGroup = $currentGroup ?? request('status_group', 'processing');
-    $isCenterUser = auth()->user()->hasRole('TrungTam');
+    $isCenterUser = auth()->user()->isExternalAccount();
 
     $sortUrl = function (string $column) use ($currentSort, $currentDirection) {
         $nextDirection = $currentSort === $column && $currentDirection === 'asc' ? 'desc' : 'asc';
@@ -140,6 +140,10 @@
     ];
 
     $hasActiveFilter = request()->hasAny(['keyword', 'distribution_center_id', 'sales_unit_id', 'status', 'status_group', 'sort', 'direction', 'per_page']);
+    if ($isCenterUser || auth()->user()->hasRole('Admin')) {
+        $tabs = ['wait_center' => ['label' => 'Chờ Trung tâm', 'icon' => 'fas fa-inbox', 'count' => $tabCounts['wait_center'] ?? 0],
+            'returned_sales_unit' => ['label' => 'Trung tâm trả lại đơn vị', 'icon' => 'fas fa-undo', 'count' => $tabCounts['returned_sales_unit'] ?? 0]] + $tabs;
+    }
 @endphp
 
 @if(session('success'))
@@ -238,6 +242,10 @@
                             <option value="SIGN_PENDING" {{ request('status') == 'SIGN_PENDING' ? 'selected' : '' }}>Đang chờ ký số</option>
                             <option value="SIGN_EXPIRED" {{ request('status') == 'SIGN_EXPIRED' ? 'selected' : '' }}>Quá hạn ký số</option>
                             <option value="DRAFT" {{ request('status') == 'DRAFT' ? 'selected' : '' }}>Nháp</option>
+                            @if($isCenterUser || auth()->user()->hasRole('Admin'))
+                            <option value="WAIT_CENTER" @selected(request('status') === 'WAIT_CENTER')>Chờ Trung tâm kiểm tra</option>
+                            <option value="RETURNED_SALES_UNIT" @selected(request('status') === 'RETURNED_SALES_UNIT')>Trung tâm trả lại đơn vị</option>
+                            @endif
                             <option value="WAIT_DVKH" {{ request('status') == 'WAIT_DVKH' ? 'selected' : '' }}>Chờ DVKH</option>
                             <option value="WAIT_PTN" {{ request('status') == 'WAIT_PTN' ? 'selected' : '' }}>Chờ PTN lập phiếu</option>
                             <option value="PTN_PROCESSING" {{ request('status') == 'PTN_PROCESSING' ? 'selected' : '' }}>Đã lập phiếu - chờ ký</option>
@@ -380,13 +388,14 @@
                                 <i class="fas fa-eye"></i>
                             </a>
 
-                            @if($item->status === 'DRAFT')
+                            @if(app(\App\Services\SalesUnitRequestAccess::class)->canEdit(auth()->user(), $item))
                                 @can('request.update')
                                     <a href="{{ route('certificate-requests.edit', $item) }}" class="btn btn-sm btn-warning" title="Sửa">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                 @endcan
 
+                                @if($item->status === 'DRAFT' && ($item->request_source !== 'SALES_UNIT' || auth()->user()->isSalesUnit()))
                                 @can('request.delete')
                                     <form action="{{ route('certificate-requests.destroy', $item) }}" method="POST"
                                           class="d-inline" onsubmit="return confirm('Xóa yêu cầu này?')">
@@ -395,6 +404,7 @@
                                         <button class="btn btn-sm btn-danger" title="Xóa"><i class="fas fa-trash"></i></button>
                                     </form>
                                 @endcan
+                                @endif
                             @endif
                         </td>
                     </tr>

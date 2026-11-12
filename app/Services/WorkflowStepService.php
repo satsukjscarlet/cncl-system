@@ -78,6 +78,23 @@ class WorkflowStepService
             $this->applyCertificateState($steps, $certificate);
         }
 
+        if ($request?->request_source === 'SALES_UNIT') {
+            $steps[0]['title'] = 'Trung tâm kiểm tra / gửi DVKH';
+            $steps[0]['time'] = $request->center_reviewed_at;
+            $early = in_array($request->status, ['DRAFT', 'WAIT_CENTER', 'RETURNED_SALES_UNIT'], true);
+            if ($early) {
+                $steps[0]['status'] = $request->status === 'WAIT_CENTER' || $request->last_returned_to === 'TRUNG_TAM' ? 'current' : 'pending';
+                $steps[0]['description'] = $request->status === 'WAIT_CENTER' ? 'Trung tâm đang kiểm tra yêu cầu của đơn vị bán hàng.' : 'Yêu cầu chưa được Trung tâm gửi sang DVKH.';
+            } else {
+                $steps[0]['status'] = 'done';
+                $steps[0]['description'] = 'Trung tâm đã kiểm tra và gửi yêu cầu sang DVKH.';
+            }
+            array_unshift($steps, $this->step('Đơn vị bán hàng tạo / gửi yêu cầu',
+                in_array($request->status, ['DRAFT', 'RETURNED_SALES_UNIT'], true) && $request->last_returned_to !== 'TRUNG_TAM' ? 'current' : 'done',
+                'fas fa-store', $request->sales_unit_submitted_at ?: $request->created_at,
+                $request->status === 'RETURNED_SALES_UNIT' ? 'Trung tâm trả lại: '.$request->last_return_reason : 'Đơn vị bán hàng chuẩn bị và gửi yêu cầu đến Trung tâm.'));
+        }
+
         return $steps;
     }
 
@@ -105,6 +122,8 @@ class WorkflowStepService
 
             return;
         }
+
+        if (in_array($request->status, ['WAIT_CENTER', 'RETURNED_SALES_UNIT'], true)) return;
 
         if ($request->status === 'DRAFT') {
             $steps[0]['status'] = 'current';

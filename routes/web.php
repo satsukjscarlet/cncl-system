@@ -320,6 +320,9 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:request.update')
         ->name('certificate-requests.submit-draft');
 
+    Route::post('certificate-requests/{certificateRequest}/return-sales-unit', [CertificateRequestController::class, 'returnToSalesUnit'])
+        ->middleware('permission:request.update')->name('certificate-requests.return-sales-unit');
+
     Route::resource('certificate-requests', CertificateRequestController::class)
         ->only(['show'])
         ->middleware('permission:request.view');

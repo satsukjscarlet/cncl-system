@@ -13,6 +13,12 @@ class WorkQueueService
     {
         $role = $this->primaryRole($user);
         $items = $this->itemsForRole($role, $user);
+        if (! $user->isSalesUnit() && ($user->hasRole('TrungTam') || $user->hasRole('Admin'))) {
+            $statuses = ['WAIT_CENTER'];
+            foreach ($statuses as $status) $items[] = $this->item(CertificateRequest::statusMeta($status)['text'],
+                CertificateRequest::visibleTo($user)->where('status', $status)->count(), 'fas fa-inbox', 'warning',
+                route('certificate-requests.index', ['status' => $status]));
+        }
         $supplements = \App\Models\HardCopySupplement::visibleTo($user);
         $service = app(HardCopySupplementService::class);
         if ($service->canView($user)) {
@@ -42,10 +48,23 @@ class WorkQueueService
         $requests = $this->requestScope($user);
         $certificates = $this->certificateScope($user);
 
+        if ($user->isSalesUnit()) {
+            return [
+                $this->item('Nháp cần soạn / gửi Trung tâm', (clone $requests)->where('status', 'DRAFT')
+                    ->where(fn ($q) => $q->whereNull('last_returned_to')->orWhere('last_returned_to', '!=', 'TRUNG_TAM'))->count(),
+                    'fas fa-edit', 'secondary', route('certificate-requests.index', ['status_group' => 'draft'])),
+                $this->item('Trung tâm trả lại cần sửa', (clone $requests)->where('status', 'RETURNED_SALES_UNIT')->count(),
+                    'fas fa-undo', 'warning', route('certificate-requests.index', ['status' => 'RETURNED_SALES_UNIT'])),
+            ];
+        }
+
+        $editableDrafts = (clone $requests)->where('status', 'DRAFT')->where(fn ($q) => $q->whereNull('request_source')
+            ->orWhere('request_source', '!=', 'SALES_UNIT')->orWhere('last_returned_to', 'TRUNG_TAM'));
+
         return match ($role) {
             'TrungTam' => [
                 $this->item('DVKH trả lại cần sửa', (clone $requests)->where('status', 'DRAFT')->where('last_returned_to', 'TRUNG_TAM')->count(), 'fas fa-undo', 'warning', route('certificate-requests.index', ['status_group' => 'returned_center'])),
-                $this->item('Nháp cần sửa / gửi DVKH', (clone $requests)->where('status', 'DRAFT')->count(), 'fas fa-edit', 'secondary', route('certificate-requests.index', ['status_group' => 'draft'])),
+                $this->item('Nháp cần sửa / gửi DVKH', $editableDrafts->count(), 'fas fa-edit', 'secondary', route('certificate-requests.index', ['status_group' => 'draft'])),
                 $this->item('Yêu cầu bị trả lại', (clone $requests)->where('status', 'CANCELLED')->count(), 'fas fa-reply', 'danger', route('certificate-requests.index', ['status' => 'CANCELLED'])),
                 $this->item('Đang chờ DVKH', (clone $requests)->where('status', 'WAIT_DVKH')->count(), 'fas fa-user-check', 'warning', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
                 $this->item('Đang chờ PTN lập phiếu', (clone $requests)->where('status', 'WAIT_PTN')->count(), 'fas fa-vials', 'info', route('certificate-requests.index', ['status' => 'WAIT_PTN'])),
@@ -79,7 +98,7 @@ class WorkQueueService
 
     private function requestScope(User $user): Builder
     {
-        $query = CertificateRequest::query();
+        $query = CertificateRequest::visibleTo($user);
 
         if ($user->hasRole('TrungTam')) {
             $query->where('distribution_center_id', $user->distribution_center_id);
@@ -91,6 +110,7 @@ class WorkQueueService
     private function certificateScope(User $user): Builder
     {
         $query = QualityCertificate::query();
+        if ($user->isSalesUnit()) $query->where('status', 'ISSUED')->whereNotNull('signed_at')->whereHas('request', fn ($q) => $q->visibleTo($user));
 
         if ($user->hasRole('TrungTam')) {
             $query->whereHas('request', function ($q) use ($user) {
@@ -165,6 +185,7 @@ class WorkQueueService
 
     private function primaryRole(User $user): string
     {
+        if ($user->isSalesUnit()) return 'TrungTam';
         foreach (['Admin', 'LanhDao', 'TrungTam', 'DVKH', 'PTN', 'TruongPTN'] as $role) {
             $permission = ['DVKH' => 'dvkh.process', 'PTN' => 'ptn.process', 'TruongPTN' => 'certificate.sign'][$role] ?? null;
             if ($permission && !$user->can($permission)) continue;

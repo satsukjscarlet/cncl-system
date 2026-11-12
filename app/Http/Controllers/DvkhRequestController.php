@@ -433,6 +433,7 @@ class DvkhRequestController extends Controller
             $certificateRequest->invoice_no,
             $certificateRequest->id
         )
+            ->visibleTo(Auth::user())
             ->latest()
             ->limit(10)
             ->get();

@@ -151,6 +151,7 @@ class PermissionCatalog
             'Admin' => 'Quản trị viên',
             'LanhDao' => 'Lãnh đạo',
             'TrungTam' => 'Trung tâm phân phối',
+            'DonViBanHang' => 'Đơn vị bán hàng',
             'DVKH' => 'Dịch vụ khách hàng',
             'PTN' => 'Phòng thử nghiệm',
             'TruongPTN' => 'Trưởng phòng thử nghiệm',

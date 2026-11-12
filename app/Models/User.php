@@ -13,6 +13,21 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
+    public function isSalesUnit(): bool
+    {
+        return $this->hasRole('DonViBanHang');
+    }
+
+    public function isExternalAccount(): bool
+    {
+        return $this->isSalesUnit() || $this->hasRole('TrungTam');
+    }
+
+    public function salesUnit()
+    {
+        return $this->belongsTo(SalesUnit::class);
+    }
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
@@ -54,6 +69,9 @@ class User extends Authenticatable
         }
         if ($permission instanceof Permission) {
             $permission = $permission->name;
+        }
+        if ($this->isSalesUnit() && is_string($permission)) {
+            return ! in_array($permission, ['dashboard.view', 'request.view', 'request.create', 'request.update', 'request.delete', 'certificate.view'], true);
         }
         if (! is_string($permission) || ! $this->hasRole('TrungTam')) {
             return false;

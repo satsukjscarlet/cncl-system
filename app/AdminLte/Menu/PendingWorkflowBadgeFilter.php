@@ -12,6 +12,18 @@ class PendingWorkflowBadgeFilter implements FilterInterface
     public function transform($item)
     {
         $url = $item['url'] ?? '';
+        if ($url === 'certificate-requests') {
+            $user = Auth::user();
+            if ($user && $user->isExternalAccount() && $user->can('request.view')) {
+                $status = $user->isSalesUnit() ? 'RETURNED_SALES_UNIT' : 'WAIT_CENTER';
+                $count = CertificateRequest::visibleTo($user)->where('status', $status)->count();
+                if ($count) {
+                    $item['label'] = $count > 99 ? '99+' : (string) $count;
+                    $item['label_color'] = 'warning';
+                }
+            }
+            return $item;
+        }
         $permission = match ($url) {
             'dvkh/requests' => 'dvkh.process',
             'ptn/requests' => 'ptn.process',

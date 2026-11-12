@@ -23,15 +23,28 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class CertificateRequestController extends Controller
 {
+    private function prepareSalesUnitInput(Request $request): void
+    {
+        if (! $request->user()->isSalesUnit()) return;
+        app(\App\Services\SalesUnitRequestAccess::class)->validateAccount($request->user());
+        foreach (['sales_unit_id', 'distribution_center_id'] as $field) {
+            abort_if($request->filled($field) && (int) $request->input($field) !== (int) $request->user()->$field, 403);
+        }
+        $request->merge(['sales_unit_id' => $request->user()->sales_unit_id, 'distribution_center_id' => $request->user()->distribution_center_id]);
+    }
+
+    public function returnToSalesUnit(Request $request, CertificateRequest $certificateRequest)
+    {
+        $this->authorizeCenter($certificateRequest);
+        abort_unless(! $request->user()->isSalesUnit() && ($request->user()->hasRole('TrungTam') || $request->user()->hasRole('Admin')), 403);
+        $data = $request->validate(['reason' => ['required', 'string', 'max:2000']]);
+        app(\App\Services\SalesUnitRequestAccess::class)->transition($certificateRequest, $request->user(), 'return', $data['reason']);
+        return back()->with('success', 'Đã trả yêu cầu về đơn vị bán hàng.');
+    }
+
     public function index(Request $request)
     {
-        $baseQuery = CertificateRequest::query();
-
-        if (Auth::user()->hasRole('TrungTam')) {
-            $baseQuery->where('certificate_requests.distribution_center_id', Auth::user()->distribution_center_id);
-        } elseif (!Auth::user()->hasRole('Admin')) {
-            $baseQuery->where('certificate_requests.status', '!=', 'DRAFT');
-        }
+        $baseQuery = CertificateRequest::visibleTo(Auth::user());
 
         $tabCounts = $this->requestTabCounts(clone $baseQuery);
         $currentGroup = $request->input('status_group');
@@ -123,6 +136,7 @@ class CertificateRequestController extends Controller
             ->orderBy('name')
             ->get();
         $salesUnits = SalesUnit::with('distributionCenter')
+            ->when(Auth::user()->isSalesUnit(), fn ($q) => $q->whereKey(Auth::user()->sales_unit_id ?: -1))
             ->when(Auth::user()->hasRole('TrungTam'), fn ($q) => $q->where('distribution_center_id', Auth::user()->distribution_center_id))
             ->where('is_active', true)
             ->orderBy('name')
@@ -168,6 +182,7 @@ class CertificateRequestController extends Controller
             $data['invoice_no'] ?? null,
             $data['exclude_id'] ?? null
         )
+            ->visibleTo(Auth::user())
             ->latest()
             ->limit(10)
             ->get()
@@ -253,12 +268,13 @@ class CertificateRequestController extends Controller
     public function customerOptions(Request $request)
     {
         $term = trim((string) $request->input('q', ''));
-        $centerId = Auth::user()->hasRole('TrungTam')
+        $centerId = Auth::user()->isExternalAccount()
             ? Auth::user()->distribution_center_id
             : $request->input('distribution_center_id');
 
         $customers = Customer::query()
             ->where('is_active', true)
+            ->when(Auth::user()->isSalesUnit(), fn ($q) => $q->where('sales_unit_id', Auth::user()->sales_unit_id ?: -1))
             ->when($centerId, function ($query) use ($centerId) {
                 $query->where('distribution_center_id', $centerId);
             })
@@ -523,7 +539,8 @@ class CertificateRequestController extends Controller
     }
     public function store(Request $request)
     {
-        $isSubmitting = $this->requestStatusFromAction($request) === 'WAIT_DVKH';
+        $this->prepareSalesUnitInput($request);
+        $isSubmitting = $request->input('request_action') !== 'draft';
         $rules = [
             'customer_mode' => ['required', 'in:existing,new'],
             'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
@@ -553,13 +570,13 @@ class CertificateRequestController extends Controller
             'request_action' => ['nullable', 'in:draft,submit'],
         ];
 
-        if (!Auth::user()->hasRole('TrungTam')) {
+        if (!Auth::user()->isExternalAccount()) {
             $rules['distribution_center_id'] = ['required', 'exists:distribution_centers,id'];
         }
 
         $data = $request->validate($rules, $this->requestValidationMessages());
 
-        $distributionCenterId = Auth::user()->hasRole('TrungTam')
+        $distributionCenterId = Auth::user()->isExternalAccount()
             ? Auth::user()->distribution_center_id
             : $data['distribution_center_id'];
 
@@ -577,6 +594,9 @@ class CertificateRequestController extends Controller
             $requestStatus = $this->requestStatusFromAction($request);
 
             $certificateRequest = CertificateRequest::create([
+                'request_source' => Auth::user()->isSalesUnit() ? 'SALES_UNIT' : null,
+                'sales_unit_submitted_at' => $requestStatus === 'WAIT_CENTER' ? now() : null,
+                'sales_unit_submitted_by' => $requestStatus === 'WAIT_CENTER' ? Auth::id() : null,
                 'request_no' => app(DocumentNumberService::class)->generateRequestNo((int) $distributionCenterId),
                 'distribution_center_id' => $distributionCenterId,
                 'customer_id' => $customerId,
@@ -620,6 +640,9 @@ class CertificateRequestController extends Controller
 
             DB::commit();
 
+            if ($certificateRequest->status === 'WAIT_CENTER') {
+                app(NotificationService::class)->notifySalesUnitRequest($certificateRequest);
+            }
             if ($certificateRequest->status === 'WAIT_DVKH') {
                 app(NotificationService::class)->notifyRequestCreated(
                     $certificateRequest->fresh(['distributionCenter', 'customer'])
@@ -628,9 +651,9 @@ class CertificateRequestController extends Controller
 
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('success', $certificateRequest->status === 'WAIT_DVKH'
+                ->with('success', $certificateRequest->status === 'WAIT_CENTER' ? 'Đã gửi yêu cầu sang Trung tâm kiểm tra.' : ($certificateRequest->status === 'WAIT_DVKH'
                     ? 'Đã tạo và gửi yêu cầu sang DVKH.'
-                    : 'Đã lưu nháp yêu cầu cấp phiếu.');
+                    : 'Đã lưu nháp yêu cầu cấp phiếu.'));
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -667,7 +690,7 @@ class CertificateRequestController extends Controller
     {
         $this->authorizeCenter($certificateRequest);
 
-        if ($certificateRequest->status !== 'DRAFT') {
+        if (! app(\App\Services\SalesUnitRequestAccess::class)->canEdit(Auth::user(), $certificateRequest)) {
             return redirect()
                 ->route('certificate-requests.index')
                 ->with('error', 'Chỉ được sửa yêu cầu đang ở trạng thái Nháp. Yêu cầu đã gửi DVKH không còn được sửa trực tiếp.');
@@ -701,13 +724,14 @@ class CertificateRequestController extends Controller
     {
         $this->authorizeCenter($certificateRequest);
 
-        if ($certificateRequest->status !== 'DRAFT') {
+        if (! app(\App\Services\SalesUnitRequestAccess::class)->canEdit(Auth::user(), $certificateRequest)) {
             return redirect()
                 ->route('certificate-requests.index')
                 ->with('error', 'Chỉ được sửa yêu cầu đang ở trạng thái Nháp. Yêu cầu đã gửi DVKH không còn được sửa trực tiếp.');
         }
 
-        $isSubmitting = $this->requestStatusFromAction($request) === 'WAIT_DVKH';
+        $this->prepareSalesUnitInput($request);
+        $isSubmitting = $request->input('request_action') !== 'draft';
         $rules = [
             'customer_mode' => ['required', 'in:existing,new'],
             'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
@@ -737,25 +761,38 @@ class CertificateRequestController extends Controller
             'request_action' => ['nullable', 'in:draft,submit'],
         ];
 
-        if (!Auth::user()->hasRole('TrungTam')) {
+        if (!Auth::user()->isExternalAccount()) {
             $rules['distribution_center_id'] = ['required', 'exists:distribution_centers,id'];
         }
 
         $data = $request->validate($rules, $this->requestValidationMessages());
 
-        $distributionCenterId = Auth::user()->hasRole('TrungTam')
+        $distributionCenterId = Auth::user()->isExternalAccount()
             ? Auth::user()->distribution_center_id
             : $data['distribution_center_id'];
 
         DB::beginTransaction();
 
         try {
+            $certificateRequest = CertificateRequest::visibleTo(Auth::user())->whereKey($certificateRequest->id)->lockForUpdate()->firstOrFail();
+            abort_unless(app(\App\Services\SalesUnitRequestAccess::class)->canEdit(Auth::user(), $certificateRequest), 409, 'Yêu cầu đã thay đổi trạng thái. Vui lòng tải lại.');
+            if ($certificateRequest->request_source === 'SALES_UNIT') {
+                abort_unless((int) $data['sales_unit_id'] === (int) $certificateRequest->sales_unit_id
+                    && (int) $distributionCenterId === (int) $certificateRequest->distribution_center_id, 422, 'Không đổi Trung tâm hoặc đơn vị của yêu cầu này.');
+            }
             $oldData = $certificateRequest->load('details')->toArray();
             $customerId = $this->resolveCustomerId($data);
             $salesUnitId = $this->resolveSalesUnitId($data['sales_unit_id'], (int) $distributionCenterId);
             $requestStatus = $this->requestStatusFromAction($request);
+            if (! Auth::user()->isSalesUnit() && $certificateRequest->status === 'WAIT_CENTER' && ! $isSubmitting) $requestStatus = 'WAIT_CENTER';
+            if (Auth::user()->isSalesUnit() && $certificateRequest->status === 'RETURNED_SALES_UNIT' && ! $isSubmitting) $requestStatus = 'RETURNED_SALES_UNIT';
+            $clearReturn = $isSubmitting && in_array($requestStatus, ['WAIT_CENTER', 'WAIT_DVKH'], true);
 
             $certificateRequest->update([
+                'sales_unit_submitted_at' => Auth::user()->isSalesUnit() && $isSubmitting ? now() : $certificateRequest->sales_unit_submitted_at,
+                'sales_unit_submitted_by' => Auth::user()->isSalesUnit() && $isSubmitting ? Auth::id() : $certificateRequest->sales_unit_submitted_by,
+                'center_reviewed_at' => $certificateRequest->request_source === 'SALES_UNIT' && $requestStatus === 'WAIT_DVKH' ? now() : $certificateRequest->center_reviewed_at,
+                'center_reviewed_by' => $certificateRequest->request_source === 'SALES_UNIT' && $requestStatus === 'WAIT_DVKH' ? Auth::id() : $certificateRequest->center_reviewed_by,
                 'distribution_center_id' => $distributionCenterId,
                 'customer_id' => $customerId,
                 'sales_unit_id' => $salesUnitId,
@@ -775,11 +812,11 @@ class CertificateRequestController extends Controller
                 'status' => $requestStatus,
                 'submitted_at' => $requestStatus === 'WAIT_DVKH' ? now() : null,
                 'submitted_by' => $requestStatus === 'WAIT_DVKH' ? Auth::id() : null,
-                'last_returned_from' => $requestStatus === 'WAIT_DVKH' ? null : $certificateRequest->last_returned_from,
-                'last_returned_to' => $requestStatus === 'WAIT_DVKH' ? null : $certificateRequest->last_returned_to,
-                'last_return_reason' => $requestStatus === 'WAIT_DVKH' ? null : $certificateRequest->last_return_reason,
-                'last_returned_at' => $requestStatus === 'WAIT_DVKH' ? null : $certificateRequest->last_returned_at,
-                'last_returned_by' => $requestStatus === 'WAIT_DVKH' ? null : $certificateRequest->last_returned_by,
+                'last_returned_from' => $clearReturn ? null : $certificateRequest->last_returned_from,
+                'last_returned_to' => $clearReturn ? null : $certificateRequest->last_returned_to,
+                'last_return_reason' => $clearReturn ? null : $certificateRequest->last_return_reason,
+                'last_returned_at' => $clearReturn ? null : $certificateRequest->last_returned_at,
+                'last_returned_by' => $clearReturn ? null : $certificateRequest->last_returned_by,
             ]);
 
             $certificateRequest->details()->delete();
@@ -804,6 +841,7 @@ class CertificateRequestController extends Controller
 
             DB::commit();
 
+            if (Auth::user()->isSalesUnit() && $isSubmitting) app(NotificationService::class)->notifySalesUnitRequest($certificateRequest);
             if ($certificateRequest->fresh()->status === 'WAIT_DVKH') {
                 app(NotificationService::class)->notifyRequestCreated(
                     $certificateRequest->fresh(['distributionCenter', 'customer'])
@@ -812,9 +850,9 @@ class CertificateRequestController extends Controller
 
             return redirect()
                 ->route('certificate-requests.index')
-                ->with('success', $requestStatus === 'WAIT_DVKH'
+                ->with('success', $requestStatus === 'WAIT_CENTER' ? 'Đã lưu / gửi yêu cầu sang Trung tâm kiểm tra.' : ($requestStatus === 'WAIT_DVKH'
                     ? 'Đã cập nhật và gửi yêu cầu sang DVKH.'
-                    : 'Đã lưu nháp yêu cầu cấp phiếu.');
+                    : 'Đã lưu nháp yêu cầu cấp phiếu.'));
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -828,24 +866,22 @@ class CertificateRequestController extends Controller
     {
         $this->authorizeCenter($certificateRequest);
 
+        abort_if($certificateRequest->request_source === 'SALES_UNIT' && (! Auth::user()->isSalesUnit()
+            || ! app(\App\Services\SalesUnitRequestAccess::class)->canEdit(Auth::user(), $certificateRequest)), 403);
+
         if ($certificateRequest->status !== 'DRAFT') {
             return redirect()
                 ->route('certificate-requests.index')
                 ->with('error', 'Chỉ được xóa yêu cầu đang ở trạng thái Nháp.');
         }
 
-        $oldData = $certificateRequest->load('details')->toArray();
-
-        $certificateRequest->delete();
-
-        ActivityLogger::log(
-            'Yêu cầu cấp phiếu',
-            'delete',
-            'Xóa yêu cầu cấp phiếu: ' . $certificateRequest->request_no,
-            $oldData,
-            null,
-            $certificateRequest
-        );
+        DB::transaction(function () use ($certificateRequest) {
+            $item = CertificateRequest::visibleTo(Auth::user())->whereKey($certificateRequest->id)->lockForUpdate()->firstOrFail();
+            abort_unless($item->status === 'DRAFT' && app(\App\Services\SalesUnitRequestAccess::class)->canEdit(Auth::user(), $item), 409, 'Yêu cầu đã thay đổi trạng thái. Vui lòng tải lại.');
+            $oldData = $item->load('details')->toArray();
+            $item->delete();
+            ActivityLogger::log('Yêu cầu cấp phiếu', 'delete', 'Xóa yêu cầu cấp phiếu: '.$item->request_no, $oldData, null, $item);
+        });
 
         return redirect()
             ->route('certificate-requests.index')
@@ -855,6 +891,12 @@ class CertificateRequestController extends Controller
     public function submitDraft(Request $request, CertificateRequest $certificateRequest)
     {
         $this->authorizeCenter($certificateRequest);
+
+        if ($certificateRequest->request_source === 'SALES_UNIT') {
+            $request->validate(['customer_commitment_confirmed' => ['accepted']]);
+            app(\App\Services\SalesUnitRequestAccess::class)->transition($certificateRequest, $request->user(), 'submit', null, true);
+            return back()->with('success', 'Đã gửi yêu cầu đến bước xử lý tiếp theo.');
+        }
 
         if ($certificateRequest->status !== 'DRAFT') {
             return redirect()
@@ -919,15 +961,20 @@ class CertificateRequestController extends Controller
         if (($data['customer_mode'] ?? 'existing') === 'existing') {
             $customer = Customer::findOrFail($data['customer_id']);
 
+            if (Auth::user()->isSalesUnit()) {
+                abort_unless((int) $customer->sales_unit_id === (int) Auth::user()->sales_unit_id
+                    && (int) $customer->distribution_center_id === (int) Auth::user()->distribution_center_id, 403);
+            }
+
             if (
-                Auth::user()->hasRole('TrungTam')
+                Auth::user()->isExternalAccount()
                 && (int) $customer->distribution_center_id !== (int) Auth::user()->distribution_center_id
             ) {
                 abort(403, 'Anh không có quyền chọn khách hàng của trung tâm khác.');
             }
 
             if (
-                !Auth::user()->hasRole('TrungTam')
+                !Auth::user()->isExternalAccount()
                 && isset($data['distribution_center_id'])
                 && (int) $customer->distribution_center_id !== (int) $data['distribution_center_id']
             ) {
@@ -938,7 +985,7 @@ class CertificateRequestController extends Controller
         }
 
         $customer = Customer::create([
-            'distribution_center_id' => Auth::user()->hasRole('TrungTam')
+            'distribution_center_id' => Auth::user()->isExternalAccount()
                 ? Auth::user()->distribution_center_id
                 : ($data['distribution_center_id'] ?? null),
             'customer_code' => filled($data['new_customer_code'] ?? null)
@@ -955,6 +1002,8 @@ class CertificateRequestController extends Controller
             'is_active' => true,
         ]);
 
+        if (Auth::user()->isSalesUnit()) $customer->forceFill(['sales_unit_id' => Auth::user()->sales_unit_id])->save();
+
         ActivityLogger::log(
             'Khách hàng - Công trình',
             'create_from_request',
@@ -969,7 +1018,7 @@ class CertificateRequestController extends Controller
 
     private function newCustomerCodeRules(Request $request, ?CertificateRequest $certificateRequest = null): array
     {
-        $centerId = Auth::user()->hasRole('TrungTam')
+        $centerId = Auth::user()->isExternalAccount()
             ? Auth::user()->distribution_center_id
             : ($request->input('distribution_center_id') ?: $certificateRequest?->distribution_center_id);
 
@@ -1024,6 +1073,7 @@ class CertificateRequestController extends Controller
             $certificateRequest->invoice_no,
             $certificateRequest->id
         )
+            ->visibleTo(Auth::user())
             ->latest()
             ->limit(10)
             ->get();
@@ -1065,11 +1115,12 @@ class CertificateRequestController extends Controller
             return collect();
         }
 
-        $centerId = Auth::user()->hasRole('TrungTam')
+        $centerId = Auth::user()->isExternalAccount()
             ? Auth::user()->distribution_center_id
             : old('distribution_center_id', $certificateRequest->distribution_center_id ?? null);
 
         return Customer::whereIn('id', $customerIds)
+            ->when(Auth::user()->isSalesUnit(), fn ($q) => $q->where('sales_unit_id', Auth::user()->sales_unit_id ?: -1))
             ->when($centerId, function ($query) use ($centerId) {
                 $query->where('distribution_center_id', $centerId);
             })
@@ -1079,11 +1130,12 @@ class CertificateRequestController extends Controller
 
     private function salesUnitsForForm(?CertificateRequest $certificateRequest = null)
     {
-        $centerId = Auth::user()->hasRole('TrungTam')
+        $centerId = Auth::user()->isExternalAccount()
             ? Auth::user()->distribution_center_id
             : old('distribution_center_id', $certificateRequest->distribution_center_id ?? null);
 
         return SalesUnit::with('distributionCenter')
+            ->when(Auth::user()->isSalesUnit(), fn ($q) => $q->whereKey(Auth::user()->sales_unit_id ?: -1))
             ->where('is_active', true)
             ->when($centerId, fn ($query) => $query->where('distribution_center_id', $centerId))
             ->orderBy('name')
@@ -1175,6 +1227,8 @@ class CertificateRequestController extends Controller
 
     private function authorizeCenter(CertificateRequest $certificateRequest): void
     {
+        abort_unless(CertificateRequest::visibleTo(Auth::user())->whereKey($certificateRequest->id)->exists(), 403);
+        if (Auth::user()->isSalesUnit()) return;
         if (
             $certificateRequest->status === 'DRAFT'
             && !Auth::user()->hasRole('Admin')
@@ -1196,7 +1250,7 @@ class CertificateRequestController extends Controller
 
     private function applyStatusFilter($query, string $status): void
     {
-        if (in_array($status, ['DRAFT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'COMPLETED', 'CANCELLED'], true)) {
+        if (in_array($status, ['DRAFT', 'WAIT_CENTER', 'RETURNED_SALES_UNIT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'COMPLETED', 'CANCELLED'], true)) {
             $query->where('status', $status);
 
             return;
@@ -1252,6 +1306,8 @@ class CertificateRequestController extends Controller
     {
         return [
             'processing' => tap(clone $baseQuery, fn ($query) => $this->applyStatusGroupFilter($query, 'processing'))->count(),
+            'wait_center' => (clone $baseQuery)->where('status', 'WAIT_CENTER')->count(),
+            'returned_sales_unit' => (clone $baseQuery)->where('status', 'RETURNED_SALES_UNIT')->count(),
             'draft' => (clone $baseQuery)->where('status', 'DRAFT')->count(),
             'returned_center' => (clone $baseQuery)->where('status', 'DRAFT')->where('last_returned_to', 'TRUNG_TAM')->count(),
             'wait_dvkh' => (clone $baseQuery)->where('status', 'WAIT_DVKH')->count(),
@@ -1267,11 +1323,15 @@ class CertificateRequestController extends Controller
 
     private function applyStatusGroupFilter($query, string $group): void
     {
+        if (in_array($group, ['wait_center', 'returned_sales_unit'], true)) {
+            $query->where('status', $group === 'wait_center' ? 'WAIT_CENTER' : 'RETURNED_SALES_UNIT');
+            return;
+        }
         if ($group === 'processing') {
             $expiredBefore = now()->subMinutes($this->smartCaPendingTtlMinutes());
 
             $query->where(function ($q) use ($expiredBefore) {
-                $q->whereIn('status', ['DRAFT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING'])
+                $q->whereIn('status', ['DRAFT', 'WAIT_CENTER', 'RETURNED_SALES_UNIT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING'])
                     ->orWhereHas('qualityCertificates', function ($certificate) use ($expiredBefore) {
                         $certificate
                             ->whereNull('signed_at')
@@ -1361,7 +1421,7 @@ class CertificateRequestController extends Controller
     {
         return $request->input('request_action', 'submit') === 'draft'
             ? 'DRAFT'
-            : 'WAIT_DVKH';
+            : (Auth::user()->isSalesUnit() ? 'WAIT_CENTER' : 'WAIT_DVKH');
     }
 
     private function requestValidationMessages(): array

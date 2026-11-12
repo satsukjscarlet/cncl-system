@@ -30,6 +30,8 @@ class DashboardController extends Controller
         $metrics = [
             'total_requests' => (clone $requestQuery)->count(),
             'request_draft' => (clone $requestQuery)->where('status', 'DRAFT')->count(),
+            'wait_center' => (clone $requestQuery)->where('status', 'WAIT_CENTER')->count(),
+            'returned_sales_unit' => (clone $requestQuery)->where('status', 'RETURNED_SALES_UNIT')->count(),
             'wait_dvkh' => (clone $requestQuery)->where('status', 'WAIT_DVKH')->count(),
             'wait_ptn' => (clone $requestQuery)->where('status', 'WAIT_PTN')->count(),
             'ptn_processing' => (clone $requestQuery)->where('status', 'PTN_PROCESSING')->count(),
@@ -94,6 +96,18 @@ class DashboardController extends Controller
         ];
 
         $cards = $this->cardsForRole($role, $metrics);
+        if ($user->isSalesUnit()) {
+            $cards = [
+                $this->card('Yêu cầu của đơn vị', $metrics['total_requests'], 'fas fa-file-alt', 'primary', route('certificate-requests.index', ['status_group' => 'all'])),
+                $this->card('Yêu cầu nháp', $metrics['request_draft'], 'fas fa-edit', 'secondary', route('certificate-requests.index', ['status_group' => 'draft'])),
+                $this->card('Đã gửi DVKH', $metrics['wait_dvkh'], 'fas fa-user-check', 'info', route('certificate-requests.index', ['status' => 'WAIT_DVKH'])),
+                $this->card('Phiếu đã phát hành', $metrics['issued_certificates'], 'fas fa-check-circle', 'success', route('quality-certificates.index', ['status' => 'SIGNED'])),
+            ];
+        }
+        if ($user->isExternalAccount() || $user->hasRole('Admin')) {
+            array_unshift($cards, $this->card('Chờ Trung tâm kiểm tra', $metrics['wait_center'], 'fas fa-inbox', 'warning', route('certificate-requests.index', ['status' => 'WAIT_CENTER'])),
+                $this->card('Trung tâm trả lại đơn vị', $metrics['returned_sales_unit'], 'fas fa-undo', 'danger', route('certificate-requests.index', ['status' => 'RETURNED_SALES_UNIT'])));
+        }
         $navigation = app(\App\Services\NavigationAccess::class);
         $cards = array_values(array_filter($cards, fn ($card) => $navigation->allows($user, $card['url'])));
         $primaryList = $this->primaryListForRole($role, $user, $expiredBefore);
@@ -131,6 +145,7 @@ class DashboardController extends Controller
 
     private function primaryRole($user): string
     {
+        if ($user->isSalesUnit()) return 'TrungTam';
         foreach (['Admin', 'LanhDao', 'TrungTam', 'DVKH', 'PTN', 'TruongPTN'] as $role) {
             $permission = ['DVKH' => 'dvkh.process', 'PTN' => 'ptn.process', 'TruongPTN' => 'certificate.sign'][$role] ?? null;
             if ($permission && !$user->can($permission)) continue;
@@ -148,7 +163,7 @@ class DashboardController extends Controller
 
     private function requestScope($user): Builder
     {
-        $query = CertificateRequest::query();
+        $query = CertificateRequest::visibleTo($user);
         if (!$user->canAny(['request.view', 'dvkh.process', 'ptn.process'])) $query->whereRaw('1 = 0');
 
         if ($user->hasRole('TrungTam')) {
@@ -161,6 +176,8 @@ class DashboardController extends Controller
     private function certificateScope($user): Builder
     {
         $query = QualityCertificate::query();
+        if ($user->isSalesUnit()) $query->where('status', 'ISSUED')->whereNotNull('signed_at')
+            ->whereHas('request', fn ($q) => $q->visibleTo($user));
         if (!$user->canAny(['certificate.view', 'certificate.sign'])) $query->whereRaw('1 = 0');
 
         if ($user->hasRole('TrungTam')) {
@@ -271,8 +288,8 @@ class DashboardController extends Controller
         $statuses = match ($role) {
             'DVKH' => ['WAIT_DVKH'],
             'PTN' => ['WAIT_PTN', 'PTN_PROCESSING'],
-            'TrungTam' => ['DRAFT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'CANCELLED'],
-            'Admin' => ['DRAFT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'CANCELLED'],
+            'TrungTam' => ['DRAFT', 'WAIT_CENTER', 'RETURNED_SALES_UNIT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'CANCELLED'],
+            'Admin' => ['DRAFT', 'WAIT_CENTER', 'RETURNED_SALES_UNIT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'CANCELLED'],
             default => ['WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING'],
         };
 

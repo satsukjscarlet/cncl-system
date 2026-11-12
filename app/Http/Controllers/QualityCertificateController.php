@@ -106,8 +106,9 @@ class QualityCertificateController extends Controller
         $centers = DistributionCenter::where('is_active', true)
             ->orderBy('name')
             ->get();
-        $isCenterUser = $user->hasRole('TrungTam');
+        $isCenterUser = $user->isExternalAccount();
         $salesUnits = SalesUnit::with('distributionCenter')
+            ->when($user->isSalesUnit(), fn ($q) => $q->whereKey($user->sales_unit_id ?: -1))
             ->when($isCenterUser, fn ($q) => $q->where('distribution_center_id', $user->distribution_center_id))
             ->where('is_active', true)
             ->orderBy('name')
@@ -877,7 +878,7 @@ class QualityCertificateController extends Controller
     {
         $this->authorizeCenter($qualityCertificate);
 
-        if (Auth::user()->hasRole('TrungTam')) {
+        if (Auth::user()->isExternalAccount()) {
             abort_unless(
                 $qualityCertificate->signed_at !== null
                 && in_array($qualityCertificate->status, ['ISSUED', 'REVOKED'], true)
@@ -1851,6 +1852,10 @@ class QualityCertificateController extends Controller
     private function authorizeCenter(QualityCertificate $qualityCertificate): void
     {
         $qualityCertificate->loadMissing('request');
+        if (Auth::user()->isSalesUnit()) {
+            abort_unless($qualityCertificate->signed_at && $qualityCertificate->status === 'ISSUED' && $qualityCertificate->request
+                && CertificateRequest::visibleTo(Auth::user())->whereKey($qualityCertificate->certificate_request_id)->exists(), 403);
+        }
 
         if (
             Auth::user()->hasRole('TrungTam')

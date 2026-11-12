@@ -117,7 +117,7 @@ Nhập mật khẩu khi được hỏi; nếu tài khoản không có mật kh�
 4. Trong **CMD**, nhập bản SQL đã giải nén vào đúng database:
 
 ```cmd
-D:\xampp\mysql\bin\mysql.exe --host=127.0.0.1 --port=3306 --user=root --password --default-character-set=utf8mb4 --binary-mode=1 --max-allowed-packet=512M cncl_system < "DUONG_DAN_SOURCE_EXPANDED.sql"
+D:\xampp\mysql\bin\mysql.exe --host=127.0.0.1 --port=3306 --user=root --password --default-character-set=utf8mb4 --binary-mode=1 --max-allowed-packet=512M cncl_system < "C:\Users\thien\Downloads\ten-file-backup.sql"
 ```
 
 Cú pháp `<` ở trên dùng trong CMD, không dùng trực tiếp trong PowerShell. Phải thay đường dẫn bằng file SQL thật. Kiểm tra `echo %ERRORLEVEL%` bằng 0. Không dùng `--force` để bỏ qua lỗi. Nếu nhập lỗi thì giữ chế độ bảo trì và kiểm tra log/backup, không tiếp tục sử dụng dữ liệu nhập dở.

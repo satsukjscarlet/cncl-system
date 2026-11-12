@@ -8,6 +8,20 @@ use Illuminate\Support\Str;
 
 class CertificateRequest extends Model
 {
+    public function scopeVisibleTo($query, User $user)
+    {
+        if ($user->isSalesUnit()) {
+            return $query->where('certificate_requests.sales_unit_id', $user->sales_unit_id ?: -1)
+                ->where('certificate_requests.distribution_center_id', $user->distribution_center_id ?: -1)
+                ->where(fn ($q) => $q->where('certificate_requests.request_source', 'SALES_UNIT')
+                    ->orWhereNotIn('certificate_requests.status', ['DRAFT', 'WAIT_CENTER', 'RETURNED_SALES_UNIT']));
+        }
+        if ($user->hasRole('TrungTam')) {
+            return $query->where('certificate_requests.distribution_center_id', $user->distribution_center_id ?: -1);
+        }
+        return $user->hasRole('Admin') ? $query : $query->whereNotIn('certificate_requests.status', ['DRAFT', 'WAIT_CENTER', 'RETURNED_SALES_UNIT']);
+    }
+
     public function scopeWaitingForPtnWork($query)
     {
         return $query->where(function ($q) {
@@ -20,6 +34,7 @@ class CertificateRequest extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'request_source', 'sales_unit_submitted_at', 'sales_unit_submitted_by', 'center_reviewed_at', 'center_reviewed_by',
         'request_no',
         'request_type',
         'reissue_of_certificate_id',
@@ -50,6 +65,7 @@ class CertificateRequest extends Model
     ];
 
     protected $casts = [
+        'sales_unit_submitted_at' => 'datetime', 'center_reviewed_at' => 'datetime',
         'delivery_date' => 'date',
         'require_hard_copy' => 'boolean',
         'is_urgent' => 'boolean',
@@ -200,6 +216,8 @@ class CertificateRequest extends Model
     public static function statusMeta(?string $status): array
     {
         $map = [
+            'WAIT_CENTER' => ['class' => 'badge-warning', 'text' => 'Chờ Trung tâm kiểm tra'],
+            'RETURNED_SALES_UNIT' => ['class' => 'badge-danger', 'text' => 'Trung tâm trả lại đơn vị bán hàng'],
             'DRAFT' => ['class' => 'badge-secondary', 'text' => 'Nháp'],
             'WAIT_DVKH' => ['class' => 'badge-warning', 'text' => 'Chờ DVKH kiểm tra'],
             'WAIT_PTN' => ['class' => 'badge-info', 'text' => 'Chờ PTN lập phiếu'],

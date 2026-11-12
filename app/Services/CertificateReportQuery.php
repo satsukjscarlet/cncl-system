@@ -19,7 +19,7 @@ class CertificateReportQuery
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => array_filter(['nullable', 'date_format:Y-m-d', $request->filled('date_from') ? 'after_or_equal:date_from' : null]),
             'include_history' => ['nullable', 'boolean'],
-            'request_status' => ['nullable', Rule::in(['DRAFT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'SIGNED', 'COMPLETED', 'CANCELLED'])],
+            'request_status' => ['nullable', Rule::in(['DRAFT', 'WAIT_CENTER', 'RETURNED_SALES_UNIT', 'WAIT_DVKH', 'WAIT_PTN', 'PTN_PROCESSING', 'SIGNED', 'COMPLETED', 'CANCELLED'])],
             'certificate_status' => ['nullable', Rule::in(['NO_CERTIFICATE', 'WAIT_PTN_MANAGER_APPROVAL', 'READY_TO_SIGN', 'SIGN_PENDING', 'SIGN_EXPIRED', 'ISSUED', 'REJECTED', 'REVOKED', 'SIGN_READY', 'UNSIGNED'])],
         ]);
     }
@@ -27,7 +27,7 @@ class CertificateReportQuery
     public function requestBase(Request $request, User $user)
     {
         $this->validate($request);
-        $query = CertificateRequest::query();
+        $query = CertificateRequest::visibleTo($user);
         $this->centers($query, $request, $user, false);
         if ($request->filled('request_status')) {
             $query->where('certificate_requests.status', $request->request_status);
@@ -41,6 +41,8 @@ class CertificateReportQuery
     {
         $this->validate($request);
         $query = QualityCertificate::query()->whereHas('request');
+        if ($user->isSalesUnit()) $query->where('quality_certificates.status', 'ISSUED')->whereNotNull('signed_at')
+            ->whereHas('request', fn ($q) => $q->visibleTo($user));
         $this->centers($query, $request, $user, true);
         if ($request->filled('request_status')) {
             $query->whereHas('request', fn ($q) => $q->where('status', $request->request_status));
@@ -53,7 +55,7 @@ class CertificateReportQuery
     private function centers($query, Request $request, User $user, bool $certificate): void
     {
         $center = $request->input('distribution_center_id');
-        if ($user->hasRole('TrungTam')) {
+        if ($user->isExternalAccount()) {
             abort_unless($user->distribution_center_id, 403, 'Tài khoản Trung tâm chưa được gắn Trung tâm phân phối.');
             $center = $user->distribution_center_id;
         }
