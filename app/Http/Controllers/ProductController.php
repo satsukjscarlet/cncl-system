@@ -289,6 +289,14 @@ class ProductController extends Controller
 
     public function export(): BinaryFileResponse
     {
+        // PhpSpreadsheet retains spreadsheet cells even when the query is chunked.
+        // Raise the budget only for this export, preserving higher server limits.
+        $memoryLimit = ini_get('memory_limit');
+        if ($memoryLimit !== false && $memoryLimit !== '-1'
+            && ini_parse_quantity($memoryLimit) < 512 * 1024 * 1024) {
+            ini_set('memory_limit', '512M');
+        }
+
         ActivityLogger::log(
             'Sản phẩm',
             'export',

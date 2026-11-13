@@ -3,12 +3,13 @@
 namespace App\Exports;
 
 use App\Models\Product;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
-class ProductsExport implements FromCollection, WithHeadings
+class ProductsExport implements FromQuery, WithHeadings, WithMapping
 {
-    public function collection()
+    public function query()
     {
         return Product::with([
             'group',
@@ -16,35 +17,36 @@ class ProductsExport implements FromCollection, WithHeadings
             'productUnit',
         ])
             ->orderBy('product_code')
-            ->get()
-            ->map(function ($product) {
+            ->orderBy('id');
+    }
 
-                return [
-                    'ma_nhom_san_pham'      => $product->group?->code,
-                    'ten_nhom_san_pham'     => $product->group?->name,
+    public function map($product): array
+    {
+        return [
+            'ma_nhom_san_pham'      => $product->group?->code,
+            'ten_nhom_san_pham'     => $product->group?->name,
 
-                    'ma_san_pham'           => $product->product_code,
-                    'ten_san_pham'          => $product->product_name,
+            'ma_san_pham'           => $product->product_code,
+            'ten_san_pham'          => $product->product_name,
 
-                    'don_vi_tinh'           => $product->productUnit?->name ?? $product->unit,
+            'don_vi_tinh'           => $product->productUnit?->name ?? $product->unit,
 
-                    'kich_thuoc_danh_nghia' => $product->nominal_size,
+            'kich_thuoc_danh_nghia' => $product->nominal_size,
 
-                    'yeu_cau_ky_thuat'      => $product->technical_requirements,
+            'yeu_cau_ky_thuat'      => $product->technical_requirements,
 
-                    'tieu_chuan_san_pham' => $product->qualityStandard?->code,
+            'tieu_chuan_san_pham' => $product->qualityStandard?->code,
 
-                    'loai_phieu'            => $product->certificate_type,
+            'loai_phieu'            => $product->certificate_type,
 
-                    'mau_phieu'             => $product->certificate_template,
+            'mau_phieu'             => $product->certificate_template,
 
-                    'ghi_chu'               => $product->note,
+            'ghi_chu'               => $product->note,
 
-                    'trang_thai'            => $product->is_active
-                        ? 'Đang sử dụng'
-                        : 'Ngừng sử dụng',
-                ];
-            });
+            'trang_thai'            => $product->is_active
+                ? 'Đang sử dụng'
+                : 'Ngừng sử dụng',
+        ];
     }
 
     public function headings(): array
