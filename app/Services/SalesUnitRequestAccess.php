@@ -13,6 +13,7 @@ class SalesUnitRequestAccess
     public function transition(CertificateRequest $item, User $user, string $action, ?string $reason = null, bool $commitment = false): CertificateRequest
     {
         $this->validateAccount($user);
+        if ($action !== 'return') \App\Support\RequestSubmissionEmail::validate($user);
         $item = DB::transaction(function () use ($item, $user, $action, $reason, $commitment) {
             $item = CertificateRequest::whereKey($item->id)->lockForUpdate()->firstOrFail();
             abort_unless($item->request_source === 'SALES_UNIT' && $this->canEdit($user, $item), 409, 'Yêu cầu không còn ở bước bạn được xử lý.');

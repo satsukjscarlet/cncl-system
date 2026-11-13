@@ -21,6 +21,7 @@ Nhiều tài khoản có thể cùng một đơn vị và cùng xem / làm việ
 
 ## Thao tác đơn vị bán hàng
 
+- Tài khoản phải có email trước khi gửi Trung tâm. Nếu thiếu email, vẫn lưu nháp được; mở **Tài khoản của tôi** để bổ sung, sau đó tải lại biểu mẫu. Email khách hàng/công trình không thay thế email tài khoản.
 - Trung tâm và đơn vị bán hàng được cố định, không tự thay.
 - Chọn khách hàng/công trình thuộc đơn vị hoặc nhập mới trong yêu cầu. Khách mới được gắn với đơn vị; không cho sửa danh mục dùng chung. Dữ liệu khách hàng cũ chưa được gắn đơn vị không tự chia sẻ cho đơn vị mới.
 - Nhập ngày xuất hàng, người yêu cầu, sản phẩm và số lượng; chọn ký tươi nếu cần như biểu mẫu hiện tại.
@@ -32,6 +33,7 @@ Không gán thêm quyền nội bộ để vượt luồng: tài khoản đơn v
 
 ## Thao tác Trung tâm
 
+- Tài khoản Trung tâm phải có email trước khi gửi DVKH, bao gồm gửi yêu cầu của Trung tâm và chuyển tiếp yêu cầu đơn vị bán hàng. Thiếu email vẫn được lưu nháp / lưu chỉnh sửa và trả lại đơn vị; nút gửi bị khóa và server cũng chặn POST trực tiếp. Không yêu cầu xác minh email bằng liên kết email.
 - Dashboard, menu công việc và danh sách yêu cầu có nhóm **Chờ Trung tâm kiểm tra**.
 - Mở hồ sơ, kiểm tra thông tin. Có thể **Sửa yêu cầu**, **Lưu chỉnh sửa**, hoặc **Gửi DVKH**.
 - **Trả lại đơn vị** khi cần đơn vị sửa, bắt buộc nhập lý do.

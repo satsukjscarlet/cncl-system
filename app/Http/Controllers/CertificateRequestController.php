@@ -541,6 +541,7 @@ class CertificateRequestController extends Controller
     {
         $this->prepareSalesUnitInput($request);
         $isSubmitting = $request->input('request_action') !== 'draft';
+        if ($isSubmitting) \App\Support\RequestSubmissionEmail::validate($request->user());
         $rules = [
             'customer_mode' => ['required', 'in:existing,new'],
             'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
@@ -732,6 +733,7 @@ class CertificateRequestController extends Controller
 
         $this->prepareSalesUnitInput($request);
         $isSubmitting = $request->input('request_action') !== 'draft';
+        if ($isSubmitting) \App\Support\RequestSubmissionEmail::validate($request->user());
         $rules = [
             'customer_mode' => ['required', 'in:existing,new'],
             'customer_id' => ['required_if:customer_mode,existing', 'nullable', 'exists:customers,id'],
@@ -891,6 +893,7 @@ class CertificateRequestController extends Controller
     public function submitDraft(Request $request, CertificateRequest $certificateRequest)
     {
         $this->authorizeCenter($certificateRequest);
+        \App\Support\RequestSubmissionEmail::validate($request->user());
 
         if ($certificateRequest->request_source === 'SALES_UNIT') {
             $request->validate(['customer_commitment_confirmed' => ['accepted']]);

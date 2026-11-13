@@ -284,6 +284,67 @@ class SalesUnitWorkflowTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_external_accounts_without_email_can_save_drafts_but_cannot_create_or_update_and_submit(): void
+    {
+        $this->customer->update(['email' => 'customer@example.com']);
+        foreach ([$this->seller, $this->center] as $actor) {
+            $actor->update(['email' => null]);
+            $this->actingAs($actor)->post(route('certificate-requests.store'), array_merge($this->payload(), ['new_email' => 'not-account@example.com']))
+                ->assertSessionHasErrors('account_email');
+            $before = CertificateRequest::count();
+            $this->postJson(route('certificate-requests.store'), $this->payload())->assertUnprocessable()->assertJsonValidationErrors('account_email');
+            $this->assertSame($before, CertificateRequest::count());
+            $this->post(route('certificate-requests.store'), array_merge($this->payload(), ['request_action' => 'draft']))
+                ->assertRedirect()->assertSessionMissing('error');
+            $item = CertificateRequest::latest('id')->firstOrFail();
+            $this->assertSame('DRAFT', $item->status);
+            $this->put(route('certificate-requests.update', $item), array_merge($this->payload(), ['quantity' => [999]]))->assertSessionHasErrors('account_email');
+            $this->assertEquals(12, $item->details()->firstOrFail()->quantity);
+            $this->post(route('certificate-requests.submit-draft', $item), ['customer_commitment_confirmed' => 1])->assertSessionHasErrors('account_email');
+            $this->assertSame('DRAFT', $item->fresh()->status);
+            $this->assertNull($item->fresh()->submitted_at);
+            $this->put(route('certificate-requests.update', $item), array_merge($this->payload(), ['request_action' => 'draft', 'quantity' => [13]]))
+                ->assertRedirect()->assertSessionMissing('error');
+            $this->assertEquals(13, $item->details()->firstOrFail()->quantity);
+            $actor->update(['email' => 'sender@example.com']);
+            $this->post(route('certificate-requests.submit-draft', $item), ['customer_commitment_confirmed' => 1])
+                ->assertRedirect()->assertSessionHasNoErrors();
+            $this->assertSame($actor->isSalesUnit() ? 'WAIT_CENTER' : 'WAIT_DVKH', $item->fresh()->status);
+        }
+    }
+
+    public function test_center_missing_email_cannot_forward_sales_request_but_can_return_it(): void
+    {
+        $item = $this->createRequest();
+        $this->center->update(['email' => '  ']);
+        $this->actingAs($this->center)->post(route('certificate-requests.submit-draft', $item), ['customer_commitment_confirmed' => 1])
+            ->assertSessionHasErrors('account_email');
+        $this->put(route('certificate-requests.update', $item), $this->payload())->assertSessionHasErrors('account_email');
+        $this->assertSame('WAIT_CENTER', $item->fresh()->status);
+        $this->assertNull($item->fresh()->submitted_at);
+        $this->assertNull($item->fresh()->center_reviewed_at);
+        $this->post(route('certificate-requests.return-sales-unit', $item), ['reason' => 'Bo sung thong tin'])->assertRedirect();
+        $this->assertSame('RETURNED_SALES_UNIT', $item->fresh()->status);
+        $this->assertFalse(\App\Support\RequestSubmissionEmail::missing(User::where('username', 'ptn')->firstOrFail()->forceFill(['email' => null])));
+    }
+
+    public function test_missing_email_warning_and_profile_link_are_rendered_on_forms_and_detail(): void
+    {
+        $item = $this->createRequest('draft');
+        $this->seller->update(['email' => '']);
+        $this->actingAs($this->seller);
+        $pages = [];
+        foreach (['create' => route('certificate-requests.create'), 'edit' => route('certificate-requests.edit', $item), 'detail' => route('certificate-requests.show', $item)] as $name => $url) {
+            $pages['account-email-'.$name] = $this->get($url)->assertOk()->assertSee('data-account-email-warning', false)->assertSee(route('profile.edit'), false);
+        }
+        if ($directory = getenv('CNCL_SUPPLEMENT_UI_SNAPSHOT_DIR')) {
+            if (! is_dir($directory)) mkdir($directory, 0777, true);
+            foreach ($pages as $name => $response) file_put_contents($directory.'/'.$name.'.html', $response->getContent());
+        }
+        $this->seller->update(['email' => 'sender@example.com']);
+        $this->get(route('certificate-requests.create'))->assertOk()->assertDontSee('data-account-email-warning', false);
+    }
+
     private function createRequest(string $action = 'submit'): CertificateRequest
     {
         $this->actingAs($this->seller)->post(route('certificate-requests.store'), array_merge($this->payload(), ['request_action' => $action]))

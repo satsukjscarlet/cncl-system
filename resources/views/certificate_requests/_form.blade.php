@@ -17,6 +17,10 @@
     $salesUnits = $salesUnits ?? collect();
 @endphp
 
+@unless($isDirectPtnForm)
+    @include('certificate_requests.partials.account_email_warning')
+@endunless
+
 <div class="row">
     <div class="col-md-4">
         <div class="form-group">
@@ -605,7 +609,9 @@
     </button>
     @endunless
 
-    <button type="submit" name="request_action" value="submit" class="btn btn-primary" id="request-submit-button">
+    <button type="submit" name="request_action" value="submit" class="btn btn-primary" id="request-submit-button"
+            data-email-missing="{{ \App\Support\RequestSubmissionEmail::missing(auth()->user()) ? '1' : '0' }}"
+            @disabled(\App\Support\RequestSubmissionEmail::missing(auth()->user()))>
         <i class="{{ $isDirectPtnForm ? $formSubmitIcon : 'fas fa-paper-plane' }}"></i> {{ $isDirectPtnForm ? $formSubmitText : (auth()->user()->isSalesUnit() ? 'Gửi Trung tâm kiểm tra' : 'Gửi DVKH') }}
     </button>
 </div>
@@ -661,8 +667,9 @@
                     return;
                 }
 
-                submitRequestButton.disabled = !commitmentCheckbox.checked;
-                submitRequestButton.title = !commitmentCheckbox.checked
+                const emailMissing = submitRequestButton.dataset.emailMissing === '1';
+                submitRequestButton.disabled = emailMissing || !commitmentCheckbox.checked;
+                submitRequestButton.title = emailMissing ? @json(\App\Support\RequestSubmissionEmail::MESSAGE) : !commitmentCheckbox.checked
                     ? 'Vui lòng tích xác nhận cam kết trước khi gửi'
                     : '';
             }

@@ -61,6 +61,19 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                     const bar = page.locator('.workflow-action-bar');
                     const detail = await bar.count() > 0;
                     const deliveryDate = page.locator('#delivery_date');
+                    if (name.startsWith('account-email-')) {
+                        assert(await page.locator('[data-account-email-warning]').isVisible());
+                        assert(await page.locator('[data-account-email-warning] a[href$="/profile"]').count() > 0);
+                        if (await page.locator('#request-submit-button').count()) {
+                            assert(await page.locator('#request-submit-button').isDisabled());
+                            const commitment = page.locator('#customer_commitment_confirmed');
+                            if (!await commitment.isChecked()) await page.locator('label[for="customer_commitment_confirmed"]').click();
+                            assert(await page.locator('#request-submit-button').isDisabled());
+                            assert(await page.locator('button[name="request_action"][value="draft"]').isEnabled());
+                        } else {
+                            assert(await page.locator('[data-target="#submitDraftModal"]').isDisabled());
+                        }
+                    }
                     if (name === 'sales-unit-create') {
                         assert(await page.locator('select[name="sales_unit_id"]').isDisabled());
                         assert(await page.locator('input[type="hidden"][name="sales_unit_id"]').inputValue());
@@ -216,7 +229,7 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                             result.standards['STD-B'], result.standards['STD-C'], '',
                         ]);
                     }
-                    if (await deliveryDate.count()) {
+                    if (await deliveryDate.count() && !name.startsWith('account-email-')) {
                         const original = await deliveryDate.inputValue();
                         const today = await deliveryDate.getAttribute('data-today');
                         const nextDate = days => {
@@ -295,7 +308,7 @@ const pages = fs.readdirSync(snapshots).filter(name => name.endsWith('.html')).m
                         });
                         await checkBounds();
                         await page.screenshot({ path: path.join(output, `${name}-${viewport.width}-bottom.png`) });
-                        const modalButton = bar.locator('[data-toggle="modal"]:visible').first();
+                        const modalButton = bar.locator('[data-toggle="modal"]:visible:not(:disabled)').first();
                         if (await modalButton.count()) {
                             await modalButton.click();
                             const modal = page.locator('.modal.show');

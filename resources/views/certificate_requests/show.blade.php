@@ -23,6 +23,10 @@
         && (!$isCenterAccount || ($relatedCertificate->status === 'ISSUED' && $relatedCertificate->signed_at));
 @endphp
 
+@if($canEditRequest)
+    @include('certificate_requests.partials.account_email_warning')
+@endif
+
 @if(session('success'))
     <div class="alert alert-success">{{ session('success') }}</div>
 @endif

@@ -11,7 +11,8 @@
                 <a href="{{ route('certificate-requests.edit', $certificateRequest) }}" class="btn btn-outline-primary">
                     <i class="fas fa-edit"></i> Sửa yêu cầu
                 </a>
-                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#submitDraftModal">
+                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#submitDraftModal"
+                    @disabled(\App\Support\RequestSubmissionEmail::missing(auth()->user()))>
                     <i class="fas fa-paper-plane"></i> Gửi {{ $sendTarget }}
                 </button>
                 @if($certificateRequest->request_source === 'SALES_UNIT' && !auth()->user()->isSalesUnit())

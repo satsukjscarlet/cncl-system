@@ -1,3 +1,13 @@
+## 2026-11-13 - Bắt buộc bổ sung email tài khoản trước khi gửi yêu cầu
+
+Tài khoản Trung tâm / Đơn vị bán hàng thiếu email (null, rỗng hoặc chỉ khoảng trắng) không được gửi yêu cầu: Trung tâm gửi DVKH, đơn vị gửi Trung tâm. Kiểm tra email của tài khoản đang thao tác, không dùng email khách hàng/công trình hoặc email nhập trong payload để thay thế. Chặn ở server trước khi tạo/sửa/gửi và ở service chuyển bước; lỗi validation account_email hỗ trợ cả form và JSON. Không yêu cầu xác minh email, không đổi quy trình nội bộ DVKH/PTN/Admin.
+
+Hiển thị cảnh báo kèm liên kết Tài khoản của tôi trên biểu mẫu tạo/sửa và chi tiết có quyền xử lý; khóa nút gửi và không để JavaScript cam kết bật lại nút khi thiếu email. Vẫn cho lưu nháp/lưu chỉnh sửa và Trung tâm trả lại đơn vị. Bổ sung email rồi tải lại trang để gửi. Không đổi schema, không migration/seeder hoặc cập nhật dữ liệu MySQL.
+
+Kiểm thử đạt 48 tests / 706 assertions (quy trình cũ và mới, tài khoản thiếu email, không thay đổi hồ sơ khi bị chặn, email khách không thay tài khoản, lưu nháp, gửi sau bổ sung, trả lại và cảnh báo). Playwright đạt 12 tổ hợp desktop/mobile; cú pháp các file PHP thay đổi và diff check đạt. Điều chỉnh runner không cố bấm nút modal đã bị khóa theo nghiệp vụ mới.
+
+File sửa/thêm: `app/Support/RequestSubmissionEmail.php`, `app/Http/Controllers/CertificateRequestController.php`, `app/Services/SalesUnitRequestAccess.php`, `resources/views/certificate_requests/partials/account_email_warning.blade.php`, `resources/views/certificate_requests/_form.blade.php`, `resources/views/certificate_requests/show.blade.php`, `resources/views/certificate_requests/partials/detail_actions.blade.php`, `tests/Feature/SalesUnitWorkflowTest.php`, `scripts/check-workflow-ui.cjs`, `docs/QUY_TRINH_DON_VI_BAN_HANG.md`, `CHANGELOG_CNCL.md`.
+
 ## 2026-11-12 - Kiểm tra lại trước cập nhật VPS
 
 Chạy lại toàn bộ 171 tests / 2124 assertions: 163 đạt, 8 test cũ chưa đồng bộ với các route tự đăng ký/quên mật khẩu/tự xóa tài khoản đã tắt. Không phát hiện ca thất bại mới ở nghiệp vụ. Kiểm tra cú pháp 150 file PHP và 254 Blade đã biên dịch đạt; thử route/view cache ở thư mục riêng đạt, không thay config cache đang dùng. Playwright 52 tổ hợp desktop/mobile đạt; platform requirements non-dev đạt trên local. Đọc MySQL trong transaction READ ONLY xác nhận schema/role mới; không chạy migration/seeder hay sửa dữ liệu MySQL trong lần rà này. Không gửi email/SmartCA thật. Ghi rõ cần commit/push đủ file mới, sao lưu và chạy migration + SalesUnitAccessSeeder trước khi mở code mới trên VPS; môi trường VPS thực tế chưa được kiểm chứng.
